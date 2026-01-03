@@ -285,41 +285,29 @@ export default function StoreDetail() {
                         </span>
                       </div>
 
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                      <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
                         <div>
-                          <p className="text-gray-500">Giờ vào</p>
+                          <p className="text-gray-500">Thời gian</p>
                           <p className="font-semibold text-gray-800">
                             {new Date(checkIn.check_in_time).toLocaleTimeString('vi-VN', {
                               hour: '2-digit',
-                              minute: '2-digit'
+                              minute: '2-digit',
+                              second: '2-digit'
                             })}
                           </p>
                         </div>
-
-                        {checkIn.check_out_time && (
-                          <>
-                            <div>
-                              <p className="text-gray-500">Giờ ra</p>
-                              <p className="font-semibold text-gray-800">
-                                {new Date(checkIn.check_out_time).toLocaleTimeString('vi-VN', {
-                                  hour: '2-digit',
-                                  minute: '2-digit'
-                                })}
-                              </p>
-                            </div>
-                            <div>
-                              <p className="text-gray-500">Thời gian làm việc</p>
-                              <p className="font-semibold text-green-600">
-                                {Math.floor(checkIn.duration_minutes / 60)} giờ {checkIn.duration_minutes % 60} phút
-                              </p>
-                            </div>
-                          </>
-                        )}
 
                         <div>
                           <p className="text-gray-500">Khoảng cách</p>
                           <p className="font-semibold text-gray-800">
                             {checkIn.distance_meters.toFixed(1)}m
+                          </p>
+                        </div>
+
+                        <div>
+                          <p className="text-gray-500">Loại</p>
+                          <p className="font-semibold text-blue-600">
+                            Quét mã
                           </p>
                         </div>
                       </div>

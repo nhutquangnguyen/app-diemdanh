@@ -161,16 +161,18 @@ function CheckInContent() {
 
       const staffId = existingStaff.id;
 
-      // Check if already checked in TODAY
+      // Get all check-ins for today to determine if this is first or subsequent scan
       const today = new Date().toISOString().split('T')[0];
-      const { data: todayCheckIn } = await supabase
+      const { data: todayCheckIns, error: checkInsError } = await supabase
         .from('check_ins')
         .select('*')
         .eq('staff_id', staffId)
         .eq('store_id', storeInfo.id)
         .gte('check_in_time', `${today}T00:00:00`)
         .lte('check_in_time', `${today}T23:59:59`)
-        .single();
+        .order('check_in_time', { ascending: true });
+
+      if (checkInsError) throw checkInsError;
 
       // Upload selfie to storage
       const fileName = `${staffId}-${Date.now()}.jpg`;
@@ -190,54 +192,42 @@ function CheckInContent() {
         .from('selfies')
         .getPublicUrl(fileName);
 
-      if (!todayCheckIn) {
-        // FIRST SCAN OF THE DAY → CHECK-IN
-        const { error: checkInError } = await supabase
-          .from('check_ins')
-          .insert([
-            {
-              staff_id: staffId,
-              store_id: storeInfo.id,
-              latitude: location.latitude,
-              longitude: location.longitude,
-              distance_meters: distance,
-              selfie_url: publicUrl,
-              status: 'checked_in',
-            },
-          ]);
+      const currentTime = new Date();
+      const isFirstScan = !todayCheckIns || todayCheckIns.length === 0;
 
-        if (checkInError) throw checkInError;
+      // Always insert a new record for each scan
+      const { error: insertError } = await supabase
+        .from('check_ins')
+        .insert([
+          {
+            staff_id: staffId,
+            store_id: storeInfo.id,
+            latitude: location.latitude,
+            longitude: location.longitude,
+            distance_meters: distance,
+            selfie_url: publicUrl,
+            status: 'success',
+          },
+        ]);
 
-        setIsCheckOut(false);
-        setCheckInTime(new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }));
-      } else {
-        // SUBSEQUENT SCAN → CHECK-OUT (UPDATE EXISTING RECORD)
-        const checkOutTime = new Date();
-        const checkInDate = new Date(todayCheckIn.check_in_time);
-        const durationMin = Math.floor((checkOutTime.getTime() - checkInDate.getTime()) / 1000 / 60);
+      if (insertError) throw insertError;
+
+      // Calculate duration if not first scan (max time - min time)
+      let durationText = '';
+      if (!isFirstScan && todayCheckIns.length > 0) {
+        const firstCheckIn = new Date(todayCheckIns[0].check_in_time);
+        const durationMin = Math.floor((currentTime.getTime() - firstCheckIn.getTime()) / 1000 / 60);
 
         const hours = Math.floor(durationMin / 60);
         const minutes = durationMin % 60;
-        const durationText = `${hours} giờ ${minutes} phút`;
-
-        const { error: checkOutError } = await supabase
-          .from('check_ins')
-          .update({
-            check_out_time: checkOutTime.toISOString(),
-            check_out_selfie_url: publicUrl,
-            check_out_latitude: location.latitude,
-            check_out_longitude: location.longitude,
-            check_out_distance_meters: distance,
-            duration_minutes: durationMin,
-            status: 'checked_out',
-          })
-          .eq('id', todayCheckIn.id);
-
-        if (checkOutError) throw checkOutError;
+        durationText = `${hours} giờ ${minutes} phút`;
 
         setIsCheckOut(true);
-        setCheckInTime(checkInDate.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }));
+        setCheckInTime(firstCheckIn.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }));
         setDuration(durationText);
+      } else {
+        setIsCheckOut(false);
+        setCheckInTime(currentTime.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }));
       }
 
       setStep('success');
@@ -394,17 +384,17 @@ function CheckInContent() {
             </div>
 
             {!isCheckOut ? (
-              // Check-in success
+              // First scan of the day
               <>
                 <h2 className="text-3xl font-bold text-gray-800 mb-4">
                   Điểm Danh Thành Công!
                 </h2>
                 <div className="bg-blue-50 rounded-lg p-6 mb-6">
                   <p className="text-lg text-gray-700 mb-2">
-                    <span className="font-semibold">Giờ vào:</span> {checkInTime}
+                    <span className="font-semibold">Lần quét đầu tiên:</span> {checkInTime}
                   </p>
                   <p className="text-sm text-gray-500">
-                    Nhớ quét mã QR để check-out khi kết thúc ca làm việc
+                    Quét mã QR mỗi lần vào/ra để ghi lại tất cả hoạt động
                   </p>
                 </div>
                 <p className="text-gray-600 mb-8">
@@ -412,31 +402,31 @@ function CheckInContent() {
                 </p>
               </>
             ) : (
-              // Check-out success
+              // Subsequent scans - show duration from first scan
               <>
                 <h2 className="text-3xl font-bold text-gray-800 mb-4">
-                  Check-out Thành Công!
+                  Quét Thành Công!
                 </h2>
                 <div className="bg-green-50 rounded-lg p-6 mb-6">
                   <div className="grid grid-cols-2 gap-4 mb-4">
                     <div className="text-left">
-                      <p className="text-sm text-gray-500">Giờ vào</p>
+                      <p className="text-sm text-gray-500">Lần quét đầu</p>
                       <p className="text-lg font-semibold text-gray-700">{checkInTime}</p>
                     </div>
                     <div className="text-left">
-                      <p className="text-sm text-gray-500">Giờ ra</p>
+                      <p className="text-sm text-gray-500">Lần quét này</p>
                       <p className="text-lg font-semibold text-gray-700">
                         {new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}
                       </p>
                     </div>
                   </div>
                   <div className="border-t pt-4">
-                    <p className="text-sm text-gray-500 mb-1">Tổng thời gian làm việc</p>
+                    <p className="text-sm text-gray-500 mb-1">Tổng thời gian (từ lần quét đầu)</p>
                     <p className="text-2xl font-bold text-green-600">{duration}</p>
                   </div>
                 </div>
                 <p className="text-gray-600 mb-8">
-                  Cảm ơn bạn đã làm việc chăm chỉ!
+                  Tất cả lần quét đã được lưu lại!
                 </p>
               </>
             )}
