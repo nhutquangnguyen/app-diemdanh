@@ -7,6 +7,9 @@ export interface Store {
   longitude: number;
   qr_code: string;
   radius_meters: number; // Bán kính cho phép check-in (mét)
+  gps_required: boolean; // Yêu cầu xác thực GPS
+  selfie_required: boolean; // Yêu cầu chụp selfie
+  access_mode: 'staff_only' | 'anyone'; // Chế độ truy cập
   created_at: string;
   updated_at: string;
 }

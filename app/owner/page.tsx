@@ -30,9 +30,13 @@ export default function OwnerDashboard() {
 
   async function loadStores() {
     try {
+      const currentUser = await getCurrentUser();
+      if (!currentUser) return;
+
       const { data, error } = await supabase
         .from('stores')
         .select('*')
+        .eq('owner_id', currentUser.id)
         .order('created_at', { ascending: false });
 
       if (error) throw error;

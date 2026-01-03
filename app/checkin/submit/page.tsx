@@ -6,6 +6,7 @@ import Link from 'next/link';
 import Webcam from 'react-webcam';
 import { supabase } from '@/lib/supabase';
 import { getCurrentLocation, calculateDistance } from '@/utils/location';
+import { compressImage, getBase64Size } from '@/utils/imageCompression';
 import Header from '@/components/Header';
 
 function CheckInContent() {
@@ -40,6 +41,9 @@ function CheckInContent() {
       );
       setDistance(dist);
       setIsWithinRadius(dist <= storeInfo.radius_meters);
+    } else if (storeInfo && !storeInfo.gps_required) {
+      // If GPS not required, always set within radius to true
+      setIsWithinRadius(true);
     }
   }, [storeInfo, currentLocation]);
 
@@ -55,37 +59,21 @@ function CheckInContent() {
 
     setUser(currentUser);
 
-    // Get current GPS location
-    try {
-      const location = await getCurrentLocation();
-      if (!location) {
-        setErrorMessage('Không thể lấy vị trí hiện tại. Vui lòng bật GPS.');
-        setStep('error');
-        return;
-      }
-      setCurrentLocation(location);
-    } catch (error) {
-      console.error('GPS error:', error);
-      setErrorMessage('Lỗi khi lấy vị trí GPS');
-      setStep('error');
-      return;
-    }
-
-    // Get store ID from URL and load store info
+    // Get store ID from URL and load store info first
     const storeId = searchParams.get('store');
     console.log('Store ID from URL:', storeId);
     console.log('Full URL:', window.location.href);
     console.log('Search params:', window.location.search);
 
     if (storeId) {
-      await loadStoreInfo(storeId);
+      await loadStoreInfo(storeId, currentUser);
     } else {
       setErrorMessage(`Thiếu thông tin cửa hàng. URL: ${window.location.href}`);
       setStep('error');
     }
   }
 
-  async function loadStoreInfo(storeId: string) {
+  async function loadStoreInfo(storeId: string, currentUser: any) {
     try {
       const { data, error} = await supabase
         .from('stores')
@@ -95,6 +83,25 @@ function CheckInContent() {
 
       if (error) throw error;
       setStoreInfo(data);
+
+      // Get GPS location only if required
+      if (data.gps_required) {
+        try {
+          const location = await getCurrentLocation();
+          if (!location) {
+            setErrorMessage('Không thể lấy vị trí hiện tại. Vui lòng bật GPS.');
+            setStep('error');
+            return;
+          }
+          setCurrentLocation(location);
+        } catch (error) {
+          console.error('GPS error:', error);
+          setErrorMessage('Lỗi khi lấy vị trí GPS');
+          setStep('error');
+          return;
+        }
+      }
+
       setStep('info');
     } catch (error) {
       console.error('Error loading store:', error);
@@ -104,10 +111,18 @@ function CheckInContent() {
   }
 
   function handleStartCheckIn() {
-    if (!isWithinRadius) {
+    // Only check GPS if it's required
+    if (storeInfo.gps_required && !isWithinRadius) {
       alert(`Bạn đang ở cách cửa hàng ${distance.toFixed(0)}m. Vui lòng đến gần hơn.`);
       return;
     }
+
+    // Skip selfie step if not required
+    if (!storeInfo.selfie_required) {
+      handleSubmitCheckIn();
+      return;
+    }
+
     setStep('selfie');
   }
 
@@ -123,47 +138,95 @@ function CheckInContent() {
   }
 
   async function handleSubmitCheckIn() {
-    if (!selfieImage || !storeInfo) return;
+    if (!storeInfo) return;
+
+    // Only require selfie if selfie_required is true
+    if (storeInfo.selfie_required && !selfieImage) return;
 
     setStep('processing');
 
     try {
-      // Get current location
-      const location = await getCurrentLocation();
-      if (!location) {
-        throw new Error('Không thể lấy vị trí hiện tại. Vui lòng bật GPS.');
-      }
+      let location = currentLocation;
+      let distance = 0;
 
-      // Calculate distance
-      const distance = calculateDistance(
-        location.latitude,
-        location.longitude,
-        parseFloat(storeInfo.latitude),
-        parseFloat(storeInfo.longitude)
-      );
+      // Get current location only if GPS is required
+      if (storeInfo.gps_required) {
+        location = await getCurrentLocation();
+        if (!location) {
+          throw new Error('Không thể lấy vị trí hiện tại. Vui lòng bật GPS.');
+        }
 
-      // Check if within radius
-      if (distance > storeInfo.radius_meters) {
-        setErrorMessage(
-          `Bạn đang ở cách cửa hàng ${distance.toFixed(0)}m. Vui lòng đến gần hơn (trong bán kính ${storeInfo.radius_meters}m).`
+        // Calculate distance
+        distance = calculateDistance(
+          location.latitude,
+          location.longitude,
+          parseFloat(storeInfo.latitude),
+          parseFloat(storeInfo.longitude)
         );
-        setStep('error');
-        return;
+
+        // Check if within radius
+        if (distance > storeInfo.radius_meters) {
+          setErrorMessage(
+            `Bạn đang ở cách cửa hàng ${distance.toFixed(0)}m. Vui lòng đến gần hơn (trong bán kính ${storeInfo.radius_meters}m).`
+          );
+          setStep('error');
+          return;
+        }
+      } else {
+        // Use store location if GPS not required
+        location = {
+          latitude: parseFloat(storeInfo.latitude),
+          longitude: parseFloat(storeInfo.longitude)
+        };
       }
 
-      // Check if user's email is in staff list (authorized)
-      const { data: existingStaff, error: staffCheckError} = await supabase
-        .from('staff')
-        .select('id')
-        .eq('email', user.email)
-        .eq('store_id', storeInfo.id)
-        .single();
+      let staffId;
 
-      if (staffCheckError || !existingStaff) {
-        throw new Error('Email của bạn chưa được thêm vào danh sách nhân viên. Vui lòng liên hệ chủ cửa hàng.');
+      // Check access mode
+      if (storeInfo.access_mode === 'staff_only') {
+        // Check if user's email is in staff list (authorized)
+        const { data: existingStaff, error: staffCheckError} = await supabase
+          .from('staff')
+          .select('id')
+          .eq('email', user.email)
+          .eq('store_id', storeInfo.id)
+          .single();
+
+        if (staffCheckError || !existingStaff) {
+          throw new Error('Email của bạn chưa được thêm vào danh sách nhân viên. Vui lòng liên hệ chủ cửa hàng.');
+        }
+
+        staffId = existingStaff.id;
+      } else {
+        // access_mode === 'anyone' - create or get staff record
+        const { data: existingStaff } = await supabase
+          .from('staff')
+          .select('id')
+          .eq('email', user.email)
+          .eq('store_id', storeInfo.id)
+          .single();
+
+        if (existingStaff) {
+          staffId = existingStaff.id;
+        } else {
+          // Create new staff record for anyone mode
+          const { data: newStaff, error: createStaffError } = await supabase
+            .from('staff')
+            .insert([
+              {
+                email: user.email,
+                full_name: user.full_name || user.email.split('@')[0],
+                phone: '',
+                store_id: storeInfo.id,
+              },
+            ])
+            .select()
+            .single();
+
+          if (createStaffError) throw createStaffError;
+          staffId = newStaff.id;
+        }
       }
-
-      const staffId = existingStaff.id;
 
       // Get all check-ins for today to determine if this is first or subsequent scan
       const today = new Date().toISOString().split('T')[0];
@@ -178,23 +241,38 @@ function CheckInContent() {
 
       if (checkInsError) throw checkInsError;
 
-      // Upload selfie to storage
-      const fileName = `${staffId}-${Date.now()}.jpg`;
-      const base64Data = selfieImage.split(',')[1];
-      const blob = await fetch(`data:image/jpeg;base64,${base64Data}`).then(r => r.blob());
+      let publicUrl = '';
 
-      const { data: uploadData, error: uploadError } = await supabase.storage
-        .from('selfies')
-        .upload(fileName, blob, {
-          contentType: 'image/jpeg',
-        });
+      // Upload selfie to storage only if required
+      if (storeInfo.selfie_required && selfieImage) {
+        // Compress image before upload
+        const originalSize = getBase64Size(selfieImage);
+        console.log('Original image size:', originalSize, 'KB');
 
-      if (uploadError) throw uploadError;
+        const compressedImage = await compressImage(selfieImage, 1024, 1024, 0.85);
+        const compressedSize = getBase64Size(compressedImage);
+        console.log('Compressed image size:', compressedSize, 'KB');
+        console.log('Compression ratio:', ((1 - compressedSize / originalSize) * 100).toFixed(1) + '%');
 
-      // Get public URL
-      const { data: { publicUrl } } = supabase.storage
-        .from('selfies')
-        .getPublicUrl(fileName);
+        const fileName = `${staffId}-${Date.now()}.jpg`;
+        const base64Data = compressedImage.split(',')[1];
+        const blob = await fetch(`data:image/jpeg;base64,${base64Data}`).then(r => r.blob());
+
+        const { data: uploadData, error: uploadError } = await supabase.storage
+          .from('selfies')
+          .upload(fileName, blob, {
+            contentType: 'image/jpeg',
+          });
+
+        if (uploadError) throw uploadError;
+
+        // Get public URL
+        const { data: { publicUrl: url } } = supabase.storage
+          .from('selfies')
+          .getPublicUrl(fileName);
+
+        publicUrl = url;
+      }
 
       const currentTime = new Date();
       const isFirstScan = !todayCheckIns || todayCheckIns.length === 0;
@@ -209,7 +287,7 @@ function CheckInContent() {
             latitude: location.latitude,
             longitude: location.longitude,
             distance_meters: distance,
-            selfie_url: publicUrl,
+            selfie_url: publicUrl || null,
             status: 'success',
           },
         ]);
@@ -261,28 +339,30 @@ function CheckInContent() {
               </h2>
               <p className="text-gray-600 mb-4">{storeInfo.address}</p>
 
-              {/* GPS Distance Info */}
-              <div className={`p-4 rounded-lg mb-6 ${isWithinRadius ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'}`}>
-                <div className="flex items-center justify-center gap-2 mb-2">
-                  <svg className={`w-5 h-5 ${isWithinRadius ? 'text-green-600' : 'text-red-600'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                  </svg>
-                  <span className={`font-semibold ${isWithinRadius ? 'text-green-700' : 'text-red-700'}`}>
-                    Khoảng cách: {distance.toFixed(0)}m
-                  </span>
+              {/* GPS Distance Info - Only show if GPS is required */}
+              {storeInfo.gps_required && (
+                <div className={`p-4 rounded-lg mb-6 ${isWithinRadius ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'}`}>
+                  <div className="flex items-center justify-center gap-2 mb-2">
+                    <svg className={`w-5 h-5 ${isWithinRadius ? 'text-green-600' : 'text-red-600'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                    <span className={`font-semibold ${isWithinRadius ? 'text-green-700' : 'text-red-700'}`}>
+                      Khoảng cách: {distance.toFixed(0)}m
+                    </span>
+                  </div>
+                  {!isWithinRadius && (
+                    <p className="text-sm text-red-600">
+                      ⚠️ Bạn đang ở ngoài phạm vi cho phép ({storeInfo.radius_meters}m). Vui lòng đến gần hơn để điểm danh.
+                    </p>
+                  )}
+                  {isWithinRadius && (
+                    <p className="text-sm text-green-600">
+                      ✓ Vị trí hợp lệ - Bạn có thể điểm danh
+                    </p>
+                  )}
                 </div>
-                {!isWithinRadius && (
-                  <p className="text-sm text-red-600">
-                    ⚠️ Bạn đang ở ngoài phạm vi cho phép ({storeInfo.radius_meters}m). Vui lòng đến gần hơn để điểm danh.
-                  </p>
-                )}
-                {isWithinRadius && (
-                  <p className="text-sm text-green-600">
-                    ✓ Vị trí hợp lệ - Bạn có thể điểm danh
-                  </p>
-                )}
-              </div>
+              )}
 
               {/* User Info */}
               <div className="bg-blue-50 p-4 rounded-lg mb-6">
@@ -294,9 +374,9 @@ function CheckInContent() {
             <button
               type="button"
               onClick={handleStartCheckIn}
-              disabled={!isWithinRadius}
+              disabled={storeInfo.gps_required && !isWithinRadius}
               className={`w-full px-6 py-4 rounded-lg font-semibold text-lg transition-all flex items-center justify-center gap-2 ${
-                isWithinRadius
+                (!storeInfo.gps_required || isWithinRadius)
                   ? 'bg-green-600 hover:bg-green-700 text-white cursor-pointer'
                   : 'bg-gray-300 text-gray-500 cursor-not-allowed'
               }`}
@@ -305,7 +385,7 @@ function CheckInContent() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
               </svg>
-              Bắt Đầu Quét
+              {storeInfo.selfie_required ? 'Bắt Đầu Quét' : 'Xác Nhận Điểm Danh'}
             </button>
           </div>
         )}

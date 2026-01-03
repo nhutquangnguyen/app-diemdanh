@@ -16,7 +16,9 @@ export default function StoreDetail() {
   const [checkIns, setCheckIns] = useState<CheckIn[]>([]);
   const [staff, setStaff] = useState<Staff[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'qr' | 'checkins' | 'staff'>('qr');
+  const [activeTab, setActiveTab] = useState<'qr' | 'checkins' | 'staff' | 'settings'>('qr');
+  const [settingsLoading, setSettingsLoading] = useState(false);
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
 
   useEffect(() => {
     loadStoreData();
@@ -38,6 +40,31 @@ export default function StoreDetail() {
     } catch (error) {
       console.error('Error deleting staff:', error);
       alert('Lỗi khi xóa nhân viên');
+    }
+  }
+
+  async function updateStoreSettings(settings: {
+    gps_required: boolean;
+    selfie_required: boolean;
+    access_mode: 'staff_only' | 'anyone';
+    radius_meters: number;
+  }) {
+    setSettingsLoading(true);
+    try {
+      const { error } = await supabase
+        .from('stores')
+        .update(settings)
+        .eq('id', storeId);
+
+      if (error) throw error;
+
+      alert('Đã cập nhật cài đặt thành công!');
+      loadStoreData();
+    } catch (error) {
+      console.error('Error updating settings:', error);
+      alert('Lỗi khi cập nhật cài đặt');
+    } finally {
+      setSettingsLoading(false);
     }
   }
 
@@ -208,6 +235,16 @@ export default function StoreDetail() {
             >
               Nhân Viên ({staff.length})
             </button>
+            <button
+              onClick={() => setActiveTab('settings')}
+              className={`flex-1 px-6 py-4 font-semibold transition-all ${
+                activeTab === 'settings'
+                  ? 'text-blue-600 border-b-2 border-blue-600'
+                  : 'text-gray-600 hover:text-gray-800'
+              }`}
+            >
+              Cài Đặt
+            </button>
           </div>
 
           {/* QR Code Tab */}
@@ -258,31 +295,49 @@ export default function StoreDetail() {
                 <div className="space-y-4">
                   {checkIns.map((checkIn: any) => (
                     <div key={checkIn.id} className="bg-gray-50 rounded-lg p-4">
-                      <div className="flex items-start justify-between mb-3">
-                        <div className="flex items-center gap-4">
-                          <img
-                            src={checkIn.selfie_url}
-                            alt="Selfie"
-                            className="w-16 h-16 rounded-full object-cover"
-                          />
-                          <div>
-                            <p className="font-semibold text-gray-800">
-                              {checkIn.staff?.full_name || 'N/A'}
-                            </p>
-                            <p className="text-sm text-gray-600">
-                              {checkIn.staff?.email || 'N/A'}
-                            </p>
+                      <div className="flex items-start gap-4 mb-3">
+                        {/* Larger selfie image */}
+                        {checkIn.selfie_url ? (
+                          <button
+                            onClick={() => setSelectedImage(checkIn.selfie_url)}
+                            className="flex-shrink-0 hover:opacity-80 transition-opacity"
+                          >
+                            <img
+                              src={checkIn.selfie_url}
+                              alt="Selfie"
+                              className="w-24 h-24 sm:w-32 sm:h-32 rounded-lg object-cover border-2 border-gray-200 hover:border-blue-400 cursor-pointer"
+                            />
+                          </button>
+                        ) : (
+                          <div className="w-24 h-24 sm:w-32 sm:h-32 flex-shrink-0 rounded-lg bg-gray-300 flex items-center justify-center border-2 border-gray-200">
+                            <svg className="w-12 h-12 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                            </svg>
+                          </div>
+                        )}
+
+                        {/* Staff info and status */}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-start justify-between mb-2">
+                            <div>
+                              <p className="font-semibold text-gray-800">
+                                {checkIn.staff?.full_name || 'N/A'}
+                              </p>
+                              <p className="text-sm text-gray-600">
+                                {checkIn.staff?.email || 'N/A'}
+                              </p>
+                            </div>
+                            <span className={`px-3 py-1 rounded-full text-sm font-semibold whitespace-nowrap ${
+                              checkIn.status === 'checked_out' ? 'bg-green-100 text-green-800' :
+                              checkIn.status === 'checked_in' ? 'bg-blue-100 text-blue-800' :
+                              'bg-gray-100 text-gray-800'
+                            }`}>
+                              {checkIn.status === 'checked_out' ? 'Đã check-out' :
+                               checkIn.status === 'checked_in' ? 'Đang làm việc' :
+                               checkIn.status === 'success' ? 'Đã check-in' : 'N/A'}
+                            </span>
                           </div>
                         </div>
-                        <span className={`px-3 py-1 rounded-full text-sm font-semibold ${
-                          checkIn.status === 'checked_out' ? 'bg-green-100 text-green-800' :
-                          checkIn.status === 'checked_in' ? 'bg-blue-100 text-blue-800' :
-                          'bg-gray-100 text-gray-800'
-                        }`}>
-                          {checkIn.status === 'checked_out' ? 'Đã check-out' :
-                           checkIn.status === 'checked_in' ? 'Đang làm việc' :
-                           checkIn.status === 'success' ? 'Đã check-in' : 'N/A'}
-                        </span>
                       </div>
 
                       <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
@@ -300,7 +355,7 @@ export default function StoreDetail() {
                         <div>
                           <p className="text-gray-500">Khoảng cách</p>
                           <p className="font-semibold text-gray-800">
-                            {checkIn.distance_meters.toFixed(1)}m
+                            {checkIn.distance_meters > 0 ? `${checkIn.distance_meters.toFixed(1)}m` : 'N/A'}
                           </p>
                         </div>
 
@@ -367,8 +422,166 @@ export default function StoreDetail() {
               )}
             </div>
           )}
+
+          {/* Settings Tab */}
+          {activeTab === 'settings' && store && (
+            <div className="p-8">
+              <h2 className="text-2xl font-bold text-gray-800 mb-6">
+                Cài Đặt Điểm Danh
+              </h2>
+
+              <form onSubmit={(e) => {
+                e.preventDefault();
+                const formData = new FormData(e.currentTarget);
+                updateStoreSettings({
+                  gps_required: formData.get('gps_required') === 'on',
+                  selfie_required: formData.get('selfie_required') === 'on',
+                  access_mode: formData.get('access_mode') as 'staff_only' | 'anyone',
+                  radius_meters: parseInt(formData.get('radius_meters') as string) || 50,
+                });
+              }} className="space-y-6">
+
+                {/* GPS Settings */}
+                <div className="bg-gray-50 rounded-lg p-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <div>
+                      <h3 className="text-lg font-semibold text-gray-800">Yêu cầu xác thực GPS</h3>
+                      <p className="text-sm text-gray-600 mt-1">
+                        Bật để yêu cầu nhân viên phải ở trong bán kính cho phép khi điểm danh
+                      </p>
+                    </div>
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input
+                        type="checkbox"
+                        name="gps_required"
+                        className="sr-only peer"
+                        defaultChecked={store.gps_required}
+                      />
+                      <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                    </label>
+                  </div>
+
+                  <div className="mt-4">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Bán kính cho phép (mét)
+                    </label>
+                    <input
+                      type="number"
+                      name="radius_meters"
+                      min="10"
+                      max="1000"
+                      step="10"
+                      defaultValue={store.radius_meters}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">
+                      Khoảng cách tối đa từ vị trí cửa hàng (10-1000m)
+                    </p>
+                  </div>
+                </div>
+
+                {/* Selfie Settings */}
+                <div className="bg-gray-50 rounded-lg p-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="text-lg font-semibold text-gray-800">Yêu cầu chụp selfie</h3>
+                      <p className="text-sm text-gray-600 mt-1">
+                        Bật để yêu cầu nhân viên phải chụp ảnh selfie khi điểm danh
+                      </p>
+                    </div>
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input
+                        type="checkbox"
+                        name="selfie_required"
+                        className="sr-only peer"
+                        defaultChecked={store.selfie_required}
+                      />
+                      <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                    </label>
+                  </div>
+                </div>
+
+                {/* Access Mode Settings */}
+                <div className="bg-gray-50 rounded-lg p-6">
+                  <h3 className="text-lg font-semibold text-gray-800 mb-4">Chế độ truy cập</h3>
+                  <div className="space-y-3">
+                    <label className="flex items-start p-4 border-2 border-gray-200 rounded-lg cursor-pointer hover:bg-white transition-colors">
+                      <input
+                        type="radio"
+                        name="access_mode"
+                        value="staff_only"
+                        defaultChecked={store.access_mode === 'staff_only'}
+                        className="mt-1 w-4 h-4 text-blue-600 focus:ring-blue-500"
+                      />
+                      <div className="ml-3">
+                        <span className="block font-semibold text-gray-800">Chỉ nhân viên trong danh sách</span>
+                        <span className="block text-sm text-gray-600 mt-1">
+                          Chỉ những người có email trong danh sách nhân viên mới được điểm danh
+                        </span>
+                      </div>
+                    </label>
+
+                    <label className="flex items-start p-4 border-2 border-gray-200 rounded-lg cursor-pointer hover:bg-white transition-colors">
+                      <input
+                        type="radio"
+                        name="access_mode"
+                        value="anyone"
+                        defaultChecked={store.access_mode === 'anyone'}
+                        className="mt-1 w-4 h-4 text-blue-600 focus:ring-blue-500"
+                      />
+                      <div className="ml-3">
+                        <span className="block font-semibold text-gray-800">Bất kỳ ai</span>
+                        <span className="block text-sm text-gray-600 mt-1">
+                          Bất kỳ ai có mã QR đều có thể điểm danh (phù hợp cho sự kiện mở)
+                        </span>
+                      </div>
+                    </label>
+                  </div>
+                </div>
+
+                {/* Save Button */}
+                <div className="flex justify-end">
+                  <button
+                    type="submit"
+                    disabled={settingsLoading}
+                    className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white px-6 py-3 rounded-lg font-semibold transition-all"
+                  >
+                    {settingsLoading ? 'Đang lưu...' : 'Lưu Cài Đặt'}
+                  </button>
+                </div>
+              </form>
+            </div>
+          )}
         </div>
       </main>
+
+      {/* Image Modal */}
+      {selectedImage && (
+        <div
+          className="fixed inset-0 bg-black bg-opacity-75 z-50 flex items-center justify-center p-4"
+          onClick={() => setSelectedImage(null)}
+        >
+          <div className="relative max-w-4xl w-full">
+            {/* Close button */}
+            <button
+              onClick={() => setSelectedImage(null)}
+              className="absolute -top-12 right-0 text-white hover:text-gray-300 transition-colors"
+            >
+              <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+
+            {/* Image */}
+            <img
+              src={selectedImage}
+              alt="Full size selfie"
+              className="w-full h-auto rounded-lg shadow-2xl"
+              onClick={(e) => e.stopPropagation()}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }
