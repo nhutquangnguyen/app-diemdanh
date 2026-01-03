@@ -220,7 +220,7 @@ export default function StoreDetail() {
                 <div className="bg-white p-8 rounded-lg inline-block">
                   <QRCode
                     id="qr-code"
-                    value={store.qr_code}
+                    value={`https://diemdanh.net/checkin/submit?store=${store.id}`}
                     size={300}
                     level="H"
                   />

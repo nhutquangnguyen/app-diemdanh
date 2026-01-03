@@ -13,48 +13,95 @@ function CheckInContent() {
   const router = useRouter();
   const webcamRef = useRef<Webcam>(null);
 
-  const [qrData, setQrData] = useState('');
-  const [step, setStep] = useState<'info' | 'selfie' | 'processing' | 'success' | 'error'>('info');
+  const [step, setStep] = useState<'loading' | 'info' | 'selfie' | 'processing' | 'success' | 'error'>('loading');
   const [selfieImage, setSelfieImage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState('');
   const [storeInfo, setStoreInfo] = useState<any>(null);
-  const [staffInfo, setStaffInfo] = useState({
-    fullName: '',
-    email: '',
-    phone: '',
-  });
+  const [user, setUser] = useState<any>(null);
   const [isCheckOut, setIsCheckOut] = useState(false);
   const [checkInTime, setCheckInTime] = useState<string>('');
   const [duration, setDuration] = useState<string>('');
+  const [currentLocation, setCurrentLocation] = useState<any>(null);
+  const [distance, setDistance] = useState<number>(0);
+  const [isWithinRadius, setIsWithinRadius] = useState(false);
 
   useEffect(() => {
-    const qr = searchParams.get('qr');
-    if (qr) {
-      setQrData(qr);
-      loadStoreInfo(qr);
-    }
+    checkAuthAndLoad();
   }, [searchParams]);
 
-  async function loadStoreInfo(qrCode: string) {
+  // Calculate distance when both storeInfo and currentLocation are available
+  useEffect(() => {
+    if (storeInfo && currentLocation) {
+      const dist = calculateDistance(
+        currentLocation.latitude,
+        currentLocation.longitude,
+        parseFloat(storeInfo.latitude),
+        parseFloat(storeInfo.longitude)
+      );
+      setDistance(dist);
+      setIsWithinRadius(dist <= storeInfo.radius_meters);
+    }
+  }, [storeInfo, currentLocation]);
+
+  async function checkAuthAndLoad() {
+    // Check authentication
+    const { getCurrentUser } = await import('@/lib/auth');
+    const currentUser = await getCurrentUser();
+
+    if (!currentUser) {
+      router.push('/auth/login?returnUrl=' + encodeURIComponent(window.location.pathname + window.location.search));
+      return;
+    }
+
+    setUser(currentUser);
+
+    // Get current GPS location
     try {
-      const { data, error } = await supabase
+      const location = await getCurrentLocation();
+      if (!location) {
+        setErrorMessage('Không thể lấy vị trí hiện tại. Vui lòng bật GPS.');
+        setStep('error');
+        return;
+      }
+      setCurrentLocation(location);
+    } catch (error) {
+      console.error('GPS error:', error);
+      setErrorMessage('Lỗi khi lấy vị trí GPS');
+      setStep('error');
+      return;
+    }
+
+    // Get store ID from URL and load store info
+    const storeId = searchParams.get('store');
+    if (storeId) {
+      await loadStoreInfo(storeId);
+    } else {
+      setErrorMessage('Thiếu thông tin cửa hàng');
+      setStep('error');
+    }
+  }
+
+  async function loadStoreInfo(storeId: string) {
+    try {
+      const { data, error} = await supabase
         .from('stores')
         .select('*')
-        .eq('qr_code', qrCode)
+        .eq('id', storeId)
         .single();
 
       if (error) throw error;
       setStoreInfo(data);
+      setStep('info');
     } catch (error) {
       console.error('Error loading store:', error);
-      setErrorMessage('Không tìm thấy cửa hàng. Vui lòng quét lại mã QR.');
+      setErrorMessage('Không tìm thấy cửa hàng.');
       setStep('error');
     }
   }
 
   function handleStartCheckIn() {
-    if (!staffInfo.fullName || !staffInfo.email) {
-      alert('Vui lòng nhập đầy đủ thông tin');
+    if (!isWithinRadius) {
+      alert(`Bạn đang ở cách cửa hàng ${distance.toFixed(0)}m. Vui lòng đến gần hơn.`);
       return;
     }
     setStep('selfie');
@@ -100,16 +147,16 @@ function CheckInContent() {
         return;
       }
 
-      // Check if email is in staff list (authorized)
-      const { data: existingStaff, error: staffCheckError } = await supabase
+      // Check if user's email is in staff list (authorized)
+      const { data: existingStaff, error: staffCheckError} = await supabase
         .from('staff')
         .select('id')
-        .eq('email', staffInfo.email)
+        .eq('email', user.email)
         .eq('store_id', storeInfo.id)
         .single();
 
       if (staffCheckError || !existingStaff) {
-        throw new Error('Email chưa được thêm vào danh sách nhân viên. Vui lòng liên hệ chủ cửa hàng.');
+        throw new Error('Email của bạn chưa được thêm vào danh sách nhân viên. Vui lòng liên hệ chủ cửa hàng.');
       }
 
       const staffId = existingStaff.id;
@@ -206,7 +253,7 @@ function CheckInContent() {
       <Header />
 
       <main className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Step 1: Staff Info */}
+        {/* Step 1: Store Info */}
         {step === 'info' && storeInfo && (
           <div className="bg-white rounded-lg shadow-lg p-8">
             <div className="text-center mb-6">
@@ -218,59 +265,54 @@ function CheckInContent() {
               <h2 className="text-2xl font-bold text-gray-800 mb-2">
                 {storeInfo.name}
               </h2>
-              <p className="text-gray-600">{storeInfo.address}</p>
+              <p className="text-gray-600 mb-4">{storeInfo.address}</p>
+
+              {/* GPS Distance Info */}
+              <div className={`p-4 rounded-lg mb-6 ${isWithinRadius ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'}`}>
+                <div className="flex items-center justify-center gap-2 mb-2">
+                  <svg className={`w-5 h-5 ${isWithinRadius ? 'text-green-600' : 'text-red-600'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                  </svg>
+                  <span className={`font-semibold ${isWithinRadius ? 'text-green-700' : 'text-red-700'}`}>
+                    Khoảng cách: {distance.toFixed(0)}m
+                  </span>
+                </div>
+                {!isWithinRadius && (
+                  <p className="text-sm text-red-600">
+                    ⚠️ Bạn đang ở ngoài phạm vi cho phép ({storeInfo.radius_meters}m). Vui lòng đến gần hơn để điểm danh.
+                  </p>
+                )}
+                {isWithinRadius && (
+                  <p className="text-sm text-green-600">
+                    ✓ Vị trí hợp lệ - Bạn có thể điểm danh
+                  </p>
+                )}
+              </div>
+
+              {/* User Info */}
+              <div className="bg-blue-50 p-4 rounded-lg mb-6">
+                <p className="text-sm text-gray-600 mb-1">Đang điểm danh với tài khoản:</p>
+                <p className="font-semibold text-gray-800">{user?.email}</p>
+              </div>
             </div>
 
-            <form className="space-y-4">
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Họ và Tên *
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={staffInfo.fullName}
-                  onChange={(e) => setStaffInfo({ ...staffInfo, fullName: e.target.value })}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                  placeholder="Nguyễn Văn A"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Email *
-                </label>
-                <input
-                  type="email"
-                  required
-                  value={staffInfo.email}
-                  onChange={(e) => setStaffInfo({ ...staffInfo, email: e.target.value })}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                  placeholder="email@example.com"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Số Điện Thoại
-                </label>
-                <input
-                  type="tel"
-                  value={staffInfo.phone}
-                  onChange={(e) => setStaffInfo({ ...staffInfo, phone: e.target.value })}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                  placeholder="0912345678"
-                />
-              </div>
-
-              <button
-                type="button"
-                onClick={handleStartCheckIn}
-                className="w-full bg-green-600 hover:bg-green-700 text-white px-6 py-4 rounded-lg font-semibold text-lg transition-all"
-              >
-                Tiếp Theo
-              </button>
-            </form>
+            <button
+              type="button"
+              onClick={handleStartCheckIn}
+              disabled={!isWithinRadius}
+              className={`w-full px-6 py-4 rounded-lg font-semibold text-lg transition-all flex items-center justify-center gap-2 ${
+                isWithinRadius
+                  ? 'bg-green-600 hover:bg-green-700 text-white cursor-pointer'
+                  : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+              }`}
+            >
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
+              Bắt Đầu Quét
+            </button>
           </div>
         )}
 
