@@ -2,14 +2,13 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Html5QrcodeScanner } from 'html5-qrcode';
+import { Html5Qrcode } from 'html5-qrcode';
 import { getCurrentUser } from '@/lib/auth';
 import Header from '@/components/Header';
 
 export default function CheckInPage() {
   const router = useRouter();
-  const [scanning, setScanning] = useState(true); // Start scanning immediately
-  const [scannedData, setScannedData] = useState('');
+  const [scanning, setScanning] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -23,55 +22,72 @@ export default function CheckInPage() {
       return;
     }
     setLoading(false);
+    // Start scanning after auth is complete
+    setScanning(true);
   }
 
   useEffect(() => {
-    if (scanning && !loading) { // Only start scanner after auth check is complete
-      const scanner = new Html5QrcodeScanner(
-        'qr-reader',
-        {
+    if (!scanning || loading) return;
+
+    let html5QrCode: Html5Qrcode | null = null;
+
+    const startScanner = async () => {
+      try {
+        html5QrCode = new Html5Qrcode('qr-reader');
+
+        const config = {
           fps: 10,
           qrbox: { width: 250, height: 250 },
-          aspectRatio: 1.0
-        },
-        false
-      );
+        };
 
-      scanner.render(onScanSuccess, onScanError);
-
-      function onScanSuccess(decodedText: string) {
-        setScannedData(decodedText);
-        scanner.clear();
-        setScanning(false);
-
-        // The QR code contains the full URL: https://diemdanh.net/checkin/submit?store=abc123
-        // Extract the store ID from the URL
-        try {
-          const url = new URL(decodedText);
-          const storeId = url.searchParams.get('store');
-
-          if (storeId) {
-            // Redirect to check-in page with store ID
-            window.location.href = `/checkin/submit?store=${storeId}`;
-          } else {
-            alert('Mã QR không hợp lệ. Vui lòng thử lại.');
-            setScanning(false);
+        await html5QrCode.start(
+          { facingMode: 'environment' }, // Use back camera
+          config,
+          (decodedText) => {
+            // Success callback
+            handleScanSuccess(decodedText, html5QrCode!);
+          },
+          (errorMessage) => {
+            // Error callback - silent
           }
-        } catch (error) {
-          // If URL parsing fails, assume it's the old format (just the QR code)
-          window.location.href = `/checkin/submit?qr=${encodeURIComponent(decodedText)}`;
-        }
+        );
+      } catch (err) {
+        console.error('Error starting scanner:', err);
       }
+    };
 
-      function onScanError(error: any) {
-        // Silent error handling
+    startScanner();
+
+    return () => {
+      if (html5QrCode) {
+        html5QrCode.stop().catch(() => {});
       }
-
-      return () => {
-        scanner.clear().catch(() => {});
-      };
-    }
+    };
   }, [scanning, loading]);
+
+  function handleScanSuccess(decodedText: string, scanner: Html5Qrcode) {
+    // Stop the scanner
+    scanner.stop().catch(() => {});
+    setScanning(false);
+
+    // The QR code contains the full URL: https://diemdanh.net/checkin/submit?store=abc123
+    // Extract the store ID from the URL
+    try {
+      const url = new URL(decodedText);
+      const storeId = url.searchParams.get('store');
+
+      if (storeId) {
+        // Redirect to check-in page with store ID
+        window.location.href = `/checkin/submit?store=${storeId}`;
+      } else {
+        alert('Mã QR không hợp lệ. Vui lòng thử lại.');
+        setScanning(true); // Restart scanning
+      }
+    } catch (error) {
+      // If URL parsing fails, assume it's the old format (just the QR code)
+      window.location.href = `/checkin/submit?qr=${encodeURIComponent(decodedText)}`;
+    }
+  }
 
   if (loading) {
     return (
