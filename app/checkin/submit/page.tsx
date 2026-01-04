@@ -88,27 +88,36 @@ function CheckInContent() {
 
       if (!staffRecord) return;
 
-      const today = new Date().toISOString().split('T')[0];
+      // Get today's date range (start of today to start of tomorrow)
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const tomorrow = new Date(today);
+      tomorrow.setDate(tomorrow.getDate() + 1);
 
-      // Check for active check-in (no check_out_time)
+      const todayStart = today.toISOString();
+      const tomorrowStart = tomorrow.toISOString();
+
+      // Check for active check-in (no check_out_time) today
       const { data: activeCheckInData } = await supabase
         .from('check_ins')
         .select('*')
         .eq('staff_id', staffRecord.id)
         .eq('store_id', storeId)
-        .gte('check_in_time', `${today}T00:00:00`)
+        .gte('check_in_time', todayStart)
+        .lt('check_in_time', tomorrowStart)
         .is('check_out_time', null)
         .order('check_in_time', { ascending: false })
         .limit(1)
         .maybeSingle();
 
-      // Check for last completed check-in (has check_out_time)
+      // Check for last completed check-in (has check_out_time) today
       const { data: completedCheckInData } = await supabase
         .from('check_ins')
         .select('*')
         .eq('staff_id', staffRecord.id)
         .eq('store_id', storeId)
-        .gte('check_in_time', `${today}T00:00:00`)
+        .gte('check_in_time', todayStart)
+        .lt('check_in_time', tomorrowStart)
         .not('check_out_time', 'is', null)
         .order('check_out_time', { ascending: false })
         .limit(1)
