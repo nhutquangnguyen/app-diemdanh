@@ -17,19 +17,18 @@ export default function StoreDetail() {
   const [staff, setStaff] = useState<Staff[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
-  const [showQRModal, setShowQRModal] = useState(false);
   const [settingsLoading, setSettingsLoading] = useState(false);
 
   // Expandable sections state
   const [expandedSections, setExpandedSections] = useState({
-    overview: true,
-    recent: true,
-    whoHere: true,
-    week: false,
+    staffOverview: true,
     staff: false,
-    qr: false,
     settings: false,
   });
+
+  // Filter state for staff overview
+  const [staffFilter, setStaffFilter] = useState<'all' | 'working' | 'late' | 'not_checked'>('all');
+  const [staffSearch, setStaffSearch] = useState('');
 
   useEffect(() => {
     loadStoreData();
@@ -119,8 +118,13 @@ export default function StoreDetail() {
       if (!staffError) {
         setStaff(staffData || []);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error loading store data:', error);
+      console.error('Error details:', {
+        message: error?.message,
+        code: error?.code,
+        details: error?.details,
+      });
     } finally {
       setLoading(false);
     }
@@ -152,6 +156,14 @@ export default function StoreDetail() {
 
   function toggleSection(section: keyof typeof expandedSections) {
     setExpandedSections(prev => ({ ...prev, [section]: !prev[section] }));
+
+    // Scroll to section after a brief delay to allow animation
+    setTimeout(() => {
+      const element = document.getElementById(`section-${section}`);
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }, 100);
   }
 
   // Calculate today's stats
@@ -212,15 +224,14 @@ export default function StoreDetail() {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <button
-              onClick={() => setShowQRModal(true)}
-              className="hidden sm:flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-semibold transition-all"
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
-              </svg>
-              <span className="hidden md:inline">QR Code</span>
-            </button>
+            <Link href={`/owner/stores/${storeId}/report`}>
+              <button className="flex items-center gap-2 bg-purple-600 hover:bg-purple-700 text-white px-3 sm:px-4 py-2 rounded-lg font-semibold transition-all">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                <span className="hidden md:inline">Báo cáo</span>
+              </button>
+            </Link>
             <button
               onClick={() => toggleSection('settings')}
               className="text-gray-600 hover:text-gray-800 p-2 rounded-lg hover:bg-white/50 transition-all"
@@ -233,83 +244,17 @@ export default function StoreDetail() {
           </div>
         </div>
 
-        {/* TODAY'S OVERVIEW */}
-        <div className="bg-white rounded-lg shadow-lg mb-4 overflow-hidden">
+        {/* STAFF OVERVIEW */}
+        <div id="section-staffOverview" className="bg-white rounded-lg shadow-lg mb-4 overflow-hidden">
           <button
-            onClick={() => toggleSection('overview')}
-            className="w-full px-6 py-4 flex items-center justify-between hover:bg-gray-50 transition-all"
-          >
-            <h2 className="text-xl font-bold text-gray-800">HÔM NAY</h2>
-            <svg
-              className={`w-5 h-5 text-gray-600 transition-transform ${expandedSections.overview ? 'rotate-180' : ''}`}
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-            </svg>
-          </button>
-
-          {expandedSections.overview && (
-            <div className="px-6 pb-6">
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                {/* Total Check-ins */}
-                <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg p-4 border border-blue-200">
-                  <div className="text-3xl font-bold text-blue-600 mb-1">{todayCheckIns.length}</div>
-                  <div className="text-sm text-gray-600 mb-2">Điểm danh</div>
-                  {todayCheckIns.length > 0 && (
-                    <div className="text-xs text-green-600 flex items-center gap-1">
-                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 10l7-7m0 0l7 7m-7-7v18" />
-                      </svg>
-                      Hoạt động
-                    </div>
-                  )}
-                </div>
-
-                {/* Currently Working */}
-                <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-lg p-4 border border-green-200">
-                  <div className="text-3xl font-bold text-green-600 mb-1">{currentlyWorking.length}</div>
-                  <div className="text-sm text-gray-600 mb-2">Đang làm</div>
-                  <div className="flex items-center gap-1">
-                    <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                    <span className="text-xs text-gray-500">Live</span>
-                  </div>
-                </div>
-
-                {/* Not Checked In */}
-                <div className="bg-gradient-to-br from-orange-50 to-orange-100 rounded-lg p-4 border border-orange-200">
-                  <div className="text-3xl font-bold text-orange-600 mb-1">{notCheckedIn}</div>
-                  <div className="text-sm text-gray-600 mb-2">Chưa vào</div>
-                  {notCheckedIn > 0 && (
-                    <div className="text-xs text-orange-600">
-                      Còn {notCheckedIn} người
-                    </div>
-                  )}
-                </div>
-
-                {/* Average Time */}
-                <div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-lg p-4 border border-purple-200">
-                  <div className="text-3xl font-bold text-purple-600 mb-1">{avgTime}</div>
-                  <div className="text-sm text-gray-600 mb-2">TB thời gian</div>
-                  <div className="text-xs text-gray-500">Trung bình</div>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* WHO'S HERE NOW */}
-        <div className="bg-white rounded-lg shadow-lg mb-4 overflow-hidden">
-          <button
-            onClick={() => toggleSection('whoHere')}
+            onClick={() => toggleSection('staffOverview')}
             className="w-full px-6 py-4 flex items-center justify-between hover:bg-gray-50 transition-all"
           >
             <h2 className="text-xl font-bold text-gray-800">
-              AI ĐANG Ở ĐÂY ({currentlyWorking.length}/{staff.length})
+              TỔNG QUAN NHÂN VIÊN
             </h2>
             <svg
-              className={`w-5 h-5 text-gray-600 transition-transform ${expandedSections.whoHere ? 'rotate-180' : ''}`}
+              className={`w-5 h-5 text-gray-600 transition-transform ${expandedSections.staffOverview ? 'rotate-180' : ''}`}
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -318,224 +263,198 @@ export default function StoreDetail() {
             </svg>
           </button>
 
-          {expandedSections.whoHere && (
+          {expandedSections.staffOverview && (
             <div className="px-6 pb-6">
-              {currentlyWorking.length === 0 ? (
-                <div className="text-center py-8 text-gray-500">
-                  <svg className="w-16 h-16 mx-auto mb-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                  </svg>
-                  Chưa có ai đang làm việc
-                </div>
-              ) : (
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
-                  {currentlyWorking.map((checkIn: any) => {
-                    const staff = checkIn.staff;
-                    const initials = staff?.full_name
-                      ?.split(' ')
-                      .slice(-2)
-                      .map((n: string) => n[0])
-                      .join('')
-                      .toUpperCase() || '??';
-                    const workDuration = Math.floor((Date.now() - new Date(checkIn.check_in_time).getTime()) / 1000 / 60);
-                    const hours = Math.floor(workDuration / 60);
-                    const minutes = workDuration % 60;
-
-                    return (
-                      <div key={checkIn.id} className="bg-gray-50 rounded-lg p-3 text-center border border-gray-200">
-                        <div className="w-14 h-14 mx-auto mb-2 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center text-white font-bold text-lg shadow-md">
-                          {initials}
-                        </div>
-                        <div className="text-sm font-semibold text-gray-800 truncate" title={staff?.full_name}>
-                          {staff?.full_name?.split(' ').slice(-2).join(' ') || 'N/A'}
-                        </div>
-                        <div className="text-xs text-gray-500 mt-1">
-                          {hours}h {minutes}m
-                        </div>
-                        <div className="flex items-center justify-center mt-2">
-                          <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-
-              {/* Not Here Yet */}
-              {notCheckedIn > 0 && (
-                <div className="mt-6 pt-6 border-t border-gray-200">
-                  <h3 className="text-sm font-semibold text-gray-600 mb-3">
-                    CHƯA ĐIỂM DANH ({notCheckedIn})
-                  </h3>
-                  <div className="flex flex-wrap gap-2">
-                    {staff
-                      .filter(s => !todayCheckIns.some(c => c.staff_id === s.id))
-                      .map(s => (
-                        <div
-                          key={s.id}
-                          className="inline-flex items-center gap-2 bg-gray-100 px-3 py-1 rounded-full text-sm text-gray-600"
-                        >
-                          <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
-                          {s.full_name.split(' ').slice(-2).join(' ')}
-                        </div>
-                      ))}
+              {/* Filter Tabs */}
+              <div className="grid grid-cols-4 gap-2 mb-4">
+                <button
+                  onClick={() => setStaffFilter('all')}
+                  className={`px-3 py-2 rounded-lg font-semibold text-sm transition-all ${
+                    staffFilter === 'all'
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
+                >
+                  <div>Tất cả</div>
+                  <div className={`text-xs mt-1 ${staffFilter === 'all' ? 'text-blue-100' : 'text-gray-500'}`}>
+                    ({staff.length})
                   </div>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
+                </button>
+                <button
+                  onClick={() => setStaffFilter('working')}
+                  className={`px-3 py-2 rounded-lg font-semibold text-sm transition-all ${
+                    staffFilter === 'working'
+                      ? 'bg-green-600 text-white'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
+                >
+                  <div>Đang làm</div>
+                  <div className={`text-xs mt-1 ${staffFilter === 'working' ? 'text-green-100' : 'text-gray-500'}`}>
+                    ({currentlyWorking.length})
+                  </div>
+                </button>
+                <button
+                  onClick={() => setStaffFilter('late')}
+                  className={`px-3 py-2 rounded-lg font-semibold text-sm transition-all ${
+                    staffFilter === 'late'
+                      ? 'bg-yellow-600 text-white'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
+                >
+                  <div>Muộn</div>
+                  <div className={`text-xs mt-1 ${staffFilter === 'late' ? 'text-yellow-100' : 'text-gray-500'}`}>
+                    ({todayCheckIns.filter((c: CheckIn) => c.status === 'late').length})
+                  </div>
+                </button>
+                <button
+                  onClick={() => setStaffFilter('not_checked')}
+                  className={`px-3 py-2 rounded-lg font-semibold text-sm transition-all ${
+                    staffFilter === 'not_checked'
+                      ? 'bg-orange-600 text-white'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
+                >
+                  <div>Chưa check</div>
+                  <div className={`text-xs mt-1 ${staffFilter === 'not_checked' ? 'text-orange-100' : 'text-gray-500'}`}>
+                    ({notCheckedIn})
+                  </div>
+                </button>
+              </div>
 
-        {/* RECENT ACTIVITY */}
-        <div className="bg-white rounded-lg shadow-lg mb-4 overflow-hidden">
-          <button
-            onClick={() => toggleSection('recent')}
-            className="w-full px-6 py-4 flex items-center justify-between hover:bg-gray-50 transition-all"
-          >
-            <h2 className="text-xl font-bold text-gray-800">HOẠT ĐỘNG GẦN ĐÂY</h2>
-            <div className="flex items-center gap-3">
-              {recentCheckIns.length > 5 && (
-                <span className="text-sm text-blue-600 hover:underline">Xem tất cả →</span>
-              )}
-              <svg
-                className={`w-5 h-5 text-gray-600 transition-transform ${expandedSections.recent ? 'rotate-180' : ''}`}
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-              </svg>
-            </div>
-          </button>
+              {/* Search Box */}
+              <div className="mb-4">
+                <input
+                  type="text"
+                  placeholder="Tìm tên..."
+                  value={staffSearch}
+                  onChange={(e) => setStaffSearch(e.target.value)}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
 
-          {expandedSections.recent && (
-            <div className="px-6 pb-6">
-              {recentCheckIns.length === 0 ? (
-                <div className="text-center py-8 text-gray-500">
-                  Chưa có lịch sử điểm danh
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {recentCheckIns.map((checkIn: any, index: number) => {
-                    const staff = checkIn.staff;
-                    const timeAgo = Math.floor((Date.now() - new Date(checkIn.check_in_time).getTime()) / 1000 / 60);
-                    const displayTime = timeAgo < 1 ? 'Vừa xong' : timeAgo < 60 ? `${timeAgo} phút trước` : `${Math.floor(timeAgo / 60)} giờ trước`;
+              {/* Staff Table */}
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead className="bg-gray-50 border-b border-gray-200">
+                    <tr>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                        Nhân viên
+                      </th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                        Check-in
+                      </th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                        Check-out
+                      </th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                        Thời gian làm
+                      </th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                        Trạng thái
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {staff
+                      .filter((s: Staff) => {
+                        // Filter by status
+                        const todayCheckIn = todayCheckIns.find((c: CheckIn) => c.staff_id === s.id);
+                        if (staffFilter === 'working') {
+                          return todayCheckIn && todayCheckIn.status === 'success';
+                        } else if (staffFilter === 'late') {
+                          return todayCheckIn && todayCheckIn.status === 'late';
+                        } else if (staffFilter === 'not_checked') {
+                          return !todayCheckIn;
+                        }
+                        return true; // 'all'
+                      })
+                      .filter((s: Staff) => {
+                        // Filter by search
+                        if (!staffSearch) return true;
+                        return s.full_name.toLowerCase().includes(staffSearch.toLowerCase());
+                      })
+                      .map((s: Staff) => {
+                        const todayCheckIn = todayCheckIns.find((c: CheckIn) => c.staff_id === s.id);
+                        const isWorking = todayCheckIn && todayCheckIn.status === 'success';
+                        const isLate = todayCheckIn && todayCheckIn.status === 'late';
+                        const initials = s.full_name
+                          ?.split(' ')
+                          .slice(-2)
+                          .map((n: string) => n[0])
+                          .join('')
+                          .toUpperCase() || '??';
 
-                    return (
-                      <div key={checkIn.id} className="flex items-center gap-4 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-all">
-                        {/* Timeline dot */}
-                        <div className="flex flex-col items-center">
-                          <div className={`w-3 h-3 rounded-full ${checkIn.status === 'success' ? 'bg-green-500' : checkIn.status === 'late' ? 'bg-yellow-500' : 'bg-red-500'}`}></div>
-                          {index < recentCheckIns.length - 1 && (
-                            <div className="w-0.5 h-12 bg-gray-300 my-1"></div>
-                          )}
-                        </div>
+                        let workDuration = '';
+                        if (todayCheckIn) {
+                          const minutes = Math.floor((Date.now() - new Date(todayCheckIn.check_in_time).getTime()) / 1000 / 60);
+                          const hours = Math.floor(minutes / 60);
+                          const mins = minutes % 60;
+                          workDuration = `${hours}h ${mins}m`;
+                        }
 
-                        {/* Selfie */}
-                        {checkIn.selfie_url ? (
-                          <button
-                            onClick={() => setSelectedImage(checkIn.selfie_url)}
-                            className="flex-shrink-0"
-                          >
-                            <img
-                              src={checkIn.selfie_url}
-                              alt="Selfie"
-                              className="w-12 h-12 rounded-lg object-cover border-2 border-gray-200 hover:border-blue-400 cursor-pointer transition-all"
-                            />
-                          </button>
-                        ) : (
-                          <div className="w-12 h-12 flex-shrink-0 rounded-lg bg-gray-300 flex items-center justify-center border-2 border-gray-200">
-                            <svg className="w-6 h-6 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                            </svg>
-                          </div>
-                        )}
-
-                        {/* Info */}
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 mb-1">
-                            <p className="font-semibold text-gray-800 truncate">
-                              {staff?.full_name || 'N/A'}
-                            </p>
-                            <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${
-                              checkIn.status === 'success' ? 'bg-green-100 text-green-700' : checkIn.status === 'late' ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700'
-                            }`}>
-                              {checkIn.status === 'success' ? '✓ Thành công' : checkIn.status === 'late' ? '⚠ Trễ' : '✗ Sai vị trí'}
-                            </span>
-                          </div>
-                          <div className="flex items-center gap-3 text-xs text-gray-600">
-                            <span>{new Date(checkIn.check_in_time).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}</span>
-                            {checkIn.distance_meters > 0 && (
-                              <span className="flex items-center gap-1">
-                                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                                </svg>
-                                {checkIn.distance_meters.toFixed(0)}m
-                              </span>
-                            )}
-                            <span className="text-gray-500">{displayTime}</span>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-
-        {/* WEEK AT A GLANCE */}
-        <div className="bg-white rounded-lg shadow-lg mb-4 overflow-hidden">
-          <button
-            onClick={() => toggleSection('week')}
-            className="w-full px-6 py-4 flex items-center justify-between hover:bg-gray-50 transition-all"
-          >
-            <h2 className="text-xl font-bold text-gray-800">TUẦN NÀY</h2>
-            <svg
-              className={`w-5 h-5 text-gray-600 transition-transform ${expandedSections.week ? 'rotate-180' : ''}`}
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-            </svg>
-          </button>
-
-          {expandedSections.week && (
-            <div className="px-6 pb-6">
-              <div className="flex items-end justify-between gap-2 h-40">
-                {weekDays.map((day, index) => {
-                  const count = weekData[index];
-                  const maxCount = Math.max(...weekData);
-                  const heightPercent = maxCount > 0 ? (count / maxCount) * 100 : 0;
-                  const isToday = index === 4; // Mock - would calculate based on actual day
-
-                  return (
-                    <div key={day} className="flex-1 flex flex-col items-center gap-2">
-                      <div className="w-full flex flex-col justify-end items-center" style={{ height: '120px' }}>
-                        <div className="text-xs font-semibold text-gray-600 mb-1">{count}</div>
-                        <div
-                          className={`w-full rounded-t-lg transition-all ${
-                            isToday ? 'bg-blue-500' : 'bg-gray-300'
-                          }`}
-                          style={{ height: `${heightPercent}%`, minHeight: count > 0 ? '8px' : '0' }}
-                        ></div>
-                      </div>
-                      <div className={`text-xs font-medium ${isToday ? 'text-blue-600' : 'text-gray-600'}`}>
-                        {day}
-                      </div>
-                    </div>
-                  );
-                })}
+                        return (
+                          <tr key={s.id} className="hover:bg-gray-50 transition-colors">
+                            <td className="px-4 py-3">
+                              <div className="flex items-center gap-3">
+                                <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-sm ${
+                                  isWorking ? 'bg-gradient-to-br from-green-500 to-green-600' :
+                                  isLate ? 'bg-gradient-to-br from-yellow-500 to-yellow-600' :
+                                  'bg-gradient-to-br from-gray-400 to-gray-500'
+                                }`}>
+                                  {initials}
+                                </div>
+                                <div>
+                                  <div className="font-semibold text-gray-800">{s.full_name}</div>
+                                  <div className="text-xs text-gray-500">{s.email}</div>
+                                </div>
+                              </div>
+                            </td>
+                            <td className="px-4 py-3 text-sm text-gray-700">
+                              {todayCheckIn ? (
+                                new Date(todayCheckIn.check_in_time).toLocaleTimeString('vi-VN', {
+                                  hour: '2-digit',
+                                  minute: '2-digit'
+                                })
+                              ) : (
+                                <span className="text-gray-400">--:--</span>
+                              )}
+                            </td>
+                            <td className="px-4 py-3 text-sm text-gray-700">
+                              <span className="text-gray-400">--:--</span>
+                            </td>
+                            <td className="px-4 py-3 text-sm text-gray-700">
+                              {workDuration || <span className="text-gray-400">--</span>}
+                            </td>
+                            <td className="px-4 py-3">
+                              {isWorking && (
+                                <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-700">
+                                  <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                                  Đang làm
+                                </span>
+                              )}
+                              {isLate && (
+                                <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-semibold bg-yellow-100 text-yellow-700">
+                                  ⚠ Muộn
+                                </span>
+                              )}
+                              {!todayCheckIn && (
+                                <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-600">
+                                  Chưa điểm danh
+                                </span>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                  </tbody>
+                </table>
               </div>
             </div>
           )}
         </div>
 
         {/* STAFF MANAGEMENT */}
-        <div className="bg-white rounded-lg shadow-lg mb-4 overflow-hidden">
+        <div id="section-staff" className="bg-white rounded-lg shadow-lg mb-4 overflow-hidden">
           <button
             onClick={() => toggleSection('staff')}
             className="w-full px-6 py-4 flex items-center justify-between hover:bg-gray-50 transition-all"
@@ -600,69 +519,8 @@ export default function StoreDetail() {
           )}
         </div>
 
-        {/* QR CODE & SHARING */}
-        <div className="bg-white rounded-lg shadow-lg mb-4 overflow-hidden">
-          <button
-            onClick={() => toggleSection('qr')}
-            className="w-full px-6 py-4 flex items-center justify-between hover:bg-gray-50 transition-all"
-          >
-            <h2 className="text-xl font-bold text-gray-800">MÃ QR & CHIA SẺ</h2>
-            <svg
-              className={`w-5 h-5 text-gray-600 transition-transform ${expandedSections.qr ? 'rotate-180' : ''}`}
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-            </svg>
-          </button>
-
-          {expandedSections.qr && (
-            <div className="px-6 pb-6">
-              <div className="text-center">
-                <div className="bg-white p-6 rounded-lg inline-block border-2 border-gray-200">
-                  <QRCode
-                    id="qr-code"
-                    value={`https://www.diemdanh.net/checkin/submit?store=${store.id}`}
-                    size={200}
-                    level="H"
-                  />
-                </div>
-                <div className="mt-4">
-                  <p className="text-sm text-gray-600 mb-4">
-                    diemdanh.net/c/{store.id.slice(0, 8)}
-                  </p>
-                  <div className="flex flex-wrap gap-2 justify-center">
-                    <button
-                      onClick={downloadQRCode}
-                      className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-semibold flex items-center gap-2 transition-all"
-                    >
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                      </svg>
-                      Tải xuống
-                    </button>
-                    <button
-                      onClick={() => {
-                        navigator.clipboard.writeText(`https://www.diemdanh.net/checkin/submit?store=${store.id}`);
-                        alert('Đã sao chép link!');
-                      }}
-                      className="bg-gray-200 hover:bg-gray-300 text-gray-700 px-4 py-2 rounded-lg font-semibold flex items-center gap-2 transition-all"
-                    >
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                      </svg>
-                      Copy Link
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-
         {/* SETTINGS */}
-        <div className="bg-white rounded-lg shadow-lg mb-4 overflow-hidden">
+        <div id="section-settings" className="bg-white rounded-lg shadow-lg mb-4 overflow-hidden">
           <button
             onClick={() => toggleSection('settings')}
             className="w-full px-6 py-4 flex items-center justify-between hover:bg-gray-50 transition-all"
@@ -680,6 +538,48 @@ export default function StoreDetail() {
 
           {expandedSections.settings && (
             <div className="px-6 pb-6">
+              {/* QR CODE & SHARING */}
+              <div className="bg-gray-50 rounded-lg p-4 mb-6">
+                <h3 className="text-lg font-semibold text-gray-800 mb-4">Mã QR Điểm Danh</h3>
+                <div className="text-center">
+                  <div className="bg-white p-6 rounded-lg inline-block border-2 border-gray-200">
+                    <QRCode
+                      id="qr-code"
+                      value={`https://www.diemdanh.net/checkin/submit?store=${store.id}`}
+                      size={200}
+                      level="H"
+                    />
+                  </div>
+                  <div className="mt-4">
+                    <div className="flex flex-wrap gap-2 justify-center">
+                      <button
+                        type="button"
+                        onClick={downloadQRCode}
+                        className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-semibold flex items-center gap-2 transition-all"
+                      >
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                        </svg>
+                        Tải xuống
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          navigator.clipboard.writeText(`https://www.diemdanh.net/checkin/submit?store=${store.id}`);
+                          alert('Đã sao chép link!');
+                        }}
+                        className="bg-gray-200 hover:bg-gray-300 text-gray-700 px-4 py-2 rounded-lg font-semibold flex items-center gap-2 transition-all"
+                      >
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                        </svg>
+                        Copy Link
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
               <form onSubmit={(e) => {
                 e.preventDefault();
                 const formData = new FormData(e.currentTarget);
@@ -847,62 +747,6 @@ export default function StoreDetail() {
         </div>
       </main>
 
-      {/* QR Modal */}
-      {showQRModal && (
-        <div
-          className="fixed inset-0 bg-black bg-opacity-75 z-50 flex items-center justify-center p-4"
-          onClick={() => setShowQRModal(false)}
-        >
-          <div className="bg-white rounded-lg p-6 max-w-md w-full" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-xl font-bold text-gray-800">Mã QR Điểm Danh</h3>
-              <button
-                onClick={() => setShowQRModal(false)}
-                className="text-gray-600 hover:text-gray-800"
-              >
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-            <div className="text-center">
-              <div className="bg-white p-6 rounded-lg inline-block border-2 border-gray-200 mb-4">
-                <QRCode
-                  id="qr-code-modal"
-                  value={`https://www.diemdanh.net/checkin/submit?store=${store.id}`}
-                  size={250}
-                  level="H"
-                />
-              </div>
-              <p className="text-sm text-gray-600 mb-4">{store.name}</p>
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  onClick={downloadQRCode}
-                  className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-semibold flex items-center justify-center gap-2 transition-all"
-                >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                  </svg>
-                  Tải xuống
-                </button>
-                <button
-                  onClick={() => {
-                    navigator.clipboard.writeText(`https://www.diemdanh.net/checkin/submit?store=${store.id}`);
-                    alert('Đã sao chép link!');
-                  }}
-                  className="bg-gray-200 hover:bg-gray-300 text-gray-700 px-4 py-2 rounded-lg font-semibold flex items-center justify-center gap-2 transition-all"
-                >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                  </svg>
-                  Copy
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Image Modal */}
       {selectedImage && (
         <div
@@ -928,15 +772,6 @@ export default function StoreDetail() {
         </div>
       )}
 
-      {/* Floating QR Button (Mobile) */}
-      <button
-        onClick={() => setShowQRModal(true)}
-        className="sm:hidden fixed bottom-6 right-6 w-14 h-14 bg-blue-600 hover:bg-blue-700 text-white rounded-full shadow-lg flex items-center justify-center transition-all z-40"
-      >
-        <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
-        </svg>
-      </button>
     </div>
   );
 }
