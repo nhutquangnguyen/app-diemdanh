@@ -737,12 +737,15 @@ export default function StoreReport() {
                     <th className="px-4 py-3 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">
                       Ảnh ra
                     </th>
+                    <th className="px-4 py-3 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                      Thời gian làm
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
                   {checkInsData.length === 0 ? (
                     <tr>
-                      <td colSpan={7} className="px-4 py-8 text-center text-gray-500">
+                      <td colSpan={8} className="px-4 py-8 text-center text-gray-500">
                         Không có dữ liệu trong kỳ báo cáo này
                       </td>
                     </tr>
@@ -837,6 +840,18 @@ export default function StoreReport() {
                                 </button>
                               ) : (
                                 <span className="text-xs text-gray-400">-</span>
+                              )}
+                            </td>
+                            <td className="px-4 py-3 text-center text-sm font-semibold text-gray-700">
+                              {checkOutTime ? (
+                                (() => {
+                                  const minutes = Math.floor((checkOutTime.getTime() - checkInDate.getTime()) / 1000 / 60);
+                                  const hours = Math.floor(minutes / 60);
+                                  const mins = minutes % 60;
+                                  return `${hours}h ${mins}m`;
+                                })()
+                              ) : (
+                                <span className="text-xs text-blue-600">Đang làm</span>
                               )}
                             </td>
                           </tr>
