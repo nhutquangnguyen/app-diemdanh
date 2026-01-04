@@ -26,6 +26,8 @@ function CheckInContent() {
   const [distance, setDistance] = useState<number>(0);
   const [isWithinRadius, setIsWithinRadius] = useState(false);
   const [activeCheckIn, setActiveCheckIn] = useState<any>(null);
+  const [lastCompletedCheckIn, setLastCompletedCheckIn] = useState<any>(null);
+  const [actionType, setActionType] = useState<'check-in' | 'check-out' | 're-checkout'>('check-in');
 
   useEffect(() => {
     checkAuthAndLoad();
@@ -86,8 +88,9 @@ function CheckInContent() {
 
       if (!staffRecord) return;
 
-      // Check for active check-in (no check_out_time)
       const today = new Date().toISOString().split('T')[0];
+
+      // Check for active check-in (no check_out_time)
       const { data: activeCheckInData } = await supabase
         .from('check_ins')
         .select('*')
@@ -99,12 +102,36 @@ function CheckInContent() {
         .limit(1)
         .maybeSingle();
 
+      // Check for last completed check-in (has check_out_time)
+      const { data: completedCheckInData } = await supabase
+        .from('check_ins')
+        .select('*')
+        .eq('staff_id', staffRecord.id)
+        .eq('store_id', storeId)
+        .gte('check_in_time', `${today}T00:00:00`)
+        .not('check_out_time', 'is', null)
+        .order('check_out_time', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
       if (activeCheckInData) {
+        // Has active check-in → show check-out button
         setActiveCheckIn(activeCheckInData);
         setIsCheckOut(true);
-      } else {
+        setActionType('check-out');
+        setLastCompletedCheckIn(null);
+      } else if (completedCheckInData) {
+        // No active check-in but has completed session today → show both buttons
         setActiveCheckIn(null);
         setIsCheckOut(false);
+        setActionType('check-in'); // Default to check-in
+        setLastCompletedCheckIn(completedCheckInData);
+      } else {
+        // No check-in today → show check-in button
+        setActiveCheckIn(null);
+        setIsCheckOut(false);
+        setActionType('check-in');
+        setLastCompletedCheckIn(null);
       }
     } catch (error) {
       console.error('Error checking active check-in:', error);
@@ -312,6 +339,30 @@ function CheckInContent() {
         setCheckInTime(checkInTime.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }));
         setDuration(durationText);
         setIsCheckOut(true);
+      } else if (actionType === 're-checkout' && lastCompletedCheckIn) {
+        // This is a re-checkout - update the check-out time of last completed session
+        const { error: updateError } = await supabase
+          .from('check_ins')
+          .update({
+            check_out_time: currentTime.toISOString(),
+            check_out_latitude: location.latitude,
+            check_out_longitude: location.longitude,
+            check_out_distance_meters: distance,
+          })
+          .eq('id', lastCompletedCheckIn.id);
+
+        if (updateError) throw updateError;
+
+        // Calculate duration
+        const checkInTime = new Date(lastCompletedCheckIn.check_in_time);
+        const durationMin = Math.floor((currentTime.getTime() - checkInTime.getTime()) / 1000 / 60);
+        const hours = Math.floor(durationMin / 60);
+        const minutes = durationMin % 60;
+        const durationText = `${hours} giờ ${minutes} phút`;
+
+        setCheckInTime(checkInTime.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }));
+        setDuration(durationText);
+        setIsCheckOut(true);
       } else {
         // This is a check-in - insert new record
         let publicUrl = '';
@@ -441,35 +492,97 @@ function CheckInContent() {
               </div>
             )}
 
-            <button
-              type="button"
-              onClick={handleStartCheckIn}
-              disabled={storeInfo.gps_required && !isWithinRadius}
-              className={`w-full px-6 py-4 rounded-lg font-semibold text-lg transition-all flex items-center justify-center gap-2 ${
-                (!storeInfo.gps_required || isWithinRadius)
-                  ? isCheckOut
-                    ? 'bg-red-600 hover:bg-red-700 text-white cursor-pointer'
-                    : 'bg-green-600 hover:bg-green-700 text-white cursor-pointer'
-                  : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-              }`}
-            >
-              {isCheckOut ? (
-                <>
-                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+            {/* Show last check-out time if session is completed */}
+            {lastCompletedCheckIn && (
+              <div className="bg-blue-50 border border-blue-200 p-4 rounded-lg mb-6">
+                <div className="flex items-center gap-2 mb-2">
+                  <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
-                  {storeInfo.selfie_required ? 'Bắt Đầu Check-out' : 'Xác Nhận Check-out'}
-                </>
-              ) : (
-                <>
+                  <span className="font-semibold text-blue-700">Đã Check-out lần cuối</span>
+                </div>
+                <p className="text-sm text-gray-600">
+                  Thời gian ra: {new Date(lastCompletedCheckIn.check_out_time).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}
+                </p>
+                <p className="text-xs text-gray-500 mt-1">
+                  Chọn "Sửa giờ ra" nếu thời gian không chính xác
+                </p>
+              </div>
+            )}
+
+            {/* Buttons: Show two buttons if completed session exists, otherwise one button */}
+            {lastCompletedCheckIn ? (
+              // Two buttons: Re-checkout + New Check-in
+              <div className="grid grid-cols-2 gap-4">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActionType('re-checkout');
+                    handleStartCheckIn();
+                  }}
+                  disabled={storeInfo.gps_required && !isWithinRadius}
+                  className={`px-4 py-4 rounded-lg font-semibold text-lg transition-all flex flex-col items-center justify-center gap-2 ${
+                    (!storeInfo.gps_required || isWithinRadius)
+                      ? 'bg-orange-600 hover:bg-orange-700 text-white cursor-pointer'
+                      : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                  }`}
+                >
                   <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                   </svg>
-                  {storeInfo.selfie_required ? 'Bắt Đầu Check-in' : 'Xác Nhận Check-in'}
-                </>
-              )}
-            </button>
+                  <span className="text-sm">Sửa giờ ra</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActionType('check-in');
+                    handleStartCheckIn();
+                  }}
+                  disabled={storeInfo.gps_required && !isWithinRadius}
+                  className={`px-4 py-4 rounded-lg font-semibold text-lg transition-all flex flex-col items-center justify-center gap-2 ${
+                    (!storeInfo.gps_required || isWithinRadius)
+                      ? 'bg-green-600 hover:bg-green-700 text-white cursor-pointer'
+                      : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                  }`}
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
+                  </svg>
+                  <span className="text-sm">Vào ca mới</span>
+                </button>
+              </div>
+            ) : (
+              // Single button: Check-in or Check-out
+              <button
+                type="button"
+                onClick={handleStartCheckIn}
+                disabled={storeInfo.gps_required && !isWithinRadius}
+                className={`w-full px-6 py-4 rounded-lg font-semibold text-lg transition-all flex items-center justify-center gap-2 ${
+                  (!storeInfo.gps_required || isWithinRadius)
+                    ? isCheckOut
+                      ? 'bg-red-600 hover:bg-red-700 text-white cursor-pointer'
+                      : 'bg-green-600 hover:bg-green-700 text-white cursor-pointer'
+                    : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                }`}
+              >
+                {isCheckOut ? (
+                  <>
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                    </svg>
+                    {storeInfo.selfie_required ? 'Bắt Đầu Check-out' : 'Xác Nhận Check-out'}
+                  </>
+                ) : (
+                  <>
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                    {storeInfo.selfie_required ? 'Bắt Đầu Check-in' : 'Xác Nhận Check-in'}
+                  </>
+                )}
+              </button>
+            )}
           </div>
         )}
 
