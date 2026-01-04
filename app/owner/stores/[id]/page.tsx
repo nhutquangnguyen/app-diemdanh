@@ -357,110 +357,154 @@ export default function StoreDetail() {
                   <tbody className="bg-white divide-y divide-gray-200">
                     {staff
                       .filter((s: Staff) => {
-                        // Filter by status
-                        const todayCheckIn = todayCheckIns.find((c: CheckIn) => c.staff_id === s.id);
-                        if (staffFilter === 'working') {
-                          return todayCheckIn && todayCheckIn.status === 'success' && !todayCheckIn.check_out_time;
-                        } else if (staffFilter === 'late') {
-                          return todayCheckIn && todayCheckIn.status === 'late' && !todayCheckIn.check_out_time;
-                        } else if (staffFilter === 'not_checked') {
-                          return !todayCheckIn;
-                        }
-                        return true; // 'all'
-                      })
-                      .filter((s: Staff) => {
-                        // Filter by search
+                        // Filter by search first
                         if (!staffSearch) return true;
                         return s.full_name.toLowerCase().includes(staffSearch.toLowerCase());
                       })
-                      .map((s: Staff) => {
-                        const todayCheckIn = todayCheckIns.find((c: CheckIn) => c.staff_id === s.id);
-                        const isWorking = todayCheckIn && todayCheckIn.status === 'success';
-                        const isLate = todayCheckIn && todayCheckIn.status === 'late';
-                        const initials = s.full_name
-                          ?.split(' ')
-                          .slice(-2)
-                          .map((n: string) => n[0])
-                          .join('')
-                          .toUpperCase() || '??';
+                      .flatMap((s: Staff) => {
+                        // Get ALL check-ins for this staff today
+                        const staffCheckIns = todayCheckIns.filter((c: CheckIn) => c.staff_id === s.id);
 
-                        let workDuration = '';
-                        const hasCheckedOut = todayCheckIn?.check_out_time;
-                        if (todayCheckIn) {
-                          // Calculate duration: if checked out, use check-out time; otherwise use current time
-                          const endTime = hasCheckedOut && todayCheckIn.check_out_time
-                            ? new Date(todayCheckIn.check_out_time).getTime()
-                            : Date.now();
-                          const minutes = Math.floor((endTime - new Date(todayCheckIn.check_in_time).getTime()) / 1000 / 60);
-                          const hours = Math.floor(minutes / 60);
-                          const mins = minutes % 60;
-                          workDuration = `${hours}h ${mins}m`;
-                        }
+                        // Apply status filter
+                        const filteredCheckIns = staffCheckIns.filter((checkIn: CheckIn) => {
+                          if (staffFilter === 'working') {
+                            return checkIn.status === 'success' && !checkIn.check_out_time;
+                          } else if (staffFilter === 'late') {
+                            return checkIn.status === 'late' && !checkIn.check_out_time;
+                          } else if (staffFilter === 'not_checked') {
+                            return false; // Will handle "not checked" separately
+                          }
+                          return true; // 'all'
+                        });
 
-                        return (
-                          <tr key={s.id} className="hover:bg-gray-50 transition-colors">
-                            <td className="px-4 py-3">
-                              <div className="flex items-center gap-3">
-                                <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-sm ${
-                                  isWorking ? 'bg-gradient-to-br from-green-500 to-green-600' :
-                                  isLate ? 'bg-gradient-to-br from-yellow-500 to-yellow-600' :
-                                  'bg-gradient-to-br from-gray-400 to-gray-500'
-                                }`}>
-                                  {initials}
+                        // If no check-ins and filter is 'not_checked' or 'all', show the staff
+                        if (staffCheckIns.length === 0 && (staffFilter === 'not_checked' || staffFilter === 'all')) {
+                          const initials = s.full_name
+                            ?.split(' ')
+                            .slice(-2)
+                            .map((n: string) => n[0])
+                            .join('')
+                            .toUpperCase() || '??';
+
+                          return [(
+                            <tr key={`${s.id}-no-checkin`} className="hover:bg-gray-50 transition-colors">
+                              <td className="px-4 py-3">
+                                <div className="flex items-center gap-3">
+                                  <div className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-sm bg-gradient-to-br from-gray-400 to-gray-500">
+                                    {initials}
+                                  </div>
+                                  <div>
+                                    <div className="font-semibold text-gray-800">{s.full_name}</div>
+                                    <div className="text-xs text-gray-500">{s.email}</div>
+                                  </div>
                                 </div>
-                                <div>
-                                  <div className="font-semibold text-gray-800">{s.full_name}</div>
-                                  <div className="text-xs text-gray-500">{s.email}</div>
-                                </div>
-                              </div>
-                            </td>
-                            <td className="px-4 py-3 text-sm text-gray-700">
-                              {todayCheckIn ? (
-                                new Date(todayCheckIn.check_in_time).toLocaleTimeString('vi-VN', {
-                                  hour: '2-digit',
-                                  minute: '2-digit'
-                                })
-                              ) : (
+                              </td>
+                              <td className="px-4 py-3 text-sm text-gray-700">
                                 <span className="text-gray-400">--:--</span>
-                              )}
-                            </td>
-                            <td className="px-4 py-3 text-sm text-gray-700">
-                              {hasCheckedOut && todayCheckIn.check_out_time ? (
-                                new Date(todayCheckIn.check_out_time).toLocaleTimeString('vi-VN', {
-                                  hour: '2-digit',
-                                  minute: '2-digit'
-                                })
-                              ) : todayCheckIn ? (
-                                <span className="text-blue-500">...</span>
-                              ) : (
+                              </td>
+                              <td className="px-4 py-3 text-sm text-gray-700">
                                 <span className="text-gray-400">--:--</span>
-                              )}
-                            </td>
-                            <td className="px-4 py-3 text-sm text-gray-700">
-                              {workDuration || <span className="text-gray-400">--</span>}
-                            </td>
-                            <td className="px-4 py-3">
-                              {hasCheckedOut ? (
-                                <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-700">
-                                  ✓ Đã về
-                                </span>
-                              ) : isWorking ? (
-                                <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-700">
-                                  <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                                  Đang làm
-                                </span>
-                              ) : isLate ? (
-                                <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-semibold bg-yellow-100 text-yellow-700">
-                                  ⚠ Muộn
-                                </span>
-                              ) : (
+                              </td>
+                              <td className="px-4 py-3 text-sm text-gray-700">
+                                <span className="text-gray-400">--</span>
+                              </td>
+                              <td className="px-4 py-3">
                                 <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-600">
                                   Chưa điểm danh
                                 </span>
-                              )}
-                            </td>
-                          </tr>
-                        );
+                              </td>
+                            </tr>
+                          )];
+                        }
+
+                        // Show a row for each check-in
+                        return filteredCheckIns.map((checkIn: CheckIn, index: number) => {
+                          const isWorking = checkIn.status === 'success';
+                          const isLate = checkIn.status === 'late';
+                          const initials = s.full_name
+                            ?.split(' ')
+                            .slice(-2)
+                            .map((n: string) => n[0])
+                            .join('')
+                            .toUpperCase() || '??';
+
+                          let workDuration = '';
+                          const hasCheckedOut = checkIn.check_out_time;
+                          if (checkIn) {
+                            // Calculate duration: if checked out, use check-out time; otherwise use current time
+                            const endTime = hasCheckedOut && checkIn.check_out_time
+                              ? new Date(checkIn.check_out_time).getTime()
+                              : Date.now();
+                            const minutes = Math.floor((endTime - new Date(checkIn.check_in_time).getTime()) / 1000 / 60);
+                            const hours = Math.floor(minutes / 60);
+                            const mins = minutes % 60;
+                            workDuration = `${hours}h ${mins}m`;
+                          }
+
+                          return (
+                            <tr key={`${s.id}-${checkIn.id}`} className="hover:bg-gray-50 transition-colors">
+                              <td className="px-4 py-3">
+                                <div className="flex items-center gap-3">
+                                  <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-sm ${
+                                    isWorking ? 'bg-gradient-to-br from-green-500 to-green-600' :
+                                    isLate ? 'bg-gradient-to-br from-yellow-500 to-yellow-600' :
+                                    'bg-gradient-to-br from-gray-400 to-gray-500'
+                                  }`}>
+                                    {initials}
+                                  </div>
+                                  <div>
+                                    <div className="font-semibold text-gray-800">
+                                      {s.full_name}
+                                      {filteredCheckIns.length > 1 && (
+                                        <span className="ml-2 text-xs text-gray-500">Ca {index + 1}</span>
+                                      )}
+                                    </div>
+                                    <div className="text-xs text-gray-500">{s.email}</div>
+                                  </div>
+                                </div>
+                              </td>
+                              <td className="px-4 py-3 text-sm text-gray-700">
+                                {new Date(checkIn.check_in_time).toLocaleTimeString('vi-VN', {
+                                  hour: '2-digit',
+                                  minute: '2-digit'
+                                })}
+                              </td>
+                              <td className="px-4 py-3 text-sm text-gray-700">
+                                {hasCheckedOut && checkIn.check_out_time ? (
+                                  new Date(checkIn.check_out_time).toLocaleTimeString('vi-VN', {
+                                    hour: '2-digit',
+                                    minute: '2-digit'
+                                  })
+                                ) : (
+                                  <span className="text-blue-500">...</span>
+                                )}
+                              </td>
+                              <td className="px-4 py-3 text-sm text-gray-700">
+                                {workDuration}
+                              </td>
+                              <td className="px-4 py-3">
+                                {hasCheckedOut ? (
+                                  <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-700">
+                                    ✓ Đã về
+                                  </span>
+                                ) : isWorking ? (
+                                  <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-700">
+                                    <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                                    Đang làm
+                                  </span>
+                                ) : isLate ? (
+                                  <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-semibold bg-yellow-100 text-yellow-700">
+                                    ⚠ Muộn
+                                  </span>
+                                ) : (
+                                  <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-600">
+                                    Chưa điểm danh
+                                  </span>
+                                )}
+                              </td>
+                            </tr>
+                          );
+                        });
                       })}
                   </tbody>
                 </table>
