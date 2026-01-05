@@ -149,24 +149,20 @@ function CheckInContent() {
 
   async function loadStoreInfo(storeId: string, currentUser: any) {
     try {
-      const { data, error} = await supabase
-        .from('stores')
-        .select('*')
-        .eq('id', storeId)
-        .single();
+      // Run store and staff queries in parallel (both have all needed data)
+      const [storeResult, staffResult] = await Promise.all([
+        supabase.from('stores').select('*').eq('id', storeId).single(),
+        supabase.from('staff').select('id').eq('email', currentUser.email).eq('store_id', storeId).single()
+      ]);
 
+      const { data, error } = storeResult;
       if (error) throw error;
       setStoreInfo(data);
 
+      const { data: staffRecord, error: staffError } = staffResult;
+
       // Check authorization if staff_only mode
       if (data.access_mode === 'staff_only') {
-        const { data: staffRecord, error: staffError } = await supabase
-          .from('staff')
-          .select('id')
-          .eq('email', currentUser.email)
-          .eq('store_id', storeId)
-          .single();
-
         if (staffError || !staffRecord) {
           setErrorMessage('Email của bạn chưa được thêm vào danh sách nhân viên. Vui lòng liên hệ chủ cửa hàng để được cấp quyền truy cập.');
           setStep('error');
@@ -174,28 +170,68 @@ function CheckInContent() {
         }
       }
 
-      // Get GPS location only if required
+      // Check if GPS coordinates were passed in URL (from home page - saves re-fetching!)
+      const latParam = searchParams.get('lat');
+      const lonParam = searchParams.get('lon');
+
+      let gpsPromise: Promise<any>;
       if (data.gps_required) {
-        try {
-          const location = await getCurrentLocation();
-          if (!location) {
-            setErrorMessage('Không thể lấy vị trí hiện tại. Vui lòng bật GPS.');
-            setStep('error');
-            return;
+        if (latParam && lonParam) {
+          // Use coordinates from URL - instant!
+          const lat = parseFloat(latParam);
+          const lon = parseFloat(lonParam);
+          if (!isNaN(lat) && !isNaN(lon)) {
+            console.log('Using GPS from URL params (fast!):', lat, lon);
+            gpsPromise = Promise.resolve({
+              coords: { latitude: lat, longitude: lon }
+            });
+          } else {
+            // Invalid coordinates - fetch fresh
+            gpsPromise = getCurrentLocation().catch(err => {
+              console.error('GPS error:', err);
+              return null;
+            });
           }
-          setCurrentLocation(location);
-        } catch (error) {
-          console.error('GPS error:', error);
-          setErrorMessage('Lỗi khi lấy vị trí GPS');
+        } else {
+          // No coordinates in URL - fetch fresh
+          gpsPromise = getCurrentLocation().catch(err => {
+            console.error('GPS error:', err);
+            return null;
+          });
+        }
+      } else {
+        gpsPromise = Promise.resolve(null);
+      }
+
+      const checkInPromise = staffRecord ? checkForActiveCheckIn(storeId, currentUser) : Promise.resolve();
+
+      // Wait for both to complete
+      const [location] = await Promise.all([gpsPromise, checkInPromise]);
+
+      // Check GPS if required
+      if (data.gps_required) {
+        if (!location) {
+          setErrorMessage('Không thể lấy vị trí hiện tại. Vui lòng bật GPS.');
           setStep('error');
           return;
         }
+        setCurrentLocation(location);
       }
 
-      // Check for active check-in (not checked out yet)
-      await checkForActiveCheckIn(storeId, currentUser);
-
-      setStep('info');
+      // Skip directly to selfie if required (bypass info screen for faster UX)
+      if (data.selfie_required) {
+        // But first check GPS distance if required AND GPS has been fetched
+        if (data.gps_required && currentLocation && !isWithinRadius && distance > 0) {
+          // Show error - too far
+          setErrorMessage(`Bạn đang ở cách cửa hàng ${distance.toFixed(0)}m. Vui lòng đến gần hơn (trong bán kính ${data.radius_meters}m).`);
+          setStep('error');
+        } else {
+          // All good - go directly to camera (GPS will be checked again on submit)
+          setStep('selfie');
+        }
+      } else {
+        setStep('info');
+      }
     } catch (error) {
       console.error('Error loading store:', error);
       setErrorMessage('Không tìm thấy cửa hàng.');
@@ -463,6 +499,7 @@ function CheckInContent() {
             {
               staff_id: staffId,
               store_id: storeInfo.id,
+              check_in_time: currentTime.toISOString(),
               latitude: location.latitude,
               longitude: location.longitude,
               distance_meters: distance,

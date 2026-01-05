@@ -7,10 +7,15 @@ import { getCurrentUser, getCurrentUserSync, signOut } from '@/lib/auth';
 
 export default function Header() {
   const router = useRouter();
-  // Initialize with sync check (instant, 0ms)
-  const [user, setUser] = useState<any>(getCurrentUserSync());
+  // Initialize with null to match server render, then hydrate with sync check
+  const [user, setUser] = useState<any>(null);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Hydrate user state on mount (client-side only)
+  useEffect(() => {
+    setUser(getCurrentUserSync());
+  }, []);
 
   useEffect(() => {
     let mounted = true;
