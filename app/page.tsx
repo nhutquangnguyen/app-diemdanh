@@ -29,6 +29,7 @@ export default function Home() {
   const [stores, setStores] = useState<StoreWithDistance[]>([]);
   const [initialLoading, setInitialLoading] = useState(true); // Only for first load
   const [gpsError, setGpsError] = useState<string | null>(null);
+  const [gpsLoading, setGpsLoading] = useState(false);
   const [submitting, setSubmitting] = useState<string | null>(null); // store ID being submitted
   const [showActionDialog, setShowActionDialog] = useState(false);
   const [selectedStore, setSelectedStore] = useState<StoreWithDistance | null>(null);
@@ -103,6 +104,7 @@ export default function Home() {
       setInitialLoading(true);
     }
     setGpsError(null);
+    setGpsLoading(true);
 
     try {
       // Start GPS fetch early (runs in parallel with DB queries)
@@ -262,6 +264,7 @@ export default function Home() {
       if (isInitialLoad) {
         setInitialLoading(false);
       }
+      setGpsLoading(false);
     }
   }
 
@@ -465,30 +468,48 @@ export default function Home() {
                   const isSubmitting = submitting === store.id;
                   const checkInStatus = store.checkInStatus || { type: 'none' };
 
-                  // Determine action text
+                  // Determine action text and distance display
                   let actionText = '';
                   let distanceText = '';
 
-                  // Show distance for GPS-required stores (if available and not too far)
-                  if (store.gps_required && store.distance !== undefined && !isFar && !noGps) {
-                    distanceText = formatDistance(store.distance);
+                  // Show distance for GPS-required stores with radius context
+                  if (store.gps_required) {
+                    if (store.distance !== undefined && !noGps) {
+                      const dist = formatDistance(store.distance);
+                      const radius = store.radius_meters || 100;
+                      const radiusText = formatDistance(radius);
+
+                      if (isFar) {
+                        distanceText = `${dist} (cần < ${radiusText})`;
+                      } else {
+                        distanceText = `${dist} (trong phạm vi ${radiusText})`;
+                      }
+                    } else if (gpsLoading) {
+                      distanceText = 'Đang lấy vị trí GPS...';
+                    }
                   }
 
                   if (isFar || noGps) {
-                    actionText = isFar ? 'Ngoài phạm vi' : 'Bật GPS để xem khoảng cách';
+                    if (isFar) {
+                      actionText = 'Ngoài phạm vi';
+                    } else {
+                      actionText = 'Vui lòng bật GPS trong cài đặt thiết bị';
+                    }
                   } else if (checkInStatus.type === 'none') {
                     // First click → Check-in (no time yet)
                     actionText = store.selfie_required ? 'Check-in (có ảnh)' : 'Check-in';
                   } else if (checkInStatus.type === 'active') {
-                    // Currently checked in - show check-in time
+                    // Currently checked in - show status clearly
                     const checkInTime = new Date(checkInStatus.activeCheckIn.check_in_time);
                     const timeStr = checkInTime.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
-                    actionText = `Check-in lúc ${timeStr}`;
+                    actionText = `Đang làm việc (vào ca lúc ${timeStr})`;
                   } else if (checkInStatus.type === 'completed') {
-                    // Already checked out - show check-out time
+                    // Already checked out - show completed status
+                    const checkInTime = new Date(checkInStatus.lastCompletedCheckIn.check_in_time);
                     const checkOutTime = new Date(checkInStatus.lastCompletedCheckIn.check_out_time);
-                    const timeStr = checkOutTime.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
-                    actionText = `Check-out lúc ${timeStr}`;
+                    const inTime = checkInTime.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+                    const outTime = checkOutTime.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+                    actionText = `Ca cuối: ${inTime} → ${outTime}`;
                   }
 
                   return (
@@ -658,11 +679,15 @@ export default function Home() {
       {showActionDialog && selectedStore && selectedStore.checkInStatus?.type === 'completed' && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl">
-            <div className="flex items-center gap-2 mb-4">
-              <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              <h3 className="text-xl font-bold text-gray-800">Đã Check-out lần cuối</h3>
+            <div className="mb-4">
+              <h3 className="text-xl font-bold text-gray-800 mb-1">
+                Bạn đã ra ca lúc{' '}
+                {new Date(selectedStore.checkInStatus.lastCompletedCheckIn.check_out_time).toLocaleTimeString('vi-VN', {
+                  hour: '2-digit',
+                  minute: '2-digit',
+                })}
+              </h3>
+              <p className="text-sm text-gray-600">Chọn hành động tiếp theo:</p>
             </div>
 
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
@@ -670,21 +695,45 @@ export default function Home() {
                 <span className="font-semibold">Cửa hàng:</span> {selectedStore.name}
               </p>
               <p className="text-sm text-gray-700">
-                <span className="font-semibold">Thời gian ra:</span>{' '}
+                <span className="font-semibold">Ca làm việc:</span>{' '}
+                {new Date(selectedStore.checkInStatus.lastCompletedCheckIn.check_in_time).toLocaleTimeString('vi-VN', {
+                  hour: '2-digit',
+                  minute: '2-digit',
+                })}
+                {' → '}
                 {new Date(selectedStore.checkInStatus.lastCompletedCheckIn.check_out_time).toLocaleTimeString('vi-VN', {
                   hour: '2-digit',
                   minute: '2-digit',
                 })}
-              </p>
-              <p className="text-xs text-gray-500 mt-2">
-                Chọn "Sửa giờ ra" nếu thời gian không chính xác
               </p>
             </div>
 
             <div className="grid grid-cols-2 gap-3 mb-4">
               <button
                 onClick={async () => {
-                  await handleInstantAction(selectedStore, selectedStore.checkInStatus!, 're-checkout');
+                  // If selfie required, navigate to selfie page
+                  if (selectedStore.selfie_required) {
+                    setShowActionDialog(false);
+                    // Pass GPS if required
+                    if (selectedStore.gps_required && selectedStore.distance !== undefined) {
+                      getCurrentPosition().then(position => {
+                        const params = new URLSearchParams({
+                          store: selectedStore.id,
+                          lat: String(position.coords.latitude),
+                          lon: String(position.coords.longitude),
+                          action: 're-checkout',
+                        });
+                        router.push(`/checkin/submit?${params.toString()}`);
+                      }).catch(() => {
+                        router.push(`/checkin/submit?store=${selectedStore.id}&action=re-checkout`);
+                      });
+                    } else {
+                      router.push(`/checkin/submit?store=${selectedStore.id}&action=re-checkout`);
+                    }
+                  } else {
+                    // No selfie required - instant action
+                    await handleInstantAction(selectedStore, selectedStore.checkInStatus!, 're-checkout');
+                  }
                 }}
                 disabled={submitting !== null}
                 className="bg-orange-600 hover:bg-orange-700 text-white px-4 py-3 rounded-lg font-semibold transition-all flex flex-col items-center justify-center gap-2 disabled:opacity-50"
@@ -698,7 +747,28 @@ export default function Home() {
               <button
                 onClick={async () => {
                   setShowActionDialog(false);
-                  await handleInstantAction(selectedStore, { type: 'none' }, 'check-in');
+                  // If selfie required, navigate to selfie page
+                  if (selectedStore.selfie_required) {
+                    // Pass GPS if required
+                    if (selectedStore.gps_required && selectedStore.distance !== undefined) {
+                      getCurrentPosition().then(position => {
+                        const params = new URLSearchParams({
+                          store: selectedStore.id,
+                          lat: String(position.coords.latitude),
+                          lon: String(position.coords.longitude),
+                          action: 'check-in',
+                        });
+                        router.push(`/checkin/submit?${params.toString()}`);
+                      }).catch(() => {
+                        router.push(`/checkin/submit?store=${selectedStore.id}&action=check-in`);
+                      });
+                    } else {
+                      router.push(`/checkin/submit?store=${selectedStore.id}&action=check-in`);
+                    }
+                  } else {
+                    // No selfie required - instant action
+                    await handleInstantAction(selectedStore, { type: 'none' }, 'check-in');
+                  }
                 }}
                 disabled={submitting !== null}
                 className="bg-green-600 hover:bg-green-700 text-white px-4 py-3 rounded-lg font-semibold transition-all flex flex-col items-center justify-center gap-2 disabled:opacity-50"

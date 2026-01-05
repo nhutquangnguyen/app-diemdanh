@@ -149,6 +149,12 @@ function CheckInContent() {
 
   async function loadStoreInfo(storeId: string, currentUser: any) {
     try {
+      // Check if action is specified in URL (from dialog)
+      const actionParam = searchParams.get('action') as 'check-in' | 'check-out' | 're-checkout' | null;
+      if (actionParam) {
+        setActionType(actionParam);
+      }
+
       // Run store and staff queries in parallel (both have all needed data)
       const [storeResult, staffResult] = await Promise.all([
         supabase.from('stores').select('*').eq('id', storeId).single(),
@@ -203,7 +209,40 @@ function CheckInContent() {
         gpsPromise = Promise.resolve(null);
       }
 
-      const checkInPromise = staffRecord ? checkForActiveCheckIn(storeId, currentUser) : Promise.resolve();
+      // Handle check-in state based on action parameter
+      let checkInPromise: Promise<void>;
+      if (actionParam === 're-checkout') {
+        // For re-checkout, find the last completed check-in
+        checkInPromise = staffRecord
+          ? (async () => {
+              const today = new Date();
+              today.setHours(0, 0, 0, 0);
+              const tomorrow = new Date(today);
+              tomorrow.setDate(tomorrow.getDate() + 1);
+
+              const { data: checkIns } = await supabase
+                .from('check_ins')
+                .select('*')
+                .eq('staff_id', staffRecord.id)
+                .eq('store_id', storeId)
+                .gte('check_in_time', today.toISOString())
+                .lt('check_in_time', tomorrow.toISOString())
+                .not('check_out_time', 'is', null)
+                .order('check_out_time', { ascending: false })
+                .limit(1);
+
+              if (checkIns && checkIns.length > 0) {
+                setLastCompletedCheckIn(checkIns[0]);
+              }
+            })()
+          : Promise.resolve();
+      } else if (actionParam) {
+        // For explicit check-in action, don't auto-detect
+        checkInPromise = Promise.resolve();
+      } else {
+        // Normal flow - auto-detect check-in/out state
+        checkInPromise = staffRecord ? checkForActiveCheckIn(storeId, currentUser) : Promise.resolve();
+      }
 
       // Wait for both to complete
       const [location] = await Promise.all([gpsPromise, checkInPromise]);
@@ -727,9 +766,13 @@ function CheckInContent() {
                   </button>
                   <button
                     onClick={handleSubmitCheckIn}
-                    className="flex-1 bg-green-600 hover:bg-green-700 text-white px-6 py-4 rounded-lg font-semibold transition-all"
+                    className={`flex-1 text-white px-6 py-4 rounded-lg font-semibold transition-all ${
+                      actionType === 'check-in'
+                        ? 'bg-green-600 hover:bg-green-700'
+                        : 'bg-red-600 hover:bg-red-700'
+                    }`}
                   >
-                    Xác Nhận Điểm Danh
+                    {actionType === 'check-in' ? 'Xác nhận vào ca' : 'Xác nhận ra ca'}
                   </button>
                 </div>
               </div>
