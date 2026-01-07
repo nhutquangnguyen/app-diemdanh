@@ -28,6 +28,7 @@ function CheckInContent() {
   const [activeCheckIn, setActiveCheckIn] = useState<any>(null);
   const [lastCompletedCheckIn, setLastCompletedCheckIn] = useState<any>(null);
   const [actionType, setActionType] = useState<'check-in' | 'check-out' | 're-checkout'>('check-in');
+  const [facingMode, setFacingMode] = useState<'user' | 'environment'>('user');
 
   useEffect(() => {
     checkAuthAndLoad();
@@ -730,16 +731,26 @@ function CheckInContent() {
 
             {!selfieImage ? (
               <div>
-                <div className="mb-4 rounded-lg overflow-hidden">
+                <div className="mb-4 rounded-lg overflow-hidden relative">
                   <Webcam
                     ref={webcamRef}
                     audio={false}
                     screenshotFormat="image/jpeg"
                     className="w-full rounded-lg"
                     videoConstraints={{
-                      facingMode: 'user',
+                      facingMode: facingMode,
                     }}
                   />
+                  {/* Camera Switch Button */}
+                  <button
+                    onClick={() => setFacingMode(prev => prev === 'user' ? 'environment' : 'user')}
+                    className="absolute top-4 right-4 bg-black bg-opacity-50 hover:bg-opacity-70 text-white p-3 rounded-full transition-all"
+                    title="Chuyển camera"
+                  >
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                    </svg>
+                  </button>
                 </div>
                 <button
                   onClick={capturePhoto}

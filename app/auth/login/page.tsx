@@ -33,7 +33,20 @@ function LoginContent() {
       await signIn(email, password);
       router.push(returnUrl);
     } catch (err: any) {
-      setError(err.message || 'Đăng nhập thất bại');
+      // Translate common error messages to Vietnamese
+      let errorMessage = 'Đăng nhập thất bại';
+      if (err.message) {
+        if (err.message.includes('Invalid login credentials')) {
+          errorMessage = 'Email hoặc mật khẩu không đúng';
+        } else if (err.message.includes('Email not confirmed')) {
+          errorMessage = 'Email chưa được xác nhận';
+        } else if (err.message.includes('Too many requests')) {
+          errorMessage = 'Quá nhiều yêu cầu, vui lòng thử lại sau';
+        } else {
+          errorMessage = err.message;
+        }
+      }
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }

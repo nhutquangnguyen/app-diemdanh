@@ -49,7 +49,22 @@ function SignupContent() {
       alert('Đăng ký thành công!');
       router.push(returnUrl);
     } catch (err: any) {
-      setError(err.message || 'Đăng ký thất bại');
+      // Translate common error messages to Vietnamese
+      let errorMessage = 'Đăng ký thất bại';
+      if (err.message) {
+        if (err.message.includes('User already registered')) {
+          errorMessage = 'Email này đã được đăng ký';
+        } else if (err.message.includes('Email rate limit exceeded')) {
+          errorMessage = 'Quá nhiều yêu cầu, vui lòng thử lại sau';
+        } else if (err.message.includes('Invalid email')) {
+          errorMessage = 'Email không hợp lệ';
+        } else if (err.message.includes('Password should be at least')) {
+          errorMessage = 'Mật khẩu phải có ít nhất 6 ký tự';
+        } else {
+          errorMessage = err.message;
+        }
+      }
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
