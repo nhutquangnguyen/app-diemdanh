@@ -26,8 +26,25 @@ export async function signIn(email: string, password: string) {
 }
 
 export async function signOut() {
-  const { error } = await supabase.auth.signOut();
-  if (error) throw error;
+  try {
+    const { error } = await supabase.auth.signOut();
+
+    // Ignore session missing errors - user is already signed out
+    if (error && error.message !== 'Auth session missing!') {
+      throw error;
+    }
+  } catch (error: any) {
+    // Gracefully handle session missing errors
+    if (error?.message !== 'Auth session missing!') {
+      console.error('Sign out error:', error);
+      throw error;
+    }
+  } finally {
+    // Always clear local storage to ensure clean state
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('diemdanh-auth');
+    }
+  }
 }
 
 // Fast synchronous check from localStorage
