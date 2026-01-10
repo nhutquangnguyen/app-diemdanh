@@ -4,12 +4,14 @@ import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { getCurrentUser, getCurrentUserSync, signOut } from '@/lib/auth';
+import { supabase } from '@/lib/supabase';
 
 export default function Header() {
   const router = useRouter();
   // Initialize with null to match server render, then hydrate with sync check
   const [user, setUser] = useState<any>(null);
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [hasStaffStores, setHasStaffStores] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   // Hydrate user state on mount (client-side only)
@@ -45,6 +47,32 @@ export default function Header() {
       mounted = false;
     };
   }, []);
+
+  // Check if user has staff stores
+  useEffect(() => {
+    async function checkStaffStores() {
+      if (!user?.email) {
+        setHasStaffStores(false);
+        return;
+      }
+
+      try {
+        const { data, error } = await supabase
+          .from('staff')
+          .select('id')
+          .eq('email', user.email)
+          .limit(1);
+
+        if (error) throw error;
+        setHasStaffStores(data && data.length > 0);
+      } catch (error) {
+        console.error('Error checking staff stores:', error);
+        setHasStaffStores(false);
+      }
+    }
+
+    checkStaffStores();
+  }, [user]);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -86,14 +114,28 @@ export default function Header() {
           </Link>
           <div className="flex items-center gap-2 sm:gap-4">
             {user ? (
-                  <div className="relative" ref={dropdownRef}>
-                    {/* Avatar Button */}
-                    <button
-                      onClick={() => setDropdownOpen(!dropdownOpen)}
-                      className="w-10 h-10 rounded-full bg-blue-600 text-white font-semibold flex items-center justify-center hover:bg-blue-700 transition-all focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-                    >
-                      {getInitial(user.email)}
-                    </button>
+                  <>
+                    {/* QR Code Button - Always show when logged in */}
+                    <Link href="/checkin">
+                      <button
+                        className="p-2 bg-gray-700 hover:bg-gray-800 rounded-lg transition-all"
+                        aria-label="Quét QR"
+                        title="Quét QR"
+                      >
+                        <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
+                        </svg>
+                      </button>
+                    </Link>
+
+                    <div className="relative" ref={dropdownRef}>
+                      {/* Avatar Button */}
+                      <button
+                        onClick={() => setDropdownOpen(!dropdownOpen)}
+                        className="w-10 h-10 rounded-full bg-blue-600 text-white font-semibold flex items-center justify-center hover:bg-blue-700 transition-all focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                      >
+                        {getInitial(user.email)}
+                      </button>
 
                     {/* Dropdown Menu */}
                     {dropdownOpen && (
@@ -146,7 +188,8 @@ export default function Header() {
                         </button>
                       </div>
                     )}
-                  </div>
+                    </div>
+                  </>
                 ) : (
                   <Link href="/auth/login">
                     <button className="bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white px-4 sm:px-6 py-2 rounded-lg font-semibold text-sm sm:text-base transition-all">

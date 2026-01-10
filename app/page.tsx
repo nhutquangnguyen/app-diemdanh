@@ -28,6 +28,7 @@ export default function Home() {
   const [user, setUser] = useState<any>(null);
   const [currentTime, setCurrentTime] = useState(new Date());
   const [stores, setStores] = useState<StoreWithDistance[]>([]);
+  const [ownedStores, setOwnedStores] = useState<Store[]>([]);
   const [initialLoading, setInitialLoading] = useState(true); // Only for first load
   const [gpsError, setGpsError] = useState<string | null>(null);
   const [gpsLoading, setGpsLoading] = useState(false);
@@ -89,8 +90,26 @@ export default function Home() {
   useEffect(() => {
     if (user) {
       loadStores(true); // Initial load with spinner
+      loadOwnedStores();
     }
   }, [user]);
+
+  async function loadOwnedStores() {
+    if (!user) return;
+
+    try {
+      const { data, error } = await supabase
+        .from('stores')
+        .select('*')
+        .eq('owner_id', user.id)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setOwnedStores(data || []);
+    } catch (error) {
+      console.error('Error loading owned stores:', error);
+    }
+  }
 
   async function loadStores(isInitialLoad = false) {
     if (!user) return;
@@ -313,9 +332,11 @@ export default function Home() {
               </div>
             )}
 
-            {/* Store List */}
+            {/* Staff Store List */}
             {!initialLoading && stores.length > 0 && (
-              <div className="space-y-3">
+              <>
+                <h3 className="text-lg font-semibold text-gray-800 mb-3">👤 Cửa hàng bạn làm việc</h3>
+                <div className="space-y-3">
                 {stores.map((store) => {
                   const isFar = store.status === 'far';
                   const noGps = store.status === 'no-gps';
@@ -402,37 +423,34 @@ export default function Home() {
                     </button>
                   );
                 })}
-              </div>
-            )}
-
-            {/* No Stores - Show QR */}
-            {!initialLoading && stores.length === 0 && (
-              <div className="text-center py-8">
-                <div className="mb-6">
-                  <div className="text-6xl mb-4">📱</div>
-                  <h3 className="text-xl font-semibold text-gray-800 mb-2">
-                    Quét Mã QR để điểm danh
-                  </h3>
-                  <p className="text-sm text-gray-600">
-                    Yêu cầu mã QR từ quản lý hoặc quét tại cửa hàng
-                  </p>
                 </div>
-                <Link href="/checkin">
-                  <button className="bg-purple-600 hover:bg-purple-700 text-white px-8 py-4 rounded-xl font-semibold text-lg transition-all shadow-lg hover:shadow-xl">
-                    🔍 Quét Mã QR
-                  </button>
-                </Link>
-              </div>
+              </>
             )}
 
-            {/* Fallback QR button */}
-            {stores.length > 0 && (
+
+            {/* Owned Stores Section - Bottom */}
+            {ownedStores.length > 0 && (
               <div className="mt-6">
-                <Link href="/checkin">
-                  <button className="w-full bg-gray-700 hover:bg-gray-800 text-white px-6 py-3 rounded-lg font-semibold transition-all">
-                    🔍 Quét QR Cửa Hàng Khác
-                  </button>
-                </Link>
+                <h3 className="text-lg font-semibold text-gray-800 mb-3">🏪 Cửa hàng của bạn</h3>
+                <div className="space-y-2">
+                  {ownedStores.map((store) => (
+                    <Link
+                      key={store.id}
+                      href={`/owner/stores/${store.id}`}
+                      className="block w-full bg-white border-2 border-purple-500 rounded-xl p-4 hover:shadow-lg transition-all active:scale-[0.98]"
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex-1">
+                          <h4 className="font-bold text-gray-800 text-lg">{store.name}</h4>
+                          <p className="text-sm text-gray-600">{store.address}</p>
+                        </div>
+                        <svg className="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                        </svg>
+                      </div>
+                    </Link>
+                  ))}
+                </div>
               </div>
             )}
           </div>
