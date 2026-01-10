@@ -1,5 +1,7 @@
+import { useState } from 'react';
 import Link from 'next/link';
 import { Staff, ShiftTemplate, ScheduleWithDetails, WeekSummary } from '@/types';
+import StaffScheduleGrid from './StaffScheduleGrid';
 
 interface StoreScheduleProps {
   storeId: string;
@@ -44,11 +46,69 @@ export default function StoreSchedule({
   handleTouchMove,
   handleTouchEnd,
 }: StoreScheduleProps) {
+  const [viewMode, setViewMode] = useState<'shift-based' | 'staff-based'>('staff-based');
   const today = formatDateSchedule(new Date());
   const weekDays = getWeekDays();
 
+  // Render view toggle component
+  const ViewToggle = () => (
+    <div className="bg-white rounded-lg shadow-lg p-4 mb-4">
+      <div className="flex items-center justify-between">
+        <div className="text-sm font-semibold text-gray-700">Chế độ xem:</div>
+        <div className="flex gap-2">
+          <button
+            onClick={() => setViewMode('staff-based')}
+            className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all ${
+              viewMode === 'staff-based'
+                ? 'bg-blue-600 text-white'
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+            }`}
+          >
+            Theo Nhân Viên
+          </button>
+          <button
+            onClick={() => setViewMode('shift-based')}
+            className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all ${
+              viewMode === 'shift-based'
+                ? 'bg-blue-600 text-white'
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+            }`}
+          >
+            Theo Ca Làm
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+
+  // Show staff-based grid view
+  if (viewMode === 'staff-based') {
+    return (
+      <div>
+        <div className="px-4 sm:px-6 pt-6">
+          <ViewToggle />
+        </div>
+
+        <StaffScheduleGrid
+          staff={staff}
+          shifts={shifts}
+          schedules={schedules}
+          currentWeekStart={currentWeekStart}
+          navigateWeek={navigateWeek}
+          goToToday={goToToday}
+          getWeekDays={getWeekDays}
+          formatDateSchedule={formatDateSchedule}
+          openAssignModal={openAssignModal}
+        />
+      </div>
+    );
+  }
+
+  // Original shift-based view
   return (
     <div className="px-4 sm:px-6 py-6">
+      <ViewToggle />
+
       {/* Header with Summary */}
       <div className="bg-white rounded-lg shadow-lg p-4 sm:p-6 mb-6">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
