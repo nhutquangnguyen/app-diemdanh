@@ -209,7 +209,7 @@ export default function AboutPage() {
           </div>
 
           <h3 className="text-2xl font-bold text-gray-800 mb-6 text-center">
-            Bảng Giá Dự Kiến (Sau Beta)
+            Bảng Giá
           </h3>
 
           <div className="grid md:grid-cols-3 gap-6">

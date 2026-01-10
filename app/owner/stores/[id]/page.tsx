@@ -559,6 +559,27 @@ export default function StoreDetail() {
     }
   }
 
+  async function handleAssignShift(staffId: string, shiftId: string, date: string) {
+    try {
+      const { error: insertError } = await supabase
+        .from('staff_schedules')
+        .insert({
+          staff_id: staffId,
+          store_id: storeId,
+          shift_template_id: shiftId,
+          scheduled_date: date,
+          notes: null,
+        });
+
+      if (insertError) throw insertError;
+
+      loadSchedules();
+    } catch (err) {
+      console.error('Error assigning shift:', err);
+      toast.error('Lỗi khi xếp ca');
+    }
+  }
+
   function navigateWeek(direction: 'prev' | 'next') {
     const newDate = new Date(currentWeekStart);
     newDate.setDate(newDate.getDate() + (direction === 'next' ? 7 : -7));
@@ -1149,6 +1170,7 @@ export default function StoreDetail() {
               getStaffForShiftAndDate={getStaffForShiftAndDate}
               openAssignModal={openAssignModal}
               handleRemoveStaffFromShift={handleRemoveStaffFromShift}
+              handleAssignShift={handleAssignShift}
               handleTouchStart={handleTouchStart}
               handleTouchMove={handleTouchMove}
               handleTouchEnd={handleTouchEnd}
@@ -1407,6 +1429,7 @@ export default function StoreDetail() {
         return calculation && (
           <StaffSalaryDetail
             calculation={calculation}
+            storeName={store?.name || ''}
             onClose={() => setSelectedStaffForSalary(null)}
             onAddAdjustment={() => handleAddAdjustment(selectedStaffForSalary)}
             onEditAdjustment={handleEditAdjustment}

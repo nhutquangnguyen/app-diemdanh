@@ -15,8 +15,7 @@ export default function PricingPage() {
         {/* Hero Section */}
         <div className="text-center mb-16">
           <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold text-gray-800 mb-6 leading-tight">
-            Bảng Giá Dự Kiến
-            <span className="text-blue-600"> (Sau Beta)</span>
+            Bảng Giá
           </h1>
           <p className="text-xl text-gray-600 max-w-3xl mx-auto mb-4">
             Không có chi phí ẩn. Không ràng buộc dài hạn. Hủy bất cứ lúc nào.
@@ -53,7 +52,7 @@ export default function PricingPage() {
           {/* Basic Plan */}
           <div className="bg-white rounded-2xl shadow-lg p-8 hover:shadow-xl transition-all border-2 border-gray-200">
             <div className="text-center mb-6">
-              <h3 className="text-2xl font-bold text-gray-800 mb-4">Cơ Bản</h3>
+              <h3 className="text-2xl font-bold text-gray-800 mb-4">🏠 Gói Cửa Hàng</h3>
               {isYearly ? (
                 <div>
                   <div className="flex items-baseline justify-center gap-1 mb-2">
@@ -85,7 +84,7 @@ export default function PricingPage() {
                 <svg className="w-5 h-5 text-green-500 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>
-                <span className="text-gray-700">5 nhân viên</span>
+                <span className="text-gray-700">Tối đa 9 nhân viên</span>
               </li>
               <li className="flex items-start gap-3">
                 <svg className="w-5 h-5 text-green-500 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -102,7 +101,7 @@ export default function PricingPage() {
             </ul>
 
             <div className="bg-gray-100 rounded-lg p-3 text-center text-sm text-gray-600 mb-6">
-              Phù hợp cửa hàng nhỏ
+              Phù hợp: Quán cafe, tiệm nail, shop thời trang, tiệm bánh
             </div>
 
             <Link href="/auth/signup">
@@ -119,22 +118,22 @@ export default function PricingPage() {
             </div>
 
             <div className="text-center mb-6 text-white">
-              <h3 className="text-2xl font-bold mb-4">Tiêu Chuẩn</h3>
+              <h3 className="text-2xl font-bold mb-4">🏢 Gói Doanh Nghiệp</h3>
               {isYearly ? (
                 <div>
                   <div className="flex items-baseline justify-center gap-1 mb-2">
-                    <span className="text-5xl font-bold">1,430K</span>
+                    <span className="text-5xl font-bold">1,718K</span>
                     <span className="opacity-90">/năm</span>
                   </div>
                   <div className="text-sm opacity-90">
-                    <span className="line-through">1,788K</span>
-                    <span className="ml-2 font-semibold">Tiết kiệm 358K</span>
+                    <span className="line-through">2,148K</span>
+                    <span className="ml-2 font-semibold">Tiết kiệm 430K</span>
                   </div>
-                  <div className="text-xs opacity-75 mt-1">(~119K/tháng)</div>
+                  <div className="text-xs opacity-75 mt-1">(~143K/tháng)</div>
                 </div>
               ) : (
                 <div className="flex items-baseline justify-center gap-1 mb-4">
-                  <span className="text-5xl font-bold">149K</span>
+                  <span className="text-5xl font-bold">179K</span>
                   <span className="opacity-90">/tháng</span>
                 </div>
               )}
@@ -145,13 +144,13 @@ export default function PricingPage() {
                 <svg className="w-5 h-5 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>
-                <span>Không giới hạn cửa hàng</span>
+                <span>Tối đa 30 nhân viên</span>
               </li>
               <li className="flex items-start gap-3">
                 <svg className="w-5 h-5 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>
-                <span>10 nhân viên</span>
+                <span>Tối đa 3 chi nhánh</span>
               </li>
               <li className="flex items-start gap-3">
                 <svg className="w-5 h-5 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -174,7 +173,7 @@ export default function PricingPage() {
             </ul>
 
             <div className="bg-white bg-opacity-20 rounded-lg p-3 text-center text-sm mb-6">
-              Lựa chọn tốt nhất
+              Phù hợp: Nhà hàng, quán trà sữa lớn, siêu thị mini
             </div>
 
             <Link href="/auth/signup">
@@ -187,22 +186,22 @@ export default function PricingPage() {
           {/* Enterprise Plan */}
           <div className="bg-white rounded-2xl shadow-lg p-8 hover:shadow-xl transition-all border-2 border-gray-200">
             <div className="text-center mb-6">
-              <h3 className="text-2xl font-bold text-gray-800 mb-4">Nhiều Chi Nhánh</h3>
+              <h3 className="text-2xl font-bold text-gray-800 mb-4">🌐 Gói Chuỗi Hệ Thống</h3>
               {isYearly ? (
                 <div>
                   <div className="flex items-baseline justify-center gap-1 mb-2">
-                    <span className="text-5xl font-bold text-gray-800">2,390K</span>
+                    <span className="text-5xl font-bold text-gray-800">2,678K</span>
                     <span className="text-gray-500">/năm</span>
                   </div>
                   <div className="text-sm text-gray-500">
-                    <span className="line-through">2,988K</span>
-                    <span className="ml-2 text-green-600 font-semibold">Tiết kiệm 598K</span>
+                    <span className="line-through">3,348K</span>
+                    <span className="ml-2 text-green-600 font-semibold">Tiết kiệm 670K</span>
                   </div>
-                  <div className="text-xs text-gray-400 mt-1">(~199K/tháng)</div>
+                  <div className="text-xs text-gray-400 mt-1">(~223K/tháng)</div>
                 </div>
               ) : (
                 <div className="flex items-baseline justify-center gap-1 mb-4">
-                  <span className="text-5xl font-bold text-gray-800">249K</span>
+                  <span className="text-5xl font-bold text-gray-800">279K</span>
                   <span className="text-gray-500">/tháng</span>
                 </div>
               )}
@@ -213,13 +212,13 @@ export default function PricingPage() {
                 <svg className="w-5 h-5 text-green-500 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>
-                <span className="text-gray-700">Không giới hạn cửa hàng</span>
+                <span className="text-gray-700">KHÔNG GIỚI HẠN chi nhánh</span>
               </li>
               <li className="flex items-start gap-3">
                 <svg className="w-5 h-5 text-green-500 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>
-                <span className="text-gray-700">50 nhân viên</span>
+                <span className="text-gray-700">KHÔNG GIỚI HẠN nhân viên</span>
               </li>
               <li className="flex items-start gap-3">
                 <svg className="w-5 h-5 text-green-500 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -242,7 +241,7 @@ export default function PricingPage() {
             </ul>
 
             <div className="bg-gray-100 rounded-lg p-3 text-center text-sm text-gray-600 mb-6">
-              Cho chuỗi cửa hàng
+              Phù hợp: Chuỗi cửa hàng, chuỗi nhà hàng, franchise
             </div>
 
             <Link href="/auth/signup">
@@ -264,23 +263,23 @@ export default function PricingPage() {
                 <thead className="bg-gray-50 border-b">
                   <tr>
                     <th className="text-left p-6 font-bold text-gray-800">Tính năng</th>
-                    <th className="text-center p-6 font-bold text-gray-800">Cơ Bản</th>
-                    <th className="text-center p-6 font-bold text-blue-600 bg-blue-50">Tiêu Chuẩn</th>
-                    <th className="text-center p-6 font-bold text-gray-800">Nhiều Chi Nhánh</th>
+                    <th className="text-center p-6 font-bold text-gray-800">🏠 Gói Cửa Hàng</th>
+                    <th className="text-center p-6 font-bold text-blue-600 bg-blue-50">🏢 Gói Doanh Nghiệp</th>
+                    <th className="text-center p-6 font-bold text-gray-800">🌐 Gói Chuỗi Hệ Thống</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
                   <tr>
-                    <td className="p-6 text-gray-700">Số lượng cửa hàng</td>
+                    <td className="p-6 text-gray-700">Số lượng chi nhánh</td>
                     <td className="p-6 text-center text-gray-600">1</td>
-                    <td className="p-6 text-center font-semibold text-blue-600 bg-blue-50">Không giới hạn</td>
+                    <td className="p-6 text-center font-semibold text-blue-600 bg-blue-50">3</td>
                     <td className="p-6 text-center text-gray-600">Không giới hạn</td>
                   </tr>
                   <tr>
                     <td className="p-6 text-gray-700">Số lượng nhân viên</td>
-                    <td className="p-6 text-center text-gray-600">5</td>
-                    <td className="p-6 text-center font-semibold text-blue-600 bg-blue-50">10</td>
-                    <td className="p-6 text-center text-gray-600">50</td>
+                    <td className="p-6 text-center text-gray-600">9</td>
+                    <td className="p-6 text-center font-semibold text-blue-600 bg-blue-50">30</td>
+                    <td className="p-6 text-center text-gray-600">Không giới hạn</td>
                   </tr>
                   <tr>
                     <td className="p-6 text-gray-700">Xác thực GPS</td>
@@ -423,9 +422,9 @@ export default function PricingPage() {
                 </svg>
               </summary>
               <p className="text-gray-600 mt-4">
-                <strong>Cơ Bản (79K/tháng)</strong> phù hợp với cửa hàng nhỏ (1 cửa hàng, tối đa 5 nhân viên).<br/>
-                <strong>Tiêu Chuẩn (149K/tháng)</strong> là lựa chọn tốt nhất cho hầu hết cửa hàng (không giới hạn cửa hàng, tối đa 10 nhân viên).<br/>
-                <strong>Nhiều Chi Nhánh (249K/tháng)</strong> dành cho chuỗi cửa hàng lớn (không giới hạn cửa hàng, tối đa 50 nhân viên).
+                <strong>🏠 Gói Cửa Hàng (79K/tháng)</strong> phù hợp với 1 cửa hàng, tối đa 9 nhân viên (quán cafe, tiệm nail, shop thời trang).<br/>
+                <strong>🏢 Gói Doanh Nghiệp (179K/tháng)</strong> dành cho tối đa 3 chi nhánh, tối đa 30 nhân viên (nhà hàng, quán trà sữa lớn, siêu thị mini).<br/>
+                <strong>🌐 Gói Chuỗi Hệ Thống (279K/tháng)</strong> cho chuỗi cửa hàng lớn, không giới hạn chi nhánh & nhân viên (chuỗi nhà hàng, franchise).
               </p>
             </details>
 
@@ -438,9 +437,9 @@ export default function PricingPage() {
               </summary>
               <p className="text-gray-600 mt-4">
                 Tùy theo gói đăng ký:<br/>
-                • <strong>Cơ Bản:</strong> Lưu ảnh trong 1 tháng<br/>
-                • <strong>Tiêu Chuẩn:</strong> Lưu ảnh trong 3 tháng<br/>
-                • <strong>Nhiều Chi Nhánh:</strong> Lưu ảnh trong 6 tháng<br/>
+                • <strong>🏠 Gói Cửa Hàng:</strong> Lưu ảnh trong 1 tháng<br/>
+                • <strong>🏢 Gói Doanh Nghiệp:</strong> Lưu ảnh trong 3 tháng<br/>
+                • <strong>🌐 Gói Chuỗi Hệ Thống:</strong> Lưu ảnh trong 6 tháng<br/>
                 Dữ liệu điểm danh (giờ vào/ra) được lưu vĩnh viễn cho tất cả các gói.
               </p>
             </details>
@@ -454,9 +453,9 @@ export default function PricingPage() {
               </summary>
               <p className="text-gray-600 mt-4">
                 Có! Thanh toán theo năm sẽ được giảm ngay 20% so với thanh toán theo tháng:<br/>
-                • <strong>Cơ Bản:</strong> 758K/năm (tiết kiệm 190K)<br/>
-                • <strong>Tiêu Chuẩn:</strong> 1,430K/năm (tiết kiệm 358K)<br/>
-                • <strong>Nhiều Chi Nhánh:</strong> 2,390K/năm (tiết kiệm 598K)<br/>
+                • <strong>🏠 Gói Cửa Hàng:</strong> 758K/năm (tiết kiệm 190K)<br/>
+                • <strong>🏢 Gói Doanh Nghiệp:</strong> 1,718K/năm (tiết kiệm 430K)<br/>
+                • <strong>🌐 Gói Chuỗi Hệ Thống:</strong> 2,678K/năm (tiết kiệm 670K)<br/>
                 Chỉ cần bật nút "Thanh toán theo năm" ở trên để xem giá ưu đãi.
               </p>
             </details>
@@ -494,7 +493,7 @@ export default function PricingPage() {
             Sẵn Sàng Bắt Đầu?
           </h2>
           <p className="text-xl mb-8 opacity-90 max-w-2xl mx-auto">
-            Tham gia hàng trăm cửa hàng đang tiết kiệm thời gian và chi phí với diemdanh.net
+            Tham gia <strong>500+ Chủ Quán Đã Tin Dùng</strong> - tiết kiệm thời gian và chi phí với diemdanh.net
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center mb-6">
             <Link href="/auth/signup">

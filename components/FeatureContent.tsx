@@ -407,7 +407,7 @@ export default function FeatureContent() {
           Sẵn Sàng Thử Ngay?
         </h2>
         <p className="text-xl text-gray-600 mb-8 max-w-2xl mx-auto">
-          Tham gia hàng trăm cửa hàng đang sử dụng diemdanh.net để quản lý nhân sự hiệu quả hơn.
+          Tham gia <strong>500+ Chủ Quán Đã Tin Dùng</strong> - quản lý nhân sự hiệu quả hơn với diemdanh.net.
         </p>
         <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
           <Link href="/auth/signup">

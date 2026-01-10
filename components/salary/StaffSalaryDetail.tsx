@@ -1,8 +1,10 @@
 import { StaffSalaryCalculation, SalaryAdjustment } from '@/types';
 import { formatAmount } from '@/lib/salaryCalculations';
+import { shareSalaryPDF } from '@/lib/salaryPDF';
 
 interface StaffSalaryDetailProps {
   calculation: StaffSalaryCalculation;
+  storeName: string;
   onClose: () => void;
   onAddAdjustment: () => void;
   onEditAdjustment: (adjustment: SalaryAdjustment) => void;
@@ -13,6 +15,7 @@ interface StaffSalaryDetailProps {
 
 export default function StaffSalaryDetail({
   calculation,
+  storeName,
   onClose,
   onAddAdjustment,
   onEditAdjustment,
@@ -27,6 +30,10 @@ export default function StaffSalaryDetail({
     .map((n: string) => n[0])
     .join('')
     .toUpperCase() || '??';
+
+  const handleSharePDF = async () => {
+    await shareSalaryPDF(calculation, storeName);
+  };
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-end sm:items-center justify-center z-50">
@@ -57,17 +64,29 @@ export default function StaffSalaryDetail({
         <div className="bg-gradient-to-br from-blue-500 to-blue-600 text-white p-6">
           <div className="text-sm opacity-90 mb-1">Tổng lương</div>
           <div className="text-3xl font-bold mb-4">{formatAmount(calculation.final_amount)}đ</div>
-          <button
-            type="button"
-            onClick={onTogglePaymentStatus}
-            className={`w-full px-4 py-3 rounded-lg font-semibold transition-all ${
-              isPaid
-                ? 'bg-white bg-opacity-20 hover:bg-opacity-30'
-                : 'bg-white text-blue-600 hover:bg-opacity-90'
-            }`}
-          >
-            {isPaid ? '✓ Đã trả lương' : 'Đánh dấu đã trả'}
-          </button>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={handleSharePDF}
+              className="flex-1 bg-green-600 hover:bg-green-700 text-white px-4 py-3 rounded-lg font-semibold transition-all flex items-center justify-center gap-2"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+              </svg>
+              Chia sẻ PDF
+            </button>
+            <button
+              type="button"
+              onClick={onTogglePaymentStatus}
+              className={`flex-1 px-4 py-3 rounded-lg font-semibold transition-all ${
+                isPaid
+                  ? 'bg-white bg-opacity-20 hover:bg-opacity-30'
+                  : 'bg-white text-blue-600 hover:bg-opacity-90'
+              }`}
+            >
+              {isPaid ? '✓ Đã trả lương' : 'Đánh dấu đã trả'}
+            </button>
+          </div>
         </div>
 
         {/* Provisional Calculation */}
