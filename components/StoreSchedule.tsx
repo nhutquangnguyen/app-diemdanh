@@ -20,6 +20,7 @@ interface StoreScheduleProps {
   getStaffForShiftAndDate: (shiftId: string, date: Date) => ScheduleWithDetails[];
   openAssignModal: (shift: ShiftTemplate, date: Date) => void;
   handleRemoveStaffFromShift: (scheduleId: string, staffName: string) => void;
+  handleAssignShift?: (staffId: string, shiftId: string, date: string) => Promise<void>;
   handleTouchStart: (e: React.TouchEvent) => void;
   handleTouchMove: (e: React.TouchEvent) => void;
   handleTouchEnd: () => void;
@@ -42,6 +43,7 @@ export default function StoreSchedule({
   getStaffForShiftAndDate,
   openAssignModal,
   handleRemoveStaffFromShift,
+  handleAssignShift,
   handleTouchStart,
   handleTouchMove,
   handleTouchEnd,
@@ -50,43 +52,47 @@ export default function StoreSchedule({
   const today = formatDateSchedule(new Date());
   const weekDays = getWeekDays();
 
-  // Render view toggle component
+  // Render view toggle component (icon-based) - positioned in left side of week navigation
   const ViewToggle = () => (
-    <div className="bg-white rounded-lg shadow-lg p-4 mb-4">
-      <div className="flex items-center justify-between">
-        <div className="text-sm font-semibold text-gray-700">Chế độ xem:</div>
-        <div className="flex gap-2">
-          <button
-            onClick={() => setViewMode('staff-based')}
-            className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all ${
-              viewMode === 'staff-based'
-                ? 'bg-blue-600 text-white'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-            }`}
-          >
-            Theo Nhân Viên
-          </button>
-          <button
-            onClick={() => setViewMode('shift-based')}
-            className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all ${
-              viewMode === 'shift-based'
-                ? 'bg-blue-600 text-white'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-            }`}
-          >
-            Theo Ca Làm
-          </button>
-        </div>
-      </div>
+    <div className="flex gap-1 bg-gray-100 rounded-lg p-1">
+      <button
+        onClick={() => setViewMode('staff-based')}
+        className={`p-2 rounded-md transition-all ${
+          viewMode === 'staff-based'
+            ? 'bg-blue-600 text-white'
+            : 'text-gray-600 hover:bg-gray-200'
+        }`}
+        title="Theo Nhân Viên"
+      >
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+        </svg>
+      </button>
+      <button
+        onClick={() => setViewMode('shift-based')}
+        className={`p-2 rounded-md transition-all ${
+          viewMode === 'shift-based'
+            ? 'bg-blue-600 text-white'
+            : 'text-gray-600 hover:bg-gray-200'
+        }`}
+        title="Theo Ca Làm"
+      >
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+      </button>
     </div>
   );
 
   // Show staff-based grid view
   if (viewMode === 'staff-based') {
     return (
-      <div>
-        <div className="px-4 sm:px-6 pt-6">
-          <ViewToggle />
+      <div className="px-4 sm:px-6 py-6">
+        <div className="mb-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-base font-semibold text-gray-700">Chế độ xem:</h2>
+            <ViewToggle />
+          </div>
         </div>
 
         <StaffScheduleGrid
@@ -99,6 +105,9 @@ export default function StoreSchedule({
           getWeekDays={getWeekDays}
           formatDateSchedule={formatDateSchedule}
           openAssignModal={openAssignModal}
+          handleRemoveStaffFromShift={handleRemoveStaffFromShift}
+          handleAssignShift={handleAssignShift}
+          copyPreviousWeek={copyPreviousWeek}
         />
       </div>
     );
@@ -107,69 +116,61 @@ export default function StoreSchedule({
   // Original shift-based view
   return (
     <div className="px-4 sm:px-6 py-6">
-      <ViewToggle />
+      {/* View Toggle */}
+      <div className="mb-4">
+        <div className="flex items-center justify-between">
+          <h2 className="text-base font-semibold text-gray-700">Chế độ xem:</h2>
+          <ViewToggle />
+        </div>
+      </div>
 
-      {/* Header with Summary */}
+      {/* Header - Same as staff-based view */}
       <div className="bg-white rounded-lg shadow-lg p-4 sm:p-6 mb-6">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
-          <div>
-            <h1 className="text-xl sm:text-2xl font-bold text-gray-800 mb-1 sm:mb-2">Lịch Trình Làm Việc</h1>
-            <p className="text-sm sm:text-base text-gray-600">Xếp ca làm việc cho nhân viên</p>
-          </div>
+        <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
+          <h1 className="text-xl sm:text-2xl font-bold text-gray-800">Lịch Làm Việc</h1>
           <button
-            type="button"
-            onClick={copyPreviousWeek}
-            className="w-full sm:w-auto bg-green-600 hover:bg-green-700 text-white px-4 py-3 rounded-lg font-semibold transition-all text-sm"
+            onClick={goToToday}
+            className="text-sm text-blue-600 hover:text-blue-700 font-semibold px-4 py-2 rounded-lg hover:bg-blue-50 transition-all"
           >
-            Sao Chép Tuần Trước
+            Hôm nay
           </button>
         </div>
 
-        {/* Week Summary Stats */}
-        {schedules.length > 0 && (
-          <div className="grid grid-cols-3 gap-3 sm:gap-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-3 sm:p-4 mb-4">
-            <div className="text-center">
-              <div className="text-2xl sm:text-3xl font-bold text-blue-600">{weekSummary.totalShifts}</div>
-              <div className="text-xs sm:text-sm text-gray-600 mt-1">Ca làm việc</div>
-            </div>
-            <div className="text-center border-x border-gray-300">
-              <div className="text-2xl sm:text-3xl font-bold text-indigo-600">{weekSummary.staffCount}</div>
-              <div className="text-xs sm:text-sm text-gray-600 mt-1">Nhân viên</div>
-            </div>
-            <div className="text-center">
-              <div className="text-2xl sm:text-3xl font-bold text-purple-600">{weekSummary.totalHours}h</div>
-              <div className="text-xs sm:text-sm text-gray-600 mt-1">Tổng giờ</div>
-            </div>
-          </div>
-        )}
-
         {/* Week Navigation */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 bg-gray-50 rounded-lg p-3 sm:p-4">
+        <div className="flex items-center justify-between gap-4">
           <button
-            type="button"
             onClick={() => navigateWeek('prev')}
-            className="w-full sm:w-auto bg-white hover:bg-gray-100 text-gray-700 px-4 py-3 rounded-lg font-semibold transition-all shadow text-sm"
+            className="p-2 hover:bg-gray-100 rounded-lg transition-all"
           >
-            ← Tuần Trước
+            <svg className="w-6 h-6 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            </svg>
           </button>
-          <div className="text-center order-first sm:order-none">
-            <div className="text-base sm:text-lg font-bold text-gray-800">
-              {formatDateSchedule(weekDays[0])} - {formatDateSchedule(weekDays[6])}
+          <div className="text-center">
+            <div className="text-sm font-semibold text-gray-700 mb-2">
+              {(() => {
+                const formatDayMonth = (date: Date) => {
+                  const day = date.getDate().toString().padStart(2, '0');
+                  const month = (date.getMonth() + 1).toString().padStart(2, '0');
+                  return `${day}/${month}`;
+                };
+                return `${formatDayMonth(weekDays[0])} - ${formatDayMonth(weekDays[6])}`;
+              })()}
             </div>
             <button
-              type="button"
-              onClick={goToToday}
-              className="text-sm text-blue-600 hover:text-blue-700 font-semibold mt-1"
+              onClick={copyPreviousWeek}
+              className="bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded-md text-xs font-medium transition-all shadow-sm hover:shadow-md"
             >
-              Hôm nay
+              Sao Chép Tuần Trước
             </button>
           </div>
           <button
-            type="button"
             onClick={() => navigateWeek('next')}
-            className="w-full sm:w-auto bg-white hover:bg-gray-100 text-gray-700 px-4 py-3 rounded-lg font-semibold transition-all shadow text-sm"
+            className="p-2 hover:bg-gray-100 rounded-lg transition-all"
           >
-            Tuần Sau →
+            <svg className="w-6 h-6 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+            </svg>
           </button>
         </div>
       </div>

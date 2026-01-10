@@ -11,6 +11,9 @@ interface StaffScheduleGridProps {
   getWeekDays: () => Date[];
   formatDateSchedule: (date: Date) => string;
   openAssignModal: (shift: ShiftTemplate, date: Date) => void;
+  handleRemoveStaffFromShift?: (scheduleId: string, staffName: string) => void;
+  handleAssignShift?: (staffId: string, shiftId: string, date: string) => Promise<void>;
+  copyPreviousWeek: () => void;
 }
 
 export default function StaffScheduleGrid({
@@ -23,25 +26,22 @@ export default function StaffScheduleGrid({
   getWeekDays,
   formatDateSchedule,
   openAssignModal,
+  handleRemoveStaffFromShift,
+  handleAssignShift,
+  copyPreviousWeek,
 }: StaffScheduleGridProps) {
   const [selectedCell, setSelectedCell] = useState<{ staffId: string; date: string } | null>(null);
 
   const today = formatDateSchedule(new Date());
   const weekDays = getWeekDays();
 
-  // Get color for a cell based on shift type
-  const getShiftColor = (staffId: string, date: Date): string | null => {
-    const dateStr = formatDateSchedule(date);
-    const staffSchedules = schedules.filter(
-      s => s.staff_id === staffId && s.scheduled_date === dateStr
-    );
-
-    if (staffSchedules.length === 0) return null;
-
-    // Get the first shift's color
-    const firstSchedule = staffSchedules[0];
-    return firstSchedule.shift_template?.color || '#3B82F6';
+  // Format week range as dd/mm - dd/mm
+  const formatDayMonth = (date: Date) => {
+    const day = date.getDate().toString().padStart(2, '0');
+    const month = (date.getMonth() + 1).toString().padStart(2, '0');
+    return `${day}/${month}`;
   };
+  const weekRangeStr = `${formatDayMonth(weekDays[0])} - ${formatDayMonth(weekDays[6])}`;
 
   // Get all shifts for a staff member on a specific date
   const getStaffShiftsForDate = (staffId: string, date: Date): ScheduleWithDetails[] => {
@@ -51,32 +51,17 @@ export default function StaffScheduleGrid({
     );
   };
 
-  // Check if there's a scheduling conflict (multiple shifts)
-  const hasConflict = (staffId: string, date: Date): boolean => {
-    return getStaffShiftsForDate(staffId, date).length > 1;
-  };
-
-  // Handle cell click
+  // Handle cell click - always show the selection modal
   const handleCellClick = (staffId: string, date: Date) => {
     const dateStr = formatDateSchedule(date);
-    const staffShifts = getStaffShiftsForDate(staffId, date);
-
-    if (staffShifts.length === 0) {
-      // No shift - open modal to assign one (default to first shift)
-      if (shifts.length > 0) {
-        openAssignModal(shifts[0], date);
-      }
-    } else {
-      // Has shift - show details
-      setSelectedCell({ staffId, date: dateStr });
-    }
+    setSelectedCell({ staffId, date: dateStr });
   };
 
   return (
-    <div className="px-4 sm:px-6 py-6">
+    <div>
       {/* Header */}
       <div className="bg-white rounded-lg shadow-lg p-4 sm:p-6 mb-6">
-        <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
           <h1 className="text-xl sm:text-2xl font-bold text-gray-800">Lịch Làm Việc</h1>
           <button
             onClick={goToToday}
@@ -97,7 +82,13 @@ export default function StaffScheduleGrid({
             </svg>
           </button>
           <div className="text-center">
-            <div className="text-sm text-gray-600">Tháng {weekDays[0].getMonth() + 1}/{weekDays[0].getFullYear()}</div>
+            <div className="text-sm font-semibold text-gray-700 mb-2">{weekRangeStr}</div>
+            <button
+              onClick={copyPreviousWeek}
+              className="bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded-md text-xs font-medium transition-all shadow-sm hover:shadow-md"
+            >
+              Sao Chép Tuần Trước
+            </button>
           </div>
           <button
             onClick={() => navigateWeek('next')}
@@ -109,53 +100,33 @@ export default function StaffScheduleGrid({
           </button>
         </div>
 
-        {/* Legend */}
-        <div className="mt-4 p-3 bg-gray-50 rounded-lg">
-          <div className="text-xs font-semibold text-gray-700 mb-2">Chú thích:</div>
-          <div className="flex flex-wrap gap-3 text-xs">
-            {shifts.map(shift => (
-              <div key={shift.id} className="flex items-center gap-2">
-                <div
-                  className="w-4 h-4 rounded"
-                  style={{ backgroundColor: shift.color }}
-                />
-                <span className="text-gray-700">{shift.name}</span>
-              </div>
-            ))}
-            <div className="flex items-center gap-2">
-              <div className="w-4 h-4 rounded bg-orange-500" />
-              <span className="text-gray-700">Ca tối</span>
-            </div>
-          </div>
-        </div>
       </div>
 
       {/* Schedule Grid */}
       <div className="bg-white rounded-lg shadow-lg overflow-hidden">
-        {/* Desktop View */}
-        <div className="hidden md:block overflow-x-auto">
+        {/* Desktop/Tablet View */}
+        <div className="hidden sm:block overflow-x-auto">
           <table className="w-full border-collapse">
             <thead>
-              <tr className="bg-gray-100 border-b border-gray-300">
-                <th className="text-left p-3 text-gray-700 font-bold text-sm border-r border-gray-300 sticky left-0 bg-gray-100 z-10 w-48">
-                  <div>TUẦN 1</div>
+              <tr className="border-b border-gray-200">
+                <th className="text-left p-3 text-gray-700 font-bold text-sm border-r border-gray-200 sticky left-0 bg-white z-10 w-32">
                 </th>
                 {weekDays.map((day) => {
                   const isToday = formatDateSchedule(day) === today;
-                  const dayNames = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
-                  const monthStr = `Tháng ${day.getMonth() + 1}`;
+                  const dayNames = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
 
                   return (
                     <th
                       key={day.toISOString()}
-                      className={`p-3 font-bold text-sm border-r border-gray-300 last:border-r-0 ${
-                        isToday ? 'bg-blue-100 text-blue-700' : 'text-gray-700'
-                      }`}
+                      className="p-2 text-center border-r border-gray-200 last:border-r-0 w-16"
                     >
-                      <div className="text-center">
-                        <div className="text-xs opacity-75">{monthStr}</div>
-                        <div className="text-lg">{dayNames[day.getDay()]}</div>
-                        <div className="text-base">{day.getDate()}</div>
+                      <div className={`${isToday ? 'text-blue-600' : 'text-gray-600'}`}>
+                        <div className="text-xs font-semibold">{dayNames[day.getDay() === 0 ? 6 : day.getDay() - 1]}</div>
+                        <div className={`text-lg font-bold mt-0.5 ${
+                          isToday ? 'bg-blue-600 text-white w-7 h-7 rounded-full flex items-center justify-center mx-auto' : ''
+                        }`}>
+                          {day.getDate()}
+                        </div>
                       </div>
                     </th>
                   );
@@ -166,50 +137,46 @@ export default function StaffScheduleGrid({
               {staff.map((staffMember, index) => (
                 <tr
                   key={staffMember.id}
-                  className={`border-b border-gray-200 ${
-                    index % 2 === 0 ? 'bg-white' : 'bg-gray-50'
-                  }`}
+                  className="border-b border-gray-200 last:border-b-0 hover:bg-gray-50"
                 >
                   {/* Staff Name Column */}
-                  <td className="p-3 border-r border-gray-300 sticky left-0 bg-inherit z-10">
-                    <div>
-                      <div className="font-bold text-gray-800 text-sm">
-                        {staffMember.name || staffMember.full_name}
-                      </div>
-                      <div className="text-xs text-gray-500">{staffMember.email}</div>
+                  <td className="p-3 border-r border-gray-200 sticky left-0 bg-white z-10">
+                    <div
+                      className="font-semibold text-gray-800 text-sm cursor-pointer hover:text-blue-600"
+                      title={staffMember.name || staffMember.full_name}
+                    >
+                      {(() => {
+                        const name = staffMember.name || staffMember.full_name;
+                        return name.length > 7 ? `${name.substring(0, 6)}...` : name;
+                      })()}
                     </div>
                   </td>
                   {/* Day Cells */}
                   {weekDays.map((day) => {
                     const dateStr = formatDateSchedule(day);
                     const isToday = dateStr === today;
-                    const shiftColor = getShiftColor(staffMember.id, day);
-                    const hasMultipleShifts = hasConflict(staffMember.id, day);
                     const staffShifts = getStaffShiftsForDate(staffMember.id, day);
 
                     return (
                       <td
                         key={day.toISOString()}
-                        className={`p-2 border-r border-gray-300 last:border-r-0 cursor-pointer hover:bg-blue-50 transition-all relative ${
+                        className={`p-2 border-r border-gray-200 last:border-r-0 cursor-pointer hover:bg-blue-50 transition-all align-top ${
                           isToday ? 'bg-blue-50' : ''
                         }`}
                         onClick={() => handleCellClick(staffMember.id, day)}
                       >
-                        <div className="h-16 flex items-center justify-center relative">
-                          {shiftColor ? (
-                            <div className="relative w-full h-full flex items-center justify-center">
-                              <div
-                                className="w-10 h-10 rounded"
-                                style={{ backgroundColor: shiftColor }}
-                              />
-                              {hasMultipleShifts && (
-                                <div className="absolute top-0 right-0 bg-yellow-500 text-white text-xs font-bold w-5 h-5 rounded-full flex items-center justify-center">
-                                  ⚠
-                                </div>
-                              )}
-                            </div>
+                        <div className="min-h-[50px] flex flex-col gap-1.5 items-center justify-start py-1.5">
+                          {staffShifts.length === 0 ? (
+                            <div className="text-gray-300 text-sm">--</div>
                           ) : (
-                            <div className="text-gray-400 text-xl">--</div>
+                            staffShifts.map((schedule) => (
+                              <div
+                                key={schedule.id}
+                                className="w-11 h-5 rounded-md"
+                                style={{ backgroundColor: schedule.shift_template?.color || '#3B82F6' }}
+                                title={schedule.shift_template?.name}
+                              />
+                            ))
                           )}
                         </div>
                       </td>
@@ -222,65 +189,126 @@ export default function StaffScheduleGrid({
         </div>
 
         {/* Mobile View */}
-        <div className="md:hidden">
-          {staff.map((staffMember) => (
-            <div key={staffMember.id} className="border-b border-gray-200 last:border-b-0">
-              {/* Staff Header */}
-              <div className="bg-gray-100 px-4 py-3 font-bold text-gray-800">
-                {staffMember.name || staffMember.full_name}
-              </div>
-
-              {/* Week Grid for this staff */}
-              <div className="grid grid-cols-7 gap-1 p-2">
+        <div className="sm:hidden overflow-x-auto">
+          <div className="min-w-max">
+            {/* Week Header */}
+            <div className="border-b border-gray-200 bg-white sticky top-0 z-10">
+              <div className="flex pt-2">
+                <div className="w-14 flex-shrink-0"></div>
                 {weekDays.map((day) => {
-                  const dateStr = formatDateSchedule(day);
-                  const isToday = dateStr === today;
-                  const shiftColor = getShiftColor(staffMember.id, day);
-                  const hasMultipleShifts = hasConflict(staffMember.id, day);
-                  const dayNames = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
-
+                  const isToday = formatDateSchedule(day) === today;
+                  const dayNames = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
                   return (
-                    <div key={day.toISOString()} className="text-center">
-                      <div className={`text-xs font-semibold mb-1 ${
-                        isToday ? 'text-blue-600' : 'text-gray-600'
-                      }`}>
-                        {dayNames[day.getDay()]}
+                    <div key={day.toISOString()} className="w-9 flex-shrink-0 p-0.5 text-center">
+                      <div className={`text-[8px] font-semibold ${isToday ? 'text-blue-600' : 'text-gray-600'}`}>
+                        {dayNames[day.getDay() === 0 ? 6 : day.getDay() - 1]}
                       </div>
-                      <div className={`text-xs mb-1 ${
-                        isToday ? 'text-blue-600 font-bold' : 'text-gray-500'
+                      <div className={`text-[11px] font-bold mt-0.5 ${
+                        isToday ? 'bg-blue-600 text-white w-4 h-4 rounded-full flex items-center justify-center mx-auto text-[8px]' : ''
                       }`}>
                         {day.getDate()}
-                      </div>
-                      <div
-                        className={`h-12 flex items-center justify-center rounded cursor-pointer hover:opacity-80 transition-all ${
-                          isToday ? 'ring-2 ring-blue-400' : ''
-                        }`}
-                        style={{
-                          backgroundColor: shiftColor || '#f3f4f6',
-                        }}
-                        onClick={() => handleCellClick(staffMember.id, day)}
-                      >
-                        {!shiftColor && (
-                          <span className="text-gray-400 text-xs">--</span>
-                        )}
-                        {hasMultipleShifts && (
-                          <span className="text-xs">⚠</span>
-                        )}
                       </div>
                     </div>
                   );
                 })}
               </div>
             </div>
+
+            {/* Staff Rows */}
+            {staff.map((staffMember) => (
+              <div key={staffMember.id} className="border-b border-gray-200 last:border-b-0">
+                <div className="flex">
+                  {/* Staff Name */}
+                  <div className="w-14 flex-shrink-0 p-1.5 border-r border-gray-200 flex items-center">
+                    <div
+                      className="font-semibold text-[10px] text-gray-800 break-words leading-tight cursor-pointer hover:text-blue-600"
+                      title={staffMember.name || staffMember.full_name}
+                    >
+                      {(() => {
+                        const name = staffMember.name || staffMember.full_name;
+                        return name.length > 7 ? `${name.substring(0, 6)}...` : name;
+                      })()}
+                    </div>
+                  </div>
+
+                  {/* Day Cells */}
+                  {weekDays.map((day) => {
+                    const dateStr = formatDateSchedule(day);
+                    const isToday = dateStr === today;
+                    const staffShifts = getStaffShiftsForDate(staffMember.id, day);
+
+                    return (
+                      <div
+                        key={day.toISOString()}
+                        className={`w-9 flex-shrink-0 p-0.5 border-r border-gray-200 last:border-r-0 cursor-pointer ${
+                          isToday ? 'bg-blue-50' : ''
+                        }`}
+                        onClick={() => handleCellClick(staffMember.id, day)}
+                      >
+                        <div className="min-h-[32px] flex flex-col gap-0.5 items-center justify-center py-0.5">
+                          {staffShifts.length === 0 ? (
+                            <div className="text-gray-300 text-[8px]">--</div>
+                          ) : (
+                            staffShifts.map((schedule) => (
+                              <div
+                                key={schedule.id}
+                                className="w-7 h-2.5 rounded"
+                                style={{ backgroundColor: schedule.shift_template?.color || '#3B82F6' }}
+                              />
+                            ))
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Legend */}
+      <div className="mt-4 p-3 bg-gray-50 rounded-lg">
+        <div className="text-xs font-semibold text-gray-700 mb-2">Chú thích:</div>
+        <div className="flex flex-wrap gap-3 text-xs">
+          {shifts.map(shift => (
+            <div key={shift.id} className="flex items-center gap-2">
+              <div
+                className="w-4 h-4 rounded"
+                style={{ backgroundColor: shift.color }}
+              />
+              <span className="text-gray-700">{shift.name}</span>
+            </div>
           ))}
         </div>
       </div>
 
-      {/* Cell Details Modal */}
+      {/* Shift Selection Modal */}
       {selectedCell && (() => {
         const staffMember = staff.find(s => s.id === selectedCell.staffId);
         const date = weekDays.find(d => formatDateSchedule(d) === selectedCell.date);
         const staffShifts = date ? getStaffShiftsForDate(selectedCell.staffId, date) : [];
+        const selectedShiftIds = staffShifts.map(s => s.shift_template_id);
+
+        const handleShiftToggle = async (shiftId: string) => {
+          if (!date || !staffMember) return;
+
+          const isSelected = selectedShiftIds.includes(shiftId);
+
+          if (isSelected) {
+            // Remove this shift
+            const scheduleToRemove = staffShifts.find(s => s.shift_template_id === shiftId);
+            if (scheduleToRemove && handleRemoveStaffFromShift) {
+              handleRemoveStaffFromShift(scheduleToRemove.id, staffMember.name || staffMember.full_name);
+            }
+          } else {
+            // Add this shift directly
+            if (handleAssignShift) {
+              await handleAssignShift(staffMember.id, shiftId, selectedCell.date);
+            }
+          }
+        };
 
         return staffMember && date && (
           <div
@@ -292,7 +320,7 @@ export default function StaffScheduleGrid({
               onClick={(e) => e.stopPropagation()}
             >
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-bold text-gray-800">Chi Tiết Lịch</h3>
+                <h3 className="text-lg font-bold text-gray-800">Chọn Ca Làm Việc</h3>
                 <button
                   onClick={() => setSelectedCell(null)}
                   className="text-gray-400 hover:text-gray-600"
@@ -303,7 +331,7 @@ export default function StaffScheduleGrid({
                 </button>
               </div>
 
-              <div className="space-y-3">
+              <div className="space-y-3 mb-4">
                 <div>
                   <div className="text-sm text-gray-600">Nhân viên</div>
                   <div className="font-semibold text-gray-800">{staffMember.name || staffMember.full_name}</div>
@@ -312,47 +340,47 @@ export default function StaffScheduleGrid({
                   <div className="text-sm text-gray-600">Ngày</div>
                   <div className="font-semibold text-gray-800">{selectedCell.date}</div>
                 </div>
-                <div>
-                  <div className="text-sm text-gray-600 mb-2">Ca làm việc</div>
-                  {staffShifts.length === 0 ? (
-                    <div className="text-gray-500 text-sm italic">Chưa được xếp ca</div>
-                  ) : (
-                    <div className="space-y-2">
-                      {staffShifts.map((schedule) => (
-                        <div
-                          key={schedule.id}
-                          className="flex items-center gap-3 p-3 rounded-lg border-2"
-                          style={{ borderColor: schedule.shift_template?.color }}
-                        >
-                          <div
-                            className="w-4 h-4 rounded"
-                            style={{ backgroundColor: schedule.shift_template?.color }}
-                          />
-                          <div className="flex-1">
-                            <div className="font-semibold text-gray-800">
-                              {schedule.shift_template?.name}
-                            </div>
-                            <div className="text-sm text-gray-600">
-                              {schedule.shift_template?.start_time.substring(0, 5)} - {schedule.shift_template?.end_time.substring(0, 5)}
-                            </div>
-                          </div>
+              </div>
+
+              <div className="space-y-2">
+                <div className="text-sm font-semibold text-gray-700 mb-3">Chọn ca:</div>
+                {shifts.map((shift) => {
+                  const isSelected = selectedShiftIds.includes(shift.id);
+                  return (
+                    <label
+                      key={shift.id}
+                      className={`flex items-center gap-3 p-3 rounded-lg border-2 cursor-pointer transition-all hover:bg-gray-50 ${
+                        isSelected ? 'border-blue-500 bg-blue-50' : 'border-gray-200'
+                      }`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={isSelected}
+                        onChange={() => handleShiftToggle(shift.id)}
+                        className="w-5 h-5 text-blue-600 rounded"
+                      />
+                      <div
+                        className="w-4 h-4 rounded flex-shrink-0"
+                        style={{ backgroundColor: shift.color }}
+                      />
+                      <div className="flex-1">
+                        <div className="font-semibold text-gray-800 text-sm">
+                          {shift.name}
                         </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
+                        <div className="text-xs text-gray-600">
+                          {shift.start_time.substring(0, 5)} - {shift.end_time.substring(0, 5)}
+                        </div>
+                      </div>
+                    </label>
+                  );
+                })}
               </div>
 
               <button
-                onClick={() => {
-                  setSelectedCell(null);
-                  if (shifts.length > 0) {
-                    openAssignModal(shifts[0], date);
-                  }
-                }}
-                className="w-full mt-6 bg-blue-600 hover:bg-blue-700 text-white px-4 py-3 rounded-lg font-semibold transition-all"
+                onClick={() => setSelectedCell(null)}
+                className="w-full mt-6 bg-gray-200 hover:bg-gray-300 text-gray-700 px-4 py-3 rounded-lg font-semibold transition-all"
               >
-                Chỉnh Sửa Lịch
+                Đóng
               </button>
             </div>
           </div>
