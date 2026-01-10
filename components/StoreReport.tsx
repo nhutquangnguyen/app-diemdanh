@@ -540,17 +540,17 @@ export default function StoreReport({ storeId }: StoreReportProps) {
               </div>
             </div>
           )}
-          <div className="px-6 py-4 border-b border-gray-200">
-            <div className="flex items-center justify-between mb-4">
+          <div className="px-4 sm:px-6 py-4 border-b border-gray-200">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
               <h2 className="text-lg font-semibold text-gray-800">Chi Tiết Chuyên Cần</h2>
               <button
                 onClick={exportToCSV}
-                className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-semibold flex items-center gap-2 transition-all"
+                className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-semibold flex items-center justify-center gap-2 transition-all"
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                 </svg>
-                Xuất Excel
+                <span>Xuất Excel</span>
               </button>
             </div>
 
@@ -591,7 +591,8 @@ export default function StoreReport({ storeId }: StoreReportProps) {
             </div>
           </div>
 
-          <div className="overflow-x-auto">
+          {/* Desktop Table View */}
+          <div className="hidden md:block overflow-x-auto">
             <table className="w-full">
               <thead className="bg-gray-50 border-b border-gray-200">
                 <tr>
@@ -802,6 +803,95 @@ export default function StoreReport({ storeId }: StoreReportProps) {
                 )}
               </tbody>
             </table>
+          </div>
+
+          {/* Mobile Card View */}
+          <div className="md:hidden px-4 py-4 space-y-3">
+            {filteredAndSortedData.length === 0 ? (
+              <div className="text-center text-gray-500 py-8">
+                {searchTerm ? 'Không tìm thấy kết quả phù hợp' : 'Không có dữ liệu trong kỳ báo cáo này'}
+              </div>
+            ) : (
+              filteredAndSortedData.map((report) => {
+                const initials = report.staff.full_name
+                  ?.split(' ')
+                  .slice(-2)
+                  .map((n: string) => n[0])
+                  .join('')
+                  .toUpperCase() || '??';
+
+                const attendanceColor =
+                  report.attendanceRate >= 95 ? 'text-green-600 bg-green-100' :
+                  report.attendanceRate >= 85 ? 'text-yellow-600 bg-yellow-100' :
+                  'text-red-600 bg-red-100';
+
+                return (
+                  <div key={report.staff.id} className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
+                    {/* Header */}
+                    <div className="flex items-center gap-3 mb-4 pb-3 border-b border-gray-100">
+                      <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-purple-600 rounded-full flex items-center justify-center text-white font-bold flex-shrink-0">
+                        {initials}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="font-semibold text-gray-800 truncate">{report.staff.full_name}</div>
+                        <div className="text-xs text-gray-500 truncate">{report.staff.email}</div>
+                      </div>
+                      <span className={`inline-block px-2.5 py-1 rounded-full text-xs font-bold flex-shrink-0 ${attendanceColor}`}>
+                        {report.attendanceRate.toFixed(1)}%
+                      </span>
+                    </div>
+
+                    {/* Stats Grid */}
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="bg-gray-50 rounded-lg p-3">
+                        <div className="text-xs text-gray-600 mb-1">Ca xếp</div>
+                        <div className="text-lg font-bold text-gray-800">{report.scheduledShifts}</div>
+                      </div>
+                      <div className="bg-green-50 rounded-lg p-3">
+                        <div className="text-xs text-gray-600 mb-1">Ca làm</div>
+                        <div className="text-lg font-bold text-green-600">{report.shiftsAttended}</div>
+                      </div>
+                      <div className="bg-red-50 rounded-lg p-3">
+                        <div className="text-xs text-gray-600 mb-1">Ca vắng</div>
+                        <div className="text-lg font-bold text-red-600">{report.shiftsMissed}</div>
+                      </div>
+                      <div className="bg-orange-50 rounded-lg p-3">
+                        <div className="text-xs text-gray-600 mb-1">Ca trễ</div>
+                        <div className="text-lg font-bold text-orange-600">{report.shiftsLate}</div>
+                      </div>
+                      <div className="bg-blue-50 rounded-lg p-3">
+                        <div className="text-xs text-gray-600 mb-1">Ca đúng giờ</div>
+                        <div className="text-lg font-bold text-blue-600">{report.shiftsOnTime}</div>
+                      </div>
+                      <div className="bg-gray-50 rounded-lg p-3">
+                        <div className="text-xs text-gray-600 mb-1">Phút trễ</div>
+                        <div className="text-lg font-bold text-gray-800">{report.lateMinutes}</div>
+                      </div>
+                    </div>
+
+                    {/* Summary */}
+                    <div className="mt-4 pt-3 border-t border-gray-100 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-gray-600">Tổng giờ:</span>
+                        <span className="text-base font-bold text-gray-800">{report.totalHours}h</span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-gray-600">Lương/giờ:</span>
+                        <span className="text-base font-semibold text-green-600">
+                          {new Intl.NumberFormat('vi-VN').format(report.staff.hour_rate || 0)}đ
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between pt-2 border-t border-gray-100">
+                        <span className="text-sm font-semibold text-gray-700">Tổng lương:</span>
+                        <span className="text-lg font-bold text-green-600">
+                          {new Intl.NumberFormat('vi-VN').format(report.totalSalary)}đ
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })
+            )}
           </div>
         </div>
 
