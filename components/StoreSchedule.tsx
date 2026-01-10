@@ -225,17 +225,17 @@ export default function StoreSchedule({
                                       <div className="flex items-center justify-between gap-1">
                                         <div className="flex items-center gap-1.5 flex-1 min-w-0">
                                           <div className="w-5 h-5 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center text-white text-[10px] font-bold flex-shrink-0">
-                                            {staffMember.full_name?.split(' ').slice(-2).map(n => n[0]).join('').toUpperCase() || '??'}
+                                            {(staffMember.name || staffMember.full_name)?.split(' ').slice(-2).map(n => n[0]).join('').toUpperCase() || '??'}
                                           </div>
                                           <span className="text-xs font-semibold text-gray-800 truncate">
-                                            {staffMember.full_name}
+                                            {staffMember.name || staffMember.full_name}
                                           </span>
                                         </div>
                                         <button
                                           type="button"
                                           onClick={(e) => {
                                             e.stopPropagation();
-                                            handleRemoveStaffFromShift(schedule.id, staffMember.full_name || '');
+                                            handleRemoveStaffFromShift(schedule.id, staffMember.name || staffMember.full_name || '');
                                           }}
                                           disabled={isRemoving === schedule.id}
                                           className="opacity-0 group-hover/badge:opacity-100 transition-opacity hover:bg-red-100 rounded p-0.5 disabled:opacity-50 flex-shrink-0"
@@ -323,15 +323,15 @@ export default function StoreSchedule({
                                 >
                                   <div className="flex items-center gap-2">
                                     <div className="w-6 h-6 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center text-white text-xs font-bold">
-                                      {staffMember.full_name?.split(' ').slice(-2).map(n => n[0]).join('').toUpperCase() || '??'}
+                                      {(staffMember.name || staffMember.full_name)?.split(' ').slice(-2).map(n => n[0]).join('').toUpperCase() || '??'}
                                     </div>
                                     <span className="text-sm font-semibold text-gray-800">
-                                      {staffMember.full_name}
+                                      {staffMember.name || staffMember.full_name}
                                     </span>
                                   </div>
                                   <button
                                     type="button"
-                                    onClick={() => handleRemoveStaffFromShift(schedule.id, staffMember.full_name || '')}
+                                    onClick={() => handleRemoveStaffFromShift(schedule.id, staffMember.name || staffMember.full_name || '')}
                                     disabled={isRemoving === schedule.id}
                                     className="hover:bg-red-100 rounded p-1 disabled:opacity-50"
                                   >

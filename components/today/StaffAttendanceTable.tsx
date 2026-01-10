@@ -107,7 +107,7 @@ export default function StaffAttendanceTable({
               >
                 {/* Header with staff info and status */}
                 <div className="p-4 border-b border-gray-100">
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-start gap-3">
                     <div className={`w-12 h-12 rounded-full flex items-center justify-center text-white font-bold text-sm flex-shrink-0 ${
                       isWorking ? 'bg-gradient-to-br from-green-500 to-green-600' :
                       isLate ? 'bg-gradient-to-br from-yellow-500 to-yellow-600' :
@@ -116,7 +116,7 @@ export default function StaffAttendanceTable({
                       {initials}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
+                      <div className="flex items-center gap-2 flex-wrap mb-1">
                         <span className="font-semibold text-gray-800">{s.full_name}</span>
                         {hasMultipleShifts && (
                           <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-purple-100 text-purple-700">
@@ -132,22 +132,24 @@ export default function StaffAttendanceTable({
                           </span>
                         )}
                       </div>
-                      <div className="text-xs text-gray-500 break-all">{s.email}</div>
+                      <div className="text-xs text-gray-500 break-all mb-2">{s.email}</div>
+                      <div>
+                        {hasCheckedOut ? (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-700">
+                            ✓ Đã về
+                          </span>
+                        ) : isWorking ? (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-700">
+                            <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                            Đang làm
+                          </span>
+                        ) : isLate ? (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-yellow-100 text-yellow-700">
+                            ⚠ Muộn
+                          </span>
+                        ) : null}
+                      </div>
                     </div>
-                    {hasCheckedOut ? (
-                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-700">
-                        ✓ Đã về
-                      </span>
-                    ) : isWorking ? (
-                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-700">
-                        <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                        Đang làm
-                      </span>
-                    ) : isLate ? (
-                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-yellow-100 text-yellow-700">
-                        ⚠ Muộn
-                      </span>
-                    ) : null}
                   </div>
                 </div>
 
@@ -178,14 +180,30 @@ export default function StaffAttendanceTable({
                   </div>
 
                   {/* Selfie if available */}
-                  {latestCheckIn.selfie_url && (
+                  {(latestCheckIn.selfie_url || latestCheckIn.checkout_selfie_url) && (
                     <div className="mt-4 pt-4 border-t border-gray-100">
-                      <div className="text-xs text-gray-500 mb-2">Ảnh vào</div>
-                      <img
-                        src={latestCheckIn.selfie_url}
-                        alt="Check-in selfie"
-                        className="w-24 h-24 rounded-lg object-cover border border-gray-200"
-                      />
+                      <div className="flex gap-4">
+                        {latestCheckIn.selfie_url && (
+                          <div>
+                            <div className="text-xs text-gray-500 mb-2">Ảnh vào</div>
+                            <img
+                              src={latestCheckIn.selfie_url}
+                              alt="Check-in selfie"
+                              className="w-24 h-24 rounded-lg object-cover border border-gray-200"
+                            />
+                          </div>
+                        )}
+                        {latestCheckIn.checkout_selfie_url && (
+                          <div>
+                            <div className="text-xs text-gray-500 mb-2">Ảnh ra</div>
+                            <img
+                              src={latestCheckIn.checkout_selfie_url}
+                              alt="Check-out selfie"
+                              className="w-24 h-24 rounded-lg object-cover border border-gray-200"
+                            />
+                          </div>
+                        )}
+                      </div>
                     </div>
                   )}
                 </div>
@@ -238,14 +256,30 @@ export default function StaffAttendanceTable({
                           </div>
                         </div>
 
-                        {checkIn.selfie_url && (
+                        {(checkIn.selfie_url || checkIn.checkout_selfie_url) && (
                           <div className="mt-3 pt-3 border-t border-gray-200">
-                            <div className="text-xs text-gray-500 mb-2">Ảnh vào</div>
-                            <img
-                              src={checkIn.selfie_url}
-                              alt="Check-in selfie"
-                              className="w-20 h-20 rounded-lg object-cover border border-gray-200"
-                            />
+                            <div className="flex gap-3">
+                              {checkIn.selfie_url && (
+                                <div>
+                                  <div className="text-xs text-gray-500 mb-2">Ảnh vào</div>
+                                  <img
+                                    src={checkIn.selfie_url}
+                                    alt="Check-in selfie"
+                                    className="w-20 h-20 rounded-lg object-cover border border-gray-200"
+                                  />
+                                </div>
+                              )}
+                              {checkIn.checkout_selfie_url && (
+                                <div>
+                                  <div className="text-xs text-gray-500 mb-2">Ảnh ra</div>
+                                  <img
+                                    src={checkIn.checkout_selfie_url}
+                                    alt="Check-out selfie"
+                                    className="w-20 h-20 rounded-lg object-cover border border-gray-200"
+                                  />
+                                </div>
+                              )}
+                            </div>
                           </div>
                         )}
                       </div>

@@ -11,17 +11,23 @@ import {
   ShiftTemplate,
   ScheduleWithDetails,
   StaffFilter,
-  WeekSummary
+  WeekSummary,
+  SalaryAdjustment,
+  SalaryConfirmation,
+  StaffSalaryCalculation
 } from '@/types';
 import QRCode from 'react-qr-code';
 import Header from '@/components/Header';
 import { useToast } from '@/components/Toast';
-import StoreReport from '@/components/StoreReport';
 import StoreSchedule from '@/components/StoreSchedule';
 import StoreShifts from '@/components/StoreShifts';
 import StoreSettings from '@/components/StoreSettings';
 import StoreToday from '@/components/StoreToday';
 import StoreStaff from '@/components/StoreStaff';
+import StoreSalary from '@/components/StoreSalary';
+import StaffSalaryDetail from '@/components/salary/StaffSalaryDetail';
+import AdjustmentForm from '@/components/salary/AdjustmentForm';
+import { calculateStaffMonthlySalary, getCurrentMonth } from '@/lib/salaryCalculations';
 
 export default function StoreDetail() {
   const params = useParams();
@@ -34,14 +40,9 @@ export default function StoreDetail() {
   const [loading, setLoading] = useState(true);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [settingsLoading, setSettingsLoading] = useState(false);
-  const [confirmDialog, setConfirmDialog] = useState<{
-    show: boolean;
-    message: string;
-    onConfirm: () => void;
-  }>({ show: false, message: '', onConfirm: () => {} });
 
   // Tab navigation state
-  const [activeTab, setActiveTab] = useState<'today' | 'overview' | 'shifts' | 'staff' | 'settings' | 'schedule' | 'report'>('today');
+  const [activeTab, setActiveTab] = useState<'today' | 'overview' | 'shifts' | 'staff' | 'settings' | 'schedule' | 'report' | 'salary'>('today');
   const [showMoreMenu, setShowMoreMenu] = useState(false);
 
   // Filter state for staff overview
@@ -49,9 +50,10 @@ export default function StoreDetail() {
   const [staffSearch, setStaffSearch] = useState('');
   const [expandedStaff, setExpandedStaff] = useState<Set<string>>(new Set());
 
-  // Edit staff hour rate state
+  // Edit staff info state
   const [editingStaffId, setEditingStaffId] = useState<string | null>(null);
   const [editHourRate, setEditHourRate] = useState<string>('');
+  const [editName, setEditName] = useState<string>('');
 
   // Swipe-to-delete state
   const [swipeState, setSwipeState] = useState<{ [key: string]: number }>({});
@@ -92,6 +94,14 @@ export default function StoreDetail() {
   const [pullDistance, setPullDistance] = useState(0);
   const [longPressTimer, setLongPressTimer] = useState<NodeJS.Timeout | null>(null);
 
+  // Salary management state
+  const [selectedMonth, setSelectedMonth] = useState<string>(getCurrentMonth());
+  const [salaryAdjustments, setSalaryAdjustments] = useState<SalaryAdjustment[]>([]);
+  const [salaryConfirmations, setSalaryConfirmations] = useState<SalaryConfirmation[]>([]);
+  const [selectedStaffForSalary, setSelectedStaffForSalary] = useState<string | null>(null);
+  const [showAdjustmentForm, setShowAdjustmentForm] = useState(false);
+  const [editingAdjustment, setEditingAdjustment] = useState<SalaryAdjustment | null>(null);
+
   useEffect(() => {
     loadStoreData();
     // Auto-refresh every 30 seconds
@@ -100,58 +110,61 @@ export default function StoreDetail() {
   }, [storeId]);
 
   useEffect(() => {
-    if (storeId && activeTab === 'schedule') {
+    if (storeId && (activeTab === 'schedule' || activeTab === 'today')) {
       loadSchedules();
     }
   }, [currentWeekStart, storeId, activeTab]);
 
+  useEffect(() => {
+    if (storeId && activeTab === 'salary') {
+      loadSalaryData();
+    }
+  }, [selectedMonth, storeId, activeTab]);
+
   async function deleteStaff(staffId: string) {
-    setConfirmDialog({
-      show: true,
-      message: 'Bạn có chắc muốn xóa nhân viên này?',
-      onConfirm: async () => {
-        try {
-          const { error } = await supabase
-            .from('staff')
-            .delete()
-            .eq('id', staffId);
+    try {
+      const { error } = await supabase
+        .from('staff')
+        .delete()
+        .eq('id', staffId);
 
-          if (error) throw error;
+      if (error) throw error;
 
-          toast.success('Đã xóa nhân viên');
-          loadStoreData();
-        } catch (error) {
-          console.error('Error deleting staff:', error);
-          toast.error('Lỗi khi xóa nhân viên');
-        } finally {
-          setConfirmDialog({ show: false, message: '', onConfirm: () => {} });
-        }
-      }
-    });
+      loadStoreData();
+    } catch (error) {
+      console.error('Error deleting staff:', error);
+      toast.error('Lỗi khi xóa nhân viên');
+    }
   }
 
-  async function updateStaffHourRate(staffId: string) {
+  async function updateStaffInfo(staffId: string) {
     try {
       const rate = parseFloat(editHourRate);
       if (isNaN(rate) || rate < 0) {
-        toast.warning('Vui lòng nhập số hợp lệ');
+        toast.warning('Vui lòng nhập số hợp lệ cho lương giờ');
         return;
       }
 
       const { error } = await supabase
         .from('staff')
-        .update({ hour_rate: rate })
+        .update({
+          hour_rate: rate,
+          name: editName.trim() || null
+        })
         .eq('id', staffId);
 
       if (error) throw error;
 
-      toast.success('Đã cập nhật lương giờ');
+      // Reset state first
       setEditingStaffId(null);
       setEditHourRate('');
-      loadStoreData();
+      setEditName('');
+
+      // Reload data
+      await loadStoreData();
     } catch (error) {
-      console.error('Error updating hour rate:', error);
-      toast.error('Lỗi khi cập nhật lương giờ');
+      console.error('Error updating staff info:', error);
+      toast.error('Lỗi khi cập nhật thông tin nhân viên');
     }
   }
 
@@ -171,7 +184,6 @@ export default function StoreDetail() {
           .eq('id', editingShift.id);
 
         if (error) throw error;
-        toast.success('Đã cập nhật ca làm việc');
       } else {
         // Create new shift
         const { error } = await supabase
@@ -184,7 +196,6 @@ export default function StoreDetail() {
           ]);
 
         if (error) throw error;
-        toast.success('Đã tạo ca làm việc mới');
       }
 
       resetShiftForm();
@@ -196,28 +207,19 @@ export default function StoreDetail() {
   }
 
   async function deleteShift(shiftId: string) {
-    setConfirmDialog({
-      show: true,
-      message: 'Bạn có chắc muốn xóa ca làm việc này? Tất cả lịch trình liên quan sẽ bị xóa.',
-      onConfirm: async () => {
-        try {
-          const { error } = await supabase
-            .from('shift_templates')
-            .delete()
-            .eq('id', shiftId);
+    try {
+      const { error } = await supabase
+        .from('shift_templates')
+        .delete()
+        .eq('id', shiftId);
 
-          if (error) throw error;
+      if (error) throw error;
 
-          toast.success('Đã xóa ca làm việc');
-          loadStoreData();
-        } catch (error) {
-          console.error('Error deleting shift:', error);
-          toast.error('Lỗi khi xóa ca làm việc');
-        } finally {
-          setConfirmDialog({ show: false, message: '', onConfirm: () => {} });
-        }
-      }
-    });
+      loadStoreData();
+    } catch (error) {
+      console.error('Error deleting shift:', error);
+      toast.error('Lỗi khi xóa ca làm việc');
+    }
   }
 
   function startEditShift(shift: ShiftTemplate) {
@@ -278,7 +280,6 @@ export default function StoreDetail() {
 
       if (error) throw error;
 
-      toast.success('Đã cập nhật cài đặt thành công!');
       loadStoreData();
     } catch (error) {
       console.error('Error updating settings:', error);
@@ -529,7 +530,6 @@ export default function StoreDetail() {
         if (insertError) throw insertError;
       }
 
-      toast.success('Đã cập nhật lịch làm việc');
       setShowAssignModal(false);
       loadSchedules();
     } catch (err: any) {
@@ -550,7 +550,6 @@ export default function StoreDetail() {
 
       if (deleteError) throw deleteError;
 
-      toast.success(`Đã xóa ${staffName} khỏi ca`);
       loadSchedules();
     } catch (err) {
       console.error('Error removing schedule:', err);
@@ -618,8 +617,6 @@ export default function StoreDetail() {
         } else {
           throw insertError;
         }
-      } else {
-        toast.success('Đã sao chép lịch tuần trước');
       }
 
       loadSchedules();
@@ -678,7 +675,6 @@ export default function StoreDetail() {
     // Handle pull to refresh
     if (isPulling && pullDistance > 60) {
       loadSchedules();
-      toast.success('Đã làm mới lịch');
     }
     setIsPulling(false);
     setPullDistance(0);
@@ -703,6 +699,217 @@ export default function StoreDetail() {
     setTouchEnd(null);
   }
 
+  // Salary functions
+  async function loadSalaryData() {
+    try {
+      // Load salary adjustments for the selected month
+      const [year, month] = selectedMonth.split('-');
+      const firstDay = `${year}-${month}-01`;
+      const lastDay = new Date(parseInt(year), parseInt(month), 0);
+      const lastDayStr = `${year}-${month}-${String(lastDay.getDate()).padStart(2, '0')}`;
+
+      const { data: adjustmentsData, error: adjError } = await supabase
+        .from('salary_adjustments')
+        .select('*')
+        .eq('store_id', storeId)
+        .gte('adjustment_date', firstDay)
+        .lte('adjustment_date', lastDayStr);
+
+      if (adjError) throw adjError;
+      setSalaryAdjustments(adjustmentsData || []);
+
+      // Load salary confirmations for the selected month
+      const { data: confirmationsData, error: confError } = await supabase
+        .from('salary_confirmations')
+        .select('*')
+        .eq('store_id', storeId)
+        .eq('month', selectedMonth);
+
+      if (confError) throw confError;
+      setSalaryConfirmations(confirmationsData || []);
+
+      // Load schedules for the selected month (needed for salary calculations)
+      const { data: schedulesData, error: schedError } = await supabase
+        .from('staff_schedules')
+        .select(`
+          *,
+          shift_template:shift_templates(*),
+          staff(*)
+        `)
+        .eq('store_id', storeId)
+        .gte('scheduled_date', firstDay)
+        .lte('scheduled_date', lastDayStr);
+
+      if (schedError) throw schedError;
+      setSchedules(schedulesData || []);
+    } catch (error) {
+      console.error('Error loading salary data:', error);
+      toast.error('Lỗi khi tải dữ liệu lương');
+    }
+  }
+
+  function handleViewStaffSalaryDetail(staffId: string) {
+    setSelectedStaffForSalary(staffId);
+  }
+
+  async function handleTogglePaymentStatus(staffId: string, currentStatus: 'paid' | 'unpaid') {
+    try {
+      const staffMember = staff.find(s => s.id === staffId);
+      if (!staffMember) return;
+
+      const calculation = calculateStaffSalary(staffMember);
+      if (!calculation) return;
+
+      const existingConfirmation = salaryConfirmations.find(c => c.staff_id === staffId);
+
+      if (currentStatus === 'paid') {
+        // Unpay - update status to draft
+        if (existingConfirmation) {
+          const { error } = await supabase
+            .from('salary_confirmations')
+            .update({ status: 'draft', paid_at: null })
+            .eq('id', existingConfirmation.id);
+
+          if (error) throw error;
+        }
+      } else {
+        // Mark as paid
+        if (existingConfirmation) {
+          const { error } = await supabase
+            .from('salary_confirmations')
+            .update({ status: 'paid', paid_at: new Date().toISOString() })
+            .eq('id', existingConfirmation.id);
+
+          if (error) throw error;
+        } else {
+          const { error } = await supabase
+            .from('salary_confirmations')
+            .insert([{
+              staff_id: staffId,
+              store_id: storeId,
+              month: selectedMonth,
+              provisional_amount: calculation.provisional.total,
+              adjustments_amount: calculation.adjustments.total,
+              final_amount: calculation.final_amount,
+              status: 'paid',
+              paid_at: new Date().toISOString(),
+            }]);
+
+          if (error) throw error;
+        }
+      }
+
+      loadSalaryData();
+    } catch (error) {
+      console.error('Error toggling payment status:', error);
+      toast.error('Lỗi khi cập nhật trạng thái thanh toán');
+    }
+  }
+
+  function handleAddAdjustment(staffId: string) {
+    setSelectedStaffForSalary(staffId);
+    setEditingAdjustment(null);
+    setShowAdjustmentForm(true);
+  }
+
+  function handleEditAdjustment(adjustment: SalaryAdjustment) {
+    setEditingAdjustment(adjustment);
+    setShowAdjustmentForm(true);
+  }
+
+  async function handleSaveAdjustment(staffId: string, data: {
+    type: string;
+    amount: number;
+    date: string;
+    note: string;
+  }) {
+    try {
+      if (editingAdjustment) {
+        // Update existing adjustment
+        const { error } = await supabase
+          .from('salary_adjustments')
+          .update({
+            type: data.type,
+            amount: data.amount,
+            adjustment_date: data.date,
+            note: data.note,
+          })
+          .eq('id', editingAdjustment.id);
+
+        if (error) throw error;
+      } else {
+        // Create new adjustment
+        const { error } = await supabase
+          .from('salary_adjustments')
+          .insert([{
+            staff_id: staffId,
+            store_id: storeId,
+            type: data.type,
+            amount: data.amount,
+            adjustment_date: data.date,
+            note: data.note,
+          }]);
+
+        if (error) throw error;
+      }
+
+      setShowAdjustmentForm(false);
+      setEditingAdjustment(null);
+      loadSalaryData();
+    } catch (error) {
+      console.error('Error saving adjustment:', error);
+      toast.error('Lỗi khi lưu điều chỉnh');
+    }
+  }
+
+  async function handleDeleteAdjustment(adjustmentId: string) {
+    try {
+      const { error } = await supabase
+        .from('salary_adjustments')
+        .delete()
+        .eq('id', adjustmentId);
+
+      if (error) throw error;
+
+      loadSalaryData();
+    } catch (error) {
+      console.error('Error deleting adjustment:', error);
+      toast.error('Lỗi khi xóa điều chỉnh');
+    }
+  }
+
+  // Calculate salary for a specific staff member
+  function calculateStaffSalary(staffMember: Staff): StaffSalaryCalculation | null {
+    if (!store) return null;
+
+    // Get schedules for this staff in the selected month
+    const monthSchedules = schedules.filter(s => {
+      const scheduleMonth = s.scheduled_date.substring(0, 7);
+      return s.staff_id === staffMember.id && scheduleMonth === selectedMonth;
+    });
+
+    // Get check-ins for this staff in the selected month
+    const monthCheckIns = checkIns.filter(c => {
+      if (c.staff_id !== staffMember.id) return false;
+      const checkInDate = new Date(c.check_in_time);
+      const checkInMonth = `${checkInDate.getFullYear()}-${String(checkInDate.getMonth() + 1).padStart(2, '0')}`;
+      return checkInMonth === selectedMonth;
+    });
+
+    // Get adjustments for this staff in the selected month
+    const staffAdjustments = salaryAdjustments.filter(a => a.staff_id === staffMember.id);
+
+    return calculateStaffMonthlySalary(
+      staffMember,
+      store,
+      selectedMonth,
+      monthSchedules,
+      shifts,
+      monthCheckIns,
+      staffAdjustments
+    );
+  }
+
   // Week summary for schedule
   const weekSummary = useMemo(() => {
     const totalShifts = schedules.length;
@@ -717,11 +924,24 @@ export default function StoreDetail() {
     return { totalShifts, staffCount, totalHours: Math.round(totalHours) };
   }, [schedules]);
 
+  // Salary calculations for all staff
+  const salaryCalculations = useMemo(() => {
+    if (!store || activeTab !== 'salary') return [];
+
+    return staff
+      .map(s => calculateStaffSalary(s))
+      .filter(Boolean) as StaffSalaryCalculation[];
+  }, [staff, store, selectedMonth, schedules, checkIns, salaryAdjustments, shifts, activeTab]);
+
   // Calculate today's stats
   const today = new Date().toDateString();
   const todayCheckIns = checkIns.filter(c => new Date(c.check_in_time).toDateString() === today);
   const currentlyWorking = todayCheckIns.filter(c => c.status === 'success' && !c.check_out_time); // Checked in but not checked out
   const notCheckedIn = staff.length - todayCheckIns.length;
+
+  // Get today's schedules
+  const todayDate = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+  const todaySchedules = schedules.filter(s => s.scheduled_date === todayDate);
 
   // Calculate average time (mock for now - would need check-out times)
   const avgTime = todayCheckIns.length > 0 ? '2.5h' : '0h';
@@ -798,14 +1018,14 @@ export default function StoreDetail() {
             Lịch
           </button>
           <button
-            onClick={() => setActiveTab('report')}
+            onClick={() => setActiveTab('salary')}
             className={`flex-1 px-4 py-3 rounded-lg font-semibold transition-all ${
-              activeTab === 'report'
+              activeTab === 'salary'
                 ? 'bg-blue-600 text-white'
                 : 'text-gray-700 hover:bg-gray-100'
             }`}
           >
-            Báo Cáo
+            Lương
           </button>
           <div className="relative flex-1">
             <button
@@ -872,10 +1092,13 @@ export default function StoreDetail() {
         {/* Tab Content */}
         <div className="bg-white rounded-lg shadow-lg mb-20 sm:mb-4 overflow-hidden">
           {/* TODAY TAB */}
-          {activeTab === 'today' && (
+          {activeTab === 'today' && store && (
             <StoreToday
+              store={store}
               staff={staff}
               todayCheckIns={todayCheckIns}
+              shifts={shifts}
+              todaySchedules={todaySchedules}
               staffFilter={staffFilter}
               staffSearch={staffSearch}
               expandedStaff={expandedStaff}
@@ -894,14 +1117,16 @@ export default function StoreDetail() {
               swipeStart={swipeStart}
               editingStaffId={editingStaffId}
               editHourRate={editHourRate}
+              editName={editName}
               setSwipeState={setSwipeState}
               setEditingStaffId={setEditingStaffId}
               setEditHourRate={setEditHourRate}
+              setEditName={setEditName}
               handleStaffTouchStart={handleStaffTouchStart}
               handleStaffTouchMove={handleStaffTouchMove}
               handleStaffTouchEnd={handleStaffTouchEnd}
               deleteStaff={deleteStaff}
-              updateStaffHourRate={updateStaffHourRate}
+              updateStaffInfo={updateStaffInfo}
             />
           )}
 
@@ -930,13 +1155,6 @@ export default function StoreDetail() {
             />
           )}
 
-          {/* REPORT TAB */}
-          {activeTab === 'report' && store && (
-            <div className="px-4 sm:px-6 py-6">
-              <StoreReport storeId={storeId} />
-            </div>
-          )}
-
           {/* SHIFTS TAB */}
           {activeTab === 'shifts' && (
             <StoreShifts
@@ -955,6 +1173,19 @@ export default function StoreDetail() {
             />
           )}
 
+          {/* SALARY TAB */}
+          {activeTab === 'salary' && store && (
+            <StoreSalary
+              store={store}
+              salaryCalculations={salaryCalculations}
+              confirmations={salaryConfirmations}
+              selectedMonth={selectedMonth}
+              onMonthChange={setSelectedMonth}
+              onViewStaffDetail={handleViewStaffSalaryDetail}
+              onTogglePaymentStatus={handleTogglePaymentStatus}
+            />
+          )}
+
           {/* SETTINGS TAB */}
           {activeTab === 'settings' && (
             <StoreSettings
@@ -964,7 +1195,6 @@ export default function StoreDetail() {
               updateStoreSettings={updateStoreSettings}
               onCopyLink={() => {
                 navigator.clipboard.writeText(`https://www.diemdanh.net/checkin/submit?store=${store.id}`);
-                toast.success('Đã sao chép link!');
               }}
             />
           )}
@@ -1000,17 +1230,17 @@ export default function StoreDetail() {
               <span className="text-xs font-semibold">Lịch</span>
             </button>
             <button
-              onClick={() => setActiveTab('report')}
+              onClick={() => setActiveTab('salary')}
               className={`w-full flex flex-col items-center py-2 px-1 rounded-lg transition-all ${
-                activeTab === 'report'
+                activeTab === 'salary'
                   ? 'bg-blue-600 text-white'
                   : 'text-gray-600'
               }`}
             >
               <svg className="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
-              <span className="text-xs font-semibold">Báo Cáo</span>
+              <span className="text-xs font-semibold">Lương</span>
             </button>
             <div className="relative">
               <button
@@ -1101,29 +1331,6 @@ export default function StoreDetail() {
         </div>
       )}
 
-      {/* Confirm Dialog */}
-      {confirmDialog.show && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-lg shadow-2xl max-w-md w-full p-6">
-            <h3 className="text-lg font-bold text-gray-800 mb-4">Xác nhận</h3>
-            <p className="text-gray-700 mb-6">{confirmDialog.message}</p>
-            <div className="flex gap-3">
-              <button
-                onClick={() => setConfirmDialog({ show: false, message: '', onConfirm: () => {} })}
-                className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-700 px-4 py-2 rounded-lg font-semibold transition-all"
-              >
-                Hủy
-              </button>
-              <button
-                onClick={confirmDialog.onConfirm}
-                className="flex-1 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-semibold transition-all"
-              >
-                Xác nhận
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Staff Assignment Modal for Schedule */}
       {showAssignModal && selectedShift && (
@@ -1152,7 +1359,7 @@ export default function StoreDetail() {
                       className="w-5 h-5 text-blue-600 rounded"
                     />
                     <div>
-                      <div className="font-semibold text-gray-800">{s.full_name}</div>
+                      <div className="font-semibold text-gray-800">{s.name || s.full_name}</div>
                       <div className="text-sm text-gray-600">{s.email}</div>
                     </div>
                   </label>
@@ -1190,6 +1397,42 @@ export default function StoreDetail() {
           </div>
         </div>
       )}
+
+      {/* Staff Salary Detail Modal */}
+      {selectedStaffForSalary && (() => {
+        const staffMember = staff.find(s => s.id === selectedStaffForSalary);
+        const calculation = staffMember ? calculateStaffSalary(staffMember) : null;
+        const confirmation = salaryConfirmations.find(c => c.staff_id === selectedStaffForSalary);
+
+        return calculation && (
+          <StaffSalaryDetail
+            calculation={calculation}
+            onClose={() => setSelectedStaffForSalary(null)}
+            onAddAdjustment={() => handleAddAdjustment(selectedStaffForSalary)}
+            onEditAdjustment={handleEditAdjustment}
+            onDeleteAdjustment={handleDeleteAdjustment}
+            onTogglePaymentStatus={() => handleTogglePaymentStatus(selectedStaffForSalary, confirmation?.status === 'paid' ? 'paid' : 'unpaid')}
+            isPaid={confirmation?.status === 'paid'}
+          />
+        );
+      })()}
+
+      {/* Adjustment Form Modal */}
+      {showAdjustmentForm && selectedStaffForSalary && (() => {
+        const staffMember = staff.find(s => s.id === selectedStaffForSalary);
+        return staffMember && (
+          <AdjustmentForm
+            staffName={staffMember.full_name}
+            month={selectedMonth}
+            editingAdjustment={editingAdjustment}
+            onSave={(data) => handleSaveAdjustment(selectedStaffForSalary, data)}
+            onCancel={() => {
+              setShowAdjustmentForm(false);
+              setEditingAdjustment(null);
+            }}
+          />
+        );
+      })()}
 
       {/* Toast Container */}
       <toast.ToastContainer />

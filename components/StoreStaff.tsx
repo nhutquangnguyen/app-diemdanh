@@ -8,14 +8,16 @@ interface StoreStaffProps {
   swipeStart: { staffId: string; x: number } | null;
   editingStaffId: string | null;
   editHourRate: string;
+  editName: string;
   setSwipeState: (state: Record<string, number> | ((prev: Record<string, number>) => Record<string, number>)) => void;
   setEditingStaffId: (id: string | null) => void;
   setEditHourRate: (rate: string) => void;
+  setEditName: (name: string) => void;
   handleStaffTouchStart: (e: React.TouchEvent, staffId: string) => void;
   handleStaffTouchMove: (e: React.TouchEvent, staffId: string) => void;
   handleStaffTouchEnd: (staffId: string) => void;
   deleteStaff: (staffId: string) => void;
-  updateStaffHourRate: (staffId: string) => void;
+  updateStaffInfo: (staffId: string) => void;
 }
 
 export default function StoreStaff({
@@ -25,14 +27,16 @@ export default function StoreStaff({
   swipeStart,
   editingStaffId,
   editHourRate,
+  editName,
   setSwipeState,
   setEditingStaffId,
   setEditHourRate,
+  setEditName,
   handleStaffTouchStart,
   handleStaffTouchMove,
   handleStaffTouchEnd,
   deleteStaff,
-  updateStaffHourRate,
+  updateStaffInfo,
 }: StoreStaffProps) {
   return (
     <div className="px-4 sm:px-6 py-6">
@@ -86,30 +90,39 @@ export default function StoreStaff({
               >
               <div className="flex items-start gap-3 mb-3">
                 <div className="w-12 h-12 sm:w-10 sm:h-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center text-white font-bold shadow flex-shrink-0">
-                  {member.full_name?.split(' ').slice(-2).map(n => n[0]).join('').toUpperCase() || '??'}
+                  {(member.name || member.full_name)?.split(' ').slice(-2).map(n => n[0]).join('').toUpperCase() || '??'}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="font-semibold text-gray-800 text-base">{member.full_name}</p>
-                  <p className="text-sm text-gray-600 break-all">{member.email}</p>
-                  {member.phone && (
-                    <p className="text-sm text-gray-500">{member.phone}</p>
-                  )}
                   {editingStaffId === member.id ? (
-                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 mt-2">
-                      <input
-                        type="number"
-                        min="0"
-                        step="1000"
-                        value={editHourRate}
-                        onChange={(e) => setEditHourRate(e.target.value)}
-                        className="w-full sm:w-32 px-3 py-2 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        placeholder="VNĐ/giờ"
-                        autoFocus
-                      />
+                    <div className="space-y-3">
+                      <div>
+                        <label className="block text-xs font-medium text-gray-600 mb-1">Tên hiển thị</label>
+                        <input
+                          type="text"
+                          value={editName}
+                          onChange={(e) => setEditName(e.target.value)}
+                          className="w-full px-3 py-2 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          placeholder="Tên gợi nhớ (tùy chọn)"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-gray-600 mb-1">Lương giờ</label>
+                        <div className="relative">
+                          <input
+                            type="number"
+                            min="0"
+                            step="1000"
+                            value={editHourRate}
+                            onChange={(e) => setEditHourRate(e.target.value)}
+                            className="w-full px-3 py-2 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            placeholder="VNĐ/giờ"
+                          />
+                        </div>
+                      </div>
                       <div className="flex gap-2">
                         <button
-                          onClick={() => updateStaffHourRate(member.id)}
-                          className="flex-1 sm:flex-none bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded text-sm font-semibold transition-all"
+                          onClick={() => updateStaffInfo(member.id)}
+                          className="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded text-sm font-semibold transition-all"
                         >
                           Lưu
                         </button>
@@ -117,17 +130,28 @@ export default function StoreStaff({
                           onClick={() => {
                             setEditingStaffId(null);
                             setEditHourRate('');
+                            setEditName('');
                           }}
-                          className="flex-1 sm:flex-none bg-gray-300 hover:bg-gray-400 text-gray-700 px-4 py-2 rounded text-sm font-semibold transition-all"
+                          className="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-700 px-4 py-2 rounded text-sm font-semibold transition-all"
                         >
                           Hủy
                         </button>
                       </div>
                     </div>
                   ) : (
-                    <p className="text-sm font-medium text-green-600 mt-1">
-                      {new Intl.NumberFormat('vi-VN').format(member.hour_rate || 0)} VNĐ/giờ
-                    </p>
+                    <>
+                      {member.name && (
+                        <p className="font-semibold text-gray-800 text-base">{member.name}</p>
+                      )}
+                      <p className={member.name ? "text-sm text-gray-600" : "font-semibold text-gray-800 text-base"}>{member.full_name}</p>
+                      <p className="text-sm text-gray-600 break-all">{member.email}</p>
+                      {member.phone && (
+                        <p className="text-sm text-gray-500">{member.phone}</p>
+                      )}
+                      <p className="text-sm font-medium text-green-600 mt-1">
+                        {new Intl.NumberFormat('vi-VN').format(member.hour_rate || 0)} VNĐ/giờ
+                      </p>
+                    </>
                   )}
                 </div>
               </div>
@@ -137,10 +161,11 @@ export default function StoreStaff({
                     onClick={() => {
                       setEditingStaffId(member.id);
                       setEditHourRate(String(member.hour_rate || 0));
+                      setEditName(member.name || '');
                     }}
                     className="flex-1 sm:flex-none text-blue-600 hover:text-blue-800 font-semibold px-4 py-2 rounded-lg hover:bg-blue-50 transition-all text-sm"
                   >
-                    Sửa lương
+                    Sửa thông tin
                   </button>
                   <button
                     onClick={() => deleteStaff(member.id)}

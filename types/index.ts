@@ -10,6 +10,10 @@ export interface Store {
   gps_required: boolean; // Yêu cầu xác thực GPS
   selfie_required: boolean; // Yêu cầu chụp selfie
   access_mode: 'staff_only' | 'anyone'; // Chế độ truy cập
+  late_penalty_rate: number; // Multiplier for late penalty (1.0 = same as hourly rate)
+  early_checkout_penalty_rate: number; // Multiplier for early checkout penalty
+  overtime_multiplier: number; // Multiplier for overtime (1.5 = time and a half)
+  overtime_grace_minutes: number; // Grace period before counting overtime
   created_at: string;
   updated_at: string;
 }
@@ -19,6 +23,7 @@ export interface Staff {
   user_id: string;
   email: string;
   full_name: string;
+  name?: string; // Custom memorable name (optional)
   phone: string;
   store_id: string;
   hour_rate: number; // Hourly rate in VND
@@ -99,4 +104,71 @@ export interface WeekSummary {
   totalShifts: number;
   staffCount: number;
   totalHours: number;
+}
+
+// Salary system types
+export interface SalaryAdjustment {
+  id: string;
+  staff_id: string;
+  store_id: string;
+  adjustment_date: string; // YYYY-MM-DD
+  type: 'increase' | 'decrease' | 'bonus' | 'penalty' | 'overtime' | 'deduction' | 'other';
+  amount: number;
+  calculation_base: 'hours' | 'fixed' | 'percentage';
+  hours?: number;
+  note?: string;
+  created_by?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface SalaryConfirmation {
+  id: string;
+  staff_id: string;
+  store_id: string;
+  month: string; // YYYY-MM
+  provisional_amount: number;
+  adjustments_amount: number;
+  final_amount: number;
+  status: 'draft' | 'confirmed' | 'paid';
+  confirmed_at?: string;
+  paid_at?: string;
+  notes?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface DailyWorkBreakdown {
+  date: string;
+  shift_name?: string;
+  shift_time?: string;
+  check_in_time?: string;
+  check_out_time?: string;
+  status: 'on_time' | 'late' | 'early_checkout' | 'absent' | 'overtime';
+  base_pay: number;
+  late_penalty: number;
+  early_penalty: number;
+  overtime_pay: number;
+  subtotal: number;
+}
+
+export interface ProvisionalSalary {
+  base: number;
+  late_deductions: number;
+  early_deductions: number;
+  overtime: number;
+  total: number;
+}
+
+export interface StaffSalaryCalculation {
+  month: string;
+  staff: Staff;
+  provisional: ProvisionalSalary;
+  adjustments: {
+    items: SalaryAdjustment[];
+    total: number;
+  };
+  final_amount: number;
+  daily_breakdown: DailyWorkBreakdown[];
+  confirmation?: SalaryConfirmation;
 }

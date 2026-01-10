@@ -70,6 +70,10 @@ export default function StoreSettings({
           selfie_required: formData.get('selfie_required') === 'on',
           access_mode: formData.get('access_mode') as 'staff_only' | 'anyone',
           radius_meters: parseInt(formData.get('radius_meters') as string) || 50,
+          late_penalty_rate: parseFloat(formData.get('late_penalty_rate') as string) || 1.0,
+          early_checkout_penalty_rate: parseFloat(formData.get('early_checkout_penalty_rate') as string) || 1.0,
+          overtime_multiplier: parseFloat(formData.get('overtime_multiplier') as string) || 1.5,
+          overtime_grace_minutes: parseInt(formData.get('overtime_grace_minutes') as string) || 15,
         });
       }} className="space-y-6">
         {/* Store Information */}
@@ -208,6 +212,81 @@ export default function StoreSettings({
                 <div className="text-sm text-gray-600">Ai cũng có thể điểm danh (không cần trong danh sách)</div>
               </div>
             </label>
+          </div>
+        </div>
+
+        {/* Salary Calculation Rules */}
+        <div className="bg-gray-50 rounded-lg p-4">
+          <h3 className="text-lg font-semibold text-gray-800 mb-4">Quy tắc tính lương</h3>
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Hệ số phạt đi muộn
+              </label>
+              <input
+                type="number"
+                name="late_penalty_rate"
+                min="0"
+                max="5"
+                step="0.1"
+                defaultValue={store.late_penalty_rate || 1.0}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                1.0 = phạt theo lương giờ, 2.0 = phạt gấp đôi (mặc định: 1.0)
+              </p>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Hệ số phạt về sớm
+              </label>
+              <input
+                type="number"
+                name="early_checkout_penalty_rate"
+                min="0"
+                max="5"
+                step="0.1"
+                defaultValue={store.early_checkout_penalty_rate || 1.0}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                1.0 = phạt theo lương giờ, 2.0 = phạt gấp đôi (mặc định: 1.0)
+              </p>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Hệ số tăng ca
+              </label>
+              <input
+                type="number"
+                name="overtime_multiplier"
+                min="1"
+                max="5"
+                step="0.1"
+                defaultValue={store.overtime_multiplier || 1.5}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                1.5 = trả 150% lương giờ, 2.0 = trả gấp đôi (mặc định: 1.5)
+              </p>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Thời gian ưu đãi tăng ca (phút)
+              </label>
+              <input
+                type="number"
+                name="overtime_grace_minutes"
+                min="0"
+                max="60"
+                step="5"
+                defaultValue={store.overtime_grace_minutes || 15}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                Số phút làm thêm tối thiểu để được tính tăng ca (mặc định: 15)
+              </p>
+            </div>
           </div>
         </div>
 

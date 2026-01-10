@@ -1,4 +1,5 @@
 import { ShiftTemplate } from '@/types';
+import { useState } from 'react';
 
 interface StoreShiftsProps {
   shifts: ShiftTemplate[];
@@ -35,6 +36,16 @@ export default function StoreShifts({
   startEditShift,
   deleteShift,
 }: StoreShiftsProps) {
+  const [showColorPicker, setShowColorPicker] = useState(false);
+
+  // Get available color (not used by existing shifts)
+  const getAvailableColor = () => {
+    const availableColors = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899'];
+    const usedColors = shifts.map(s => s.color);
+    const availableColor = availableColors.find(c => !usedColors.includes(c));
+    return availableColor || availableColors[0];
+  };
+
   return (
     <div className="px-4 sm:px-6 py-6">
       {/* SHIFT MANAGEMENT SECTION */}
@@ -53,6 +64,15 @@ export default function StoreShifts({
                   end_time: '17:00',
                   grace_period_minutes: 15,
                   color: '#3B82F6',
+                });
+              } else {
+                // Opening form - select available color
+                setShiftFormData({
+                  name: '',
+                  start_time: '08:00',
+                  end_time: '17:00',
+                  grace_period_minutes: 15,
+                  color: getAvailableColor(),
                 });
               }
             }}
@@ -105,47 +125,106 @@ export default function StoreShifts({
                   <label className="block text-sm font-semibold text-gray-700 mb-2">
                     Giờ Bắt Đầu *
                   </label>
-                  <input
-                    type="time"
-                    required
-                    value={shiftFormData.start_time}
-                    onChange={(e) => setShiftFormData({ ...shiftFormData, start_time: e.target.value })}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
+                  <div className="flex gap-2">
+                    <select
+                      required
+                      value={shiftFormData.start_time.split(':')[0]}
+                      onChange={(e) => {
+                        const minute = shiftFormData.start_time.split(':')[1] || '00';
+                        setShiftFormData({ ...shiftFormData, start_time: `${e.target.value}:${minute}` });
+                      }}
+                      className="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    >
+                      {Array.from({ length: 24 }, (_, i) => i.toString().padStart(2, '0')).map(h => (
+                        <option key={h} value={h}>{h}</option>
+                      ))}
+                    </select>
+                    <span className="flex items-center text-2xl font-bold text-gray-400">:</span>
+                    <select
+                      required
+                      value={shiftFormData.start_time.split(':')[1]}
+                      onChange={(e) => {
+                        const hour = shiftFormData.start_time.split(':')[0];
+                        setShiftFormData({ ...shiftFormData, start_time: `${hour}:${e.target.value}` });
+                      }}
+                      className="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    >
+                      {Array.from({ length: 60 }, (_, i) => i.toString().padStart(2, '0')).map(m => (
+                        <option key={m} value={m}>{m}</option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
 
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-2">
                     Giờ Kết Thúc *
                   </label>
-                  <input
-                    type="time"
-                    required
-                    value={shiftFormData.end_time}
-                    onChange={(e) => setShiftFormData({ ...shiftFormData, end_time: e.target.value })}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
+                  <div className="flex gap-2">
+                    <select
+                      required
+                      value={shiftFormData.end_time.split(':')[0]}
+                      onChange={(e) => {
+                        const minute = shiftFormData.end_time.split(':')[1] || '00';
+                        setShiftFormData({ ...shiftFormData, end_time: `${e.target.value}:${minute}` });
+                      }}
+                      className="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    >
+                      {Array.from({ length: 24 }, (_, i) => i.toString().padStart(2, '0')).map(h => (
+                        <option key={h} value={h}>{h}</option>
+                      ))}
+                    </select>
+                    <span className="flex items-center text-2xl font-bold text-gray-400">:</span>
+                    <select
+                      required
+                      value={shiftFormData.end_time.split(':')[1]}
+                      onChange={(e) => {
+                        const hour = shiftFormData.end_time.split(':')[0];
+                        setShiftFormData({ ...shiftFormData, end_time: `${hour}:${e.target.value}` });
+                      }}
+                      className="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    >
+                      {Array.from({ length: 60 }, (_, i) => i.toString().padStart(2, '0')).map(m => (
+                        <option key={m} value={m}>{m}</option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
 
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-2">
                     Màu Sắc
                   </label>
-                  <div className="flex gap-2 flex-wrap">
-                    {['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899'].map((color) => (
-                      <button
-                        key={color}
-                        type="button"
-                        onClick={() => setShiftFormData({ ...shiftFormData, color })}
-                        className={`w-12 h-12 rounded-lg transition-all ${
-                          shiftFormData.color === color
-                            ? 'ring-2 ring-offset-2 ring-gray-800 scale-110'
-                            : 'hover:scale-105'
-                        }`}
-                        style={{ backgroundColor: color }}
-                        title={color}
-                      />
-                    ))}
+                  <div className="space-y-2">
+                    {/* Selected color button - click to expand */}
+                    <button
+                      type="button"
+                      onClick={() => setShowColorPicker(!showColorPicker)}
+                      className="w-12 h-12 rounded-lg transition-all ring-2 ring-offset-2 ring-gray-800 hover:scale-105"
+                      style={{ backgroundColor: shiftFormData.color }}
+                      title="Click để đổi màu"
+                    />
+
+                    {/* Color picker - shown when expanded */}
+                    {showColorPicker && (
+                      <div className="flex gap-2 flex-wrap pt-2">
+                        {['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899']
+                          .filter(c => c !== shiftFormData.color)
+                          .map((color) => (
+                            <button
+                              key={color}
+                              type="button"
+                              onClick={() => {
+                                setShiftFormData({ ...shiftFormData, color });
+                                setShowColorPicker(false);
+                              }}
+                              className="w-12 h-12 rounded-lg transition-all hover:scale-105"
+                              style={{ backgroundColor: color }}
+                              title={color}
+                            />
+                          ))}
+                      </div>
+                    )}
                   </div>
                 </div>
 

@@ -306,6 +306,7 @@ export default function StoreReport({ storeId }: StoreReportProps) {
       if (!searchTerm) return true;
       const search = searchTerm.toLowerCase();
       return (
+        (report.staff.name && report.staff.name.toLowerCase().includes(search)) ||
         report.staff.full_name.toLowerCase().includes(search) ||
         report.staff.email.toLowerCase().includes(search)
       );
@@ -318,8 +319,8 @@ export default function StoreReport({ storeId }: StoreReportProps) {
 
       // Handle nested staff object
       if (sortColumn === 'staff') {
-        aValue = a.staff.full_name;
-        bValue = b.staff.full_name;
+        aValue = a.staff.name || a.staff.full_name;
+        bValue = b.staff.name || b.staff.full_name;
       }
 
       // Compare values
@@ -352,7 +353,7 @@ export default function StoreReport({ storeId }: StoreReportProps) {
     ];
 
     const rows = filteredAndSortedData.map(r => [
-      r.staff.full_name,
+      r.staff.name || r.staff.full_name,
       r.staff.email,
       r.scheduledShifts,
       r.shiftsAttended,
@@ -523,7 +524,7 @@ export default function StoreReport({ storeId }: StoreReportProps) {
             </div>
             <div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-lg p-4 border border-purple-200">
               <div className="text-xl font-bold text-purple-600 mb-1 truncate">
-                {bestStaff?.staff.full_name.split(' ').slice(-2).join(' ') || 'N/A'}
+                {bestStaff ? ((bestStaff.staff.name || bestStaff.staff.full_name).split(' ').slice(-2).join(' ')) : 'N/A'}
               </div>
               <div className="text-sm text-gray-600">Xuất sắc nhất</div>
             </div>
@@ -740,7 +741,8 @@ export default function StoreReport({ storeId }: StoreReportProps) {
                   </tr>
                 ) : (
                   filteredAndSortedData.map((report) => {
-                    const initials = report.staff.full_name
+                    const displayName = report.staff.name || report.staff.full_name;
+                    const initials = displayName
                       ?.split(' ')
                       .slice(-2)
                       .map((n: string) => n[0])
@@ -760,7 +762,7 @@ export default function StoreReport({ storeId }: StoreReportProps) {
                               {initials}
                             </div>
                             <div>
-                              <div className="font-semibold text-gray-800">{report.staff.full_name}</div>
+                              <div className="font-semibold text-gray-800">{report.staff.name || report.staff.full_name}</div>
                               <div className="text-xs text-gray-500">{report.staff.email}</div>
                             </div>
                           </div>
@@ -813,7 +815,8 @@ export default function StoreReport({ storeId }: StoreReportProps) {
               </div>
             ) : (
               filteredAndSortedData.map((report) => {
-                const initials = report.staff.full_name
+                const displayName = report.staff.name || report.staff.full_name;
+                const initials = displayName
                   ?.split(' ')
                   .slice(-2)
                   .map((n: string) => n[0])
@@ -833,7 +836,7 @@ export default function StoreReport({ storeId }: StoreReportProps) {
                         {initials}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <div className="font-semibold text-gray-800 truncate">{report.staff.full_name}</div>
+                        <div className="font-semibold text-gray-800 truncate mb-1">{report.staff.name || report.staff.full_name}</div>
                         <div className="text-xs text-gray-500 truncate">{report.staff.email}</div>
                       </div>
                       <span className={`inline-block px-2.5 py-1 rounded-full text-xs font-bold flex-shrink-0 ${attendanceColor}`}>
@@ -993,7 +996,7 @@ export default function StoreReport({ storeId }: StoreReportProps) {
                             </td>
                             <td className="px-4 py-3">
                               <div className="text-sm font-semibold text-gray-800">
-                                {staff?.full_name || 'N/A'}
+                                {staff?.name || staff?.full_name || 'N/A'}
                               </div>
                               <div className="text-xs text-gray-500">{staff?.email || ''}</div>
                             </td>
