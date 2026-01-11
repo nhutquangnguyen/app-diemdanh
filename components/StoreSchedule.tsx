@@ -48,9 +48,19 @@ export default function StoreSchedule({
   handleTouchMove,
   handleTouchEnd,
 }: StoreScheduleProps) {
-  const [viewMode, setViewMode] = useState<'shift-based' | 'staff-based'>('staff-based');
+  const [viewMode, setViewMode] = useState<'shift-based' | 'staff-based' | 'date-rows'>('staff-based');
+  const [selectedCell, setSelectedCell] = useState<{ staffId: string; date: Date } | null>(null);
   const today = formatDateSchedule(new Date());
   const weekDays = getWeekDays();
+
+  // Helper function to get staff schedules for a specific date
+  const getStaffSchedulesForDate = (staffId: string, date: Date): ScheduleWithDetails[] => {
+    const dateStr = formatDateSchedule(date);
+    return schedules.filter(schedule =>
+      schedule.staff_id === staffId &&
+      schedule.scheduled_date === dateStr
+    );
+  };
 
   // Render view toggle component (icon-based) - positioned in left side of week navigation
   const ViewToggle = () => (
@@ -81,6 +91,19 @@ export default function StoreSchedule({
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
         </svg>
       </button>
+      <button
+        onClick={() => setViewMode('date-rows')}
+        className={`p-2 rounded-md transition-all ${
+          viewMode === 'date-rows'
+            ? 'bg-blue-600 text-white'
+            : 'text-gray-600 hover:bg-gray-200'
+        }`}
+        title="Ngày theo hàng"
+      >
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+        </svg>
+      </button>
     </div>
   );
 
@@ -109,6 +132,290 @@ export default function StoreSchedule({
           handleAssignShift={handleAssignShift}
           copyPreviousWeek={copyPreviousWeek}
         />
+      </div>
+    );
+  }
+
+  // NEW: Date-rows view (Dates as rows, Staff as columns)
+  if (viewMode === 'date-rows') {
+    const dayNames = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
+
+    return (
+      <div className="px-4 sm:px-6 py-6">
+        {/* View Toggle */}
+        <div className="mb-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-base font-semibold text-gray-700">Chế độ xem:</h2>
+            <ViewToggle />
+          </div>
+        </div>
+
+        {/* Header */}
+        <div className="bg-white rounded-lg shadow-lg p-4 sm:p-6 mb-6">
+          <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
+            <h1 className="text-xl sm:text-2xl font-bold text-gray-800">Lịch Làm Việc</h1>
+            <button
+              onClick={goToToday}
+              className="text-sm text-blue-600 hover:text-blue-700 font-semibold px-4 py-2 rounded-lg hover:bg-blue-50 transition-all"
+            >
+              Hôm nay
+            </button>
+          </div>
+
+          {/* Week Navigation */}
+          <div className="flex items-center justify-between gap-4">
+            <button
+              onClick={() => navigateWeek('prev')}
+              className="p-2 hover:bg-gray-100 rounded-lg transition-all"
+            >
+              <svg className="w-6 h-6 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+              </svg>
+            </button>
+            <div className="text-center">
+              <div className="text-sm font-semibold text-gray-700 mb-2">
+                {(() => {
+                  const formatDayMonth = (date: Date) => {
+                    const day = date.getDate().toString().padStart(2, '0');
+                    const month = (date.getMonth() + 1).toString().padStart(2, '0');
+                    return `${day}/${month}`;
+                  };
+                  return `${formatDayMonth(weekDays[0])} - ${formatDayMonth(weekDays[6])}`;
+                })()}
+              </div>
+              <button
+                onClick={copyPreviousWeek}
+                className="bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded-md text-xs font-medium transition-all shadow-sm hover:shadow-md"
+              >
+                Sao Chép Tuần Trước
+              </button>
+            </div>
+            <button
+              onClick={() => navigateWeek('next')}
+              className="p-2 hover:bg-gray-100 rounded-lg transition-all"
+            >
+              <svg className="w-6 h-6 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        {/* Transposed Schedule Grid: Dates as Rows, Staff as Columns */}
+        <div className="bg-white rounded-lg shadow-lg overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full border-collapse">
+              <thead>
+                <tr className="bg-gradient-to-r from-blue-600 to-indigo-600">
+                  <th className="text-left px-1 py-1.5 sm:p-3 text-white font-bold text-[9px] sm:text-sm border-r border-blue-500 sticky left-0 bg-gradient-to-r from-blue-600 to-indigo-600 z-10 w-10 sm:w-20">
+                    Ngày
+                  </th>
+                  {staff.map((staffMember) => {
+                    const name = staffMember.name || staffMember.full_name;
+                    const shortName = name.split(' ').slice(-2).join(' '); // Last 2 words for mobile
+                    return (
+                      <th
+                        key={staffMember.id}
+                        className="px-1 py-1.5 sm:p-3 text-center text-white font-bold text-[9px] sm:text-sm border-r border-blue-500 w-14 sm:w-28"
+                        title={name}
+                      >
+                        <span className="hidden sm:inline">{name}</span>
+                        <span className="sm:hidden">{shortName.length > 8 ? shortName.substring(0, 7) + '.' : shortName}</span>
+                      </th>
+                    );
+                  })}
+                </tr>
+              </thead>
+              <tbody>
+                {weekDays.map((day, dayIndex) => {
+                  const isToday = formatDateSchedule(day) === today;
+
+                  return (
+                    <tr
+                      key={day.toISOString()}
+                      className={`border-b border-gray-200 ${
+                        dayIndex % 2 === 0 ? 'bg-white' : 'bg-gray-50'
+                      } ${isToday ? 'bg-yellow-50' : ''}`}
+                    >
+                      <td className={`px-1 py-1 sm:p-3 border-r border-gray-200 sticky left-0 z-10 ${
+                        dayIndex % 2 === 0 ? 'bg-white' : 'bg-gray-50'
+                      } ${isToday ? 'bg-yellow-50' : ''}`}>
+                        <div className="font-semibold text-gray-800 text-[9px] sm:text-sm">
+                          {dayNames[day.getDay()]}
+                        </div>
+                        <div className="text-[7px] sm:text-xs text-gray-500">
+                          {day.getDate()}/{day.getMonth() + 1}
+                        </div>
+                      </td>
+                      {staff.map((staffMember) => {
+                        const staffSchedules = getStaffSchedulesForDate(staffMember.id, day);
+
+                        return (
+                          <td
+                            key={staffMember.id}
+                            className="px-0.5 py-0.5 sm:p-2 border-r border-gray-200 text-center align-middle cursor-pointer hover:bg-blue-50 transition-all"
+                            onClick={() => setSelectedCell({ staffId: staffMember.id, date: day })}
+                          >
+                            {staffSchedules.length > 0 ? (
+                              <div className="flex flex-col gap-0.5 sm:gap-1">
+                                {staffSchedules.map((schedule) => {
+                                  const shift = shifts.find(s => s.id === schedule.shift_template_id);
+                                  if (!shift) return null;
+
+                                  // Get short shift name (first word or abbreviation)
+                                  const getShortShiftName = (name: string) => {
+                                    if (name.includes('sáng')) return 'Sáng';
+                                    if (name.includes('trưa')) return 'Trưa';
+                                    if (name.includes('tối')) return 'Tối';
+                                    return name.split(' ')[0]; // First word
+                                  };
+
+                                  return (
+                                    <div
+                                      key={schedule.id}
+                                      className="px-0.5 py-0.5 sm:px-2 sm:py-1 rounded text-[7px] sm:text-xs font-medium text-white whitespace-nowrap"
+                                      style={{ backgroundColor: shift.color }}
+                                      title={shift.name}
+                                    >
+                                      <span className="sm:hidden">{getShortShiftName(shift.name)}</span>
+                                      <span className="hidden sm:inline">{shift.name}</span>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            ) : (
+                              <div className="text-red-500 text-[7px] sm:text-xs font-bold bg-red-50 py-0.5 px-0.5 sm:py-1 sm:px-2 rounded">
+                                OFF
+                              </div>
+                            )}
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {/* Legend */}
+        <div className="mt-4 bg-white rounded-lg shadow p-4">
+          <h4 className="text-sm font-semibold text-gray-700 mb-3">Chú thích:</h4>
+          <div className="flex flex-wrap gap-3">
+            {shifts.map(shift => (
+              <div key={shift.id} className="flex items-center gap-2">
+                <div
+                  className="w-4 h-4 rounded"
+                  style={{ backgroundColor: shift.color }}
+                />
+                <span className="text-xs font-medium text-gray-700">{shift.name}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Shift Selection Modal */}
+        {selectedCell && (() => {
+          const staffMember = staff.find(s => s.id === selectedCell.staffId);
+          const staffSchedules = getStaffSchedulesForDate(selectedCell.staffId, selectedCell.date);
+          const selectedShiftIds = staffSchedules.map(s => s.shift_template_id);
+
+          const handleShiftToggle = async (shiftId: string) => {
+            if (!staffMember) return;
+
+            const isSelected = selectedShiftIds.includes(shiftId);
+
+            if (isSelected) {
+              // Remove this shift
+              const scheduleToRemove = staffSchedules.find(s => s.shift_template_id === shiftId);
+              if (scheduleToRemove && handleRemoveStaffFromShift) {
+                handleRemoveStaffFromShift(scheduleToRemove.id, staffMember.name || staffMember.full_name);
+              }
+            } else {
+              // Add this shift
+              if (handleAssignShift) {
+                await handleAssignShift(staffMember.id, shiftId, formatDateSchedule(selectedCell.date));
+              }
+            }
+          };
+
+          return staffMember && (
+            <div
+              className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+              onClick={() => setSelectedCell(null)}
+            >
+              <div
+                className="bg-white rounded-lg shadow-xl max-w-md w-full p-6"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-bold text-gray-800">Chọn Ca Làm Việc</h3>
+                  <button
+                    onClick={() => setSelectedCell(null)}
+                    className="text-gray-400 hover:text-gray-600"
+                  >
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+
+                <div className="space-y-3 mb-4">
+                  <div>
+                    <div className="text-sm text-gray-600">Nhân viên</div>
+                    <div className="font-semibold text-gray-800">{staffMember.name || staffMember.full_name}</div>
+                  </div>
+                  <div>
+                    <div className="text-sm text-gray-600">Ngày</div>
+                    <div className="font-semibold text-gray-800">{formatDateSchedule(selectedCell.date)}</div>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <div className="text-sm font-semibold text-gray-700 mb-3">Chọn ca:</div>
+                  {shifts.map((shift) => {
+                    const isSelected = selectedShiftIds.includes(shift.id);
+                    return (
+                      <label
+                        key={shift.id}
+                        className={`flex items-center gap-3 p-3 rounded-lg border-2 cursor-pointer transition-all hover:bg-gray-50 ${
+                          isSelected ? 'border-blue-500 bg-blue-50' : 'border-gray-200'
+                        }`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          onChange={() => handleShiftToggle(shift.id)}
+                          className="w-5 h-5 text-blue-600 rounded"
+                        />
+                        <div
+                          className="w-4 h-4 rounded flex-shrink-0"
+                          style={{ backgroundColor: shift.color }}
+                        />
+                        <div className="flex-1">
+                          <div className="font-semibold text-gray-800 text-sm">
+                            {shift.name}
+                          </div>
+                          <div className="text-xs text-gray-600">
+                            {shift.start_time.substring(0, 5)} - {shift.end_time.substring(0, 5)}
+                          </div>
+                        </div>
+                      </label>
+                    );
+                  })}
+                </div>
+
+                <button
+                  onClick={() => setSelectedCell(null)}
+                  className="w-full mt-6 bg-gray-200 hover:bg-gray-300 text-gray-700 px-4 py-3 rounded-lg font-semibold transition-all"
+                >
+                  Đóng
+                </button>
+              </div>
+            </div>
+          );
+        })()}
       </div>
     );
   }

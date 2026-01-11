@@ -105,25 +105,22 @@ export default function StaffScheduleGrid({
       {/* Schedule Grid */}
       <div className="bg-white rounded-lg shadow-lg overflow-hidden">
         {/* Desktop/Tablet View */}
-        <div className="hidden sm:block overflow-x-auto">
+        <div className="hidden sm:block">
           <table className="w-full border-collapse">
             <thead>
-              <tr className="border-b border-gray-200">
-                <th className="text-left p-3 text-gray-700 font-bold text-sm border-r border-gray-200 sticky left-0 bg-white z-10 w-32">
+              <tr className="bg-gradient-to-r from-blue-600 to-indigo-600">
+                <th className="text-left px-3 py-2 text-white font-bold text-sm border-r border-blue-500 sticky left-0 bg-gradient-to-r from-blue-600 to-indigo-600 z-10 w-32">
+                  Nhân viên
                 </th>
                 {weekDays.map((day) => {
                   const isToday = formatDateSchedule(day) === today;
                   const dayNames = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
-
                   return (
-                    <th
-                      key={day.toISOString()}
-                      className="p-2 text-center border-r border-gray-200 last:border-r-0 w-16"
-                    >
-                      <div className={`${isToday ? 'text-blue-600' : 'text-gray-600'}`}>
-                        <div className="text-xs font-semibold">{dayNames[day.getDay() === 0 ? 6 : day.getDay() - 1]}</div>
+                    <th key={day.toISOString()} className="px-2 py-2 text-center border-r border-blue-500 last:border-r-0">
+                      <div className={`${isToday ? 'text-yellow-300' : 'text-white'}`}>
+                        <div className="text-xs font-bold">{dayNames[day.getDay() === 0 ? 6 : day.getDay() - 1]}</div>
                         <div className={`text-lg font-bold mt-0.5 ${
-                          isToday ? 'bg-blue-600 text-white w-7 h-7 rounded-full flex items-center justify-center mx-auto' : ''
+                          isToday ? 'bg-yellow-400 text-blue-900 w-8 h-8 rounded-full flex items-center justify-center mx-auto' : ''
                         }`}>
                           {day.getDate()}
                         </div>
@@ -137,18 +134,15 @@ export default function StaffScheduleGrid({
               {staff.map((staffMember, index) => (
                 <tr
                   key={staffMember.id}
-                  className="border-b border-gray-200 last:border-b-0 hover:bg-gray-50"
+                  className={`border-b border-gray-200 ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'} hover:bg-blue-50`}
                 >
                   {/* Staff Name Column */}
-                  <td className="p-3 border-r border-gray-200 sticky left-0 bg-white z-10">
+                  <td className={`px-3 py-2 border-r border-gray-200 sticky left-0 z-10 ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}`}>
                     <div
-                      className="font-semibold text-gray-800 text-sm cursor-pointer hover:text-blue-600"
+                      className="font-semibold text-gray-800 text-sm"
                       title={staffMember.name || staffMember.full_name}
                     >
-                      {(() => {
-                        const name = staffMember.name || staffMember.full_name;
-                        return name.length > 7 ? `${name.substring(0, 6)}...` : name;
-                      })()}
+                      {staffMember.name || staffMember.full_name}
                     </div>
                   </td>
                   {/* Day Cells */}
@@ -160,19 +154,19 @@ export default function StaffScheduleGrid({
                     return (
                       <td
                         key={day.toISOString()}
-                        className={`p-2 border-r border-gray-200 last:border-r-0 cursor-pointer hover:bg-blue-50 transition-all align-top ${
+                        className={`px-2 py-2 border-r border-gray-200 last:border-r-0 cursor-pointer hover:bg-blue-100 transition-all text-center ${
                           isToday ? 'bg-blue-50' : ''
                         }`}
                         onClick={() => handleCellClick(staffMember.id, day)}
                       >
-                        <div className="min-h-[50px] flex flex-col gap-1.5 items-center justify-start py-1.5">
+                        <div className="flex flex-col gap-1 items-center justify-center min-h-[40px]">
                           {staffShifts.length === 0 ? (
                             <div className="text-gray-300 text-sm">--</div>
                           ) : (
                             staffShifts.map((schedule) => (
                               <div
                                 key={schedule.id}
-                                className="w-11 h-5 rounded-md"
+                                className="w-full h-3 rounded-sm max-w-[80px]"
                                 style={{ backgroundColor: schedule.shift_template?.color || '#3B82F6' }}
                                 title={schedule.shift_template?.name}
                               />
@@ -188,49 +182,51 @@ export default function StaffScheduleGrid({
           </table>
         </div>
 
-        {/* Mobile View */}
-        <div className="sm:hidden overflow-x-auto">
-          <div className="min-w-max">
-            {/* Week Header */}
-            <div className="border-b border-gray-200 bg-white sticky top-0 z-10">
-              <div className="flex pt-2">
-                <div className="w-14 flex-shrink-0"></div>
+        {/* Mobile View - Compact 7-day display */}
+        <div className="sm:hidden">
+          <table className="w-full border-collapse">
+            <thead>
+              <tr className="bg-gradient-to-r from-blue-600 to-indigo-600">
+                <th className="text-left px-1 py-1 text-white font-bold text-[10px] border-r border-blue-500 sticky left-0 bg-gradient-to-r from-blue-600 to-indigo-600 z-10 w-12">
+                  <div className="break-words leading-tight">Tên</div>
+                </th>
                 {weekDays.map((day) => {
                   const isToday = formatDateSchedule(day) === today;
                   const dayNames = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
                   return (
-                    <div key={day.toISOString()} className="w-9 flex-shrink-0 p-0.5 text-center">
-                      <div className={`text-[8px] font-semibold ${isToday ? 'text-blue-600' : 'text-gray-600'}`}>
-                        {dayNames[day.getDay() === 0 ? 6 : day.getDay() - 1]}
+                    <th key={day.toISOString()} className="px-0.5 py-1 text-center border-r border-blue-500 last:border-r-0 w-[13%]">
+                      <div className={`${isToday ? 'text-yellow-300' : 'text-white'}`}>
+                        <div className="text-[9px] font-bold">{dayNames[day.getDay() === 0 ? 6 : day.getDay() - 1]}</div>
+                        <div className={`text-[10px] font-bold ${
+                          isToday ? 'bg-yellow-400 text-blue-900 w-4 h-4 rounded-full flex items-center justify-center mx-auto text-[9px]' : ''
+                        }`}>
+                          {day.getDate()}
+                        </div>
                       </div>
-                      <div className={`text-[11px] font-bold mt-0.5 ${
-                        isToday ? 'bg-blue-600 text-white w-4 h-4 rounded-full flex items-center justify-center mx-auto text-[8px]' : ''
-                      }`}>
-                        {day.getDate()}
-                      </div>
-                    </div>
+                    </th>
                   );
                 })}
-              </div>
-            </div>
-
-            {/* Staff Rows */}
-            {staff.map((staffMember) => (
-              <div key={staffMember.id} className="border-b border-gray-200 last:border-b-0">
-                <div className="flex">
+              </tr>
+            </thead>
+            <tbody>
+              {staff.map((staffMember, index) => (
+                <tr
+                  key={staffMember.id}
+                  className={`border-b border-gray-200 ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}`}
+                >
                   {/* Staff Name */}
-                  <div className="w-14 flex-shrink-0 p-1.5 border-r border-gray-200 flex items-center">
+                  <td className={`px-1 py-1 border-r border-gray-200 sticky left-0 z-10 ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}`}>
                     <div
-                      className="font-semibold text-[10px] text-gray-800 break-words leading-tight cursor-pointer hover:text-blue-600"
+                      className="font-semibold text-[9px] text-gray-800 break-words leading-tight"
                       title={staffMember.name || staffMember.full_name}
                     >
                       {(() => {
                         const name = staffMember.name || staffMember.full_name;
-                        return name.length > 7 ? `${name.substring(0, 6)}...` : name;
+                        const shortName = name.split(' ').slice(-2).join(' ');
+                        return shortName.length > 9 ? `${shortName.substring(0, 8)}..` : shortName;
                       })()}
                     </div>
-                  </div>
-
+                  </td>
                   {/* Day Cells */}
                   {weekDays.map((day) => {
                     const dateStr = formatDateSchedule(day);
@@ -238,33 +234,34 @@ export default function StaffScheduleGrid({
                     const staffShifts = getStaffShiftsForDate(staffMember.id, day);
 
                     return (
-                      <div
+                      <td
                         key={day.toISOString()}
-                        className={`w-9 flex-shrink-0 p-0.5 border-r border-gray-200 last:border-r-0 cursor-pointer ${
+                        className={`px-0.5 py-1 border-r border-gray-200 last:border-r-0 text-center ${
                           isToday ? 'bg-blue-50' : ''
                         }`}
                         onClick={() => handleCellClick(staffMember.id, day)}
                       >
-                        <div className="min-h-[32px] flex flex-col gap-0.5 items-center justify-center py-0.5">
+                        <div className="flex flex-col gap-0.5 items-center justify-center min-h-[24px]">
                           {staffShifts.length === 0 ? (
                             <div className="text-gray-300 text-[8px]">--</div>
                           ) : (
                             staffShifts.map((schedule) => (
                               <div
                                 key={schedule.id}
-                                className="w-7 h-2.5 rounded"
+                                className="w-full h-2 rounded-sm"
                                 style={{ backgroundColor: schedule.shift_template?.color || '#3B82F6' }}
+                                title={schedule.shift_template?.name}
                               />
                             ))
                           )}
                         </div>
-                      </div>
+                      </td>
                     );
                   })}
-                </div>
-              </div>
-            ))}
-          </div>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       </div>
 
