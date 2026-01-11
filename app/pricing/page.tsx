@@ -73,6 +73,12 @@ export default function PricingPage() {
               )}
             </div>
 
+            {/* Limited Time Promotion Badge */}
+            <div className="mb-4 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-lg p-3 text-center animate-pulse">
+              <div className="font-bold text-sm">🎉 KHUYẾN MÃI CÓ HẠN</div>
+              <div className="text-xs mt-1">Miễn phí tính năng Sếp lịch AI</div>
+            </div>
+
             <ul className="space-y-3 mb-8">
               <li className="flex items-start gap-3">
                 <svg className="w-5 h-5 text-green-500 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -91,6 +97,12 @@ export default function PricingPage() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>
                 <span className="text-gray-700">Tất cả tính năng</span>
+              </li>
+              <li className="flex items-start gap-3 bg-purple-50 -mx-3 px-3 py-2 rounded-lg border-2 border-purple-300">
+                <svg className="w-5 h-5 text-purple-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+                <span className="text-gray-900 font-semibold">✨ Sếp lịch AI 🤖 <span className="text-xs text-purple-600">(MỚI)</span></span>
               </li>
               <li className="flex items-start gap-3">
                 <svg className="w-5 h-5 text-green-500 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -157,6 +169,12 @@ export default function PricingPage() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>
                 <span>Tất cả tính năng</span>
+              </li>
+              <li className="flex items-start gap-3 bg-white bg-opacity-20 -mx-3 px-3 py-2 rounded-lg">
+                <svg className="w-5 h-5 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+                <span className="font-semibold">✨ Sếp lịch AI 🤖</span>
               </li>
               <li className="flex items-start gap-3">
                 <svg className="w-5 h-5 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -225,6 +243,12 @@ export default function PricingPage() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>
                 <span className="text-gray-700">Tất cả tính năng</span>
+              </li>
+              <li className="flex items-start gap-3 bg-purple-50 -mx-3 px-3 py-2 rounded-lg border-2 border-purple-300">
+                <svg className="w-5 h-5 text-purple-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+                <span className="text-gray-900 font-semibold">✨ Sếp lịch AI 🤖</span>
               </li>
               <li className="flex items-start gap-3">
                 <svg className="w-5 h-5 text-green-500 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">

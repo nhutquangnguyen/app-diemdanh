@@ -119,6 +119,84 @@ export default function FeatureContent() {
         </div>
       </div>
 
+      {/* AI Scheduling Feature Highlight */}
+      <div className="mb-20">
+        <div className="bg-gradient-to-br from-purple-600 to-blue-600 rounded-3xl shadow-2xl p-8 sm:p-12 text-white">
+          <div className="max-w-5xl mx-auto">
+            <div className="flex flex-col md:flex-row items-center gap-8">
+              <div className="flex-1">
+                <div className="inline-block bg-yellow-400 text-purple-900 px-4 py-2 rounded-full text-sm font-bold mb-4 animate-pulse">
+                  ✨ MỚI: Tính năng AI
+                </div>
+                <h2 className="text-3xl sm:text-4xl font-bold mb-4">
+                  Sếp lịch AI 🤖
+                </h2>
+                <p className="text-xl text-blue-100 mb-6">
+                  Xếp lịch làm việc tự động, công bằng và thông minh chỉ trong vài giây
+                </p>
+                <ul className="space-y-3 mb-6">
+                  <li className="flex items-start gap-3">
+                    <svg className="w-6 h-6 text-green-300 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                    <span className="text-lg">Tiết kiệm <strong>90% thời gian</strong> xếp lịch (từ 2-3 giờ xuống 5-10 phút)</span>
+                  </li>
+                  <li className="flex items-start gap-3">
+                    <svg className="w-6 h-6 text-green-300 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                    <span className="text-lg">Phân bổ <strong>công bằng</strong> dựa trên 5+ yếu tố (giờ, ca, ngày nghỉ, cuối tuần...)</span>
+                  </li>
+                  <li className="flex items-start gap-3">
+                    <svg className="w-6 h-6 text-green-300 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                    <span className="text-lg">Độ phủ cao hơn - AI tìm được cách xếp tối ưu mà bạn có thể bỏ lỡ</span>
+                  </li>
+                </ul>
+                <div className="flex flex-col sm:flex-row gap-4">
+                  <Link
+                    href="/sep-lich-ai"
+                    className="inline-block bg-white hover:bg-gray-100 text-purple-600 px-8 py-4 rounded-lg font-bold text-lg transition-all shadow-lg text-center"
+                  >
+                    Tìm hiểu thêm
+                  </Link>
+                  <Link
+                    href="/auth/signup"
+                    className="inline-block bg-yellow-400 hover:bg-yellow-500 text-purple-900 px-8 py-4 rounded-lg font-bold text-lg transition-all shadow-lg text-center"
+                  >
+                    Dùng thử ngay
+                  </Link>
+                </div>
+              </div>
+              <div className="flex-shrink-0">
+                <div className="bg-white bg-opacity-10 backdrop-blur-sm rounded-2xl p-6 border border-white border-opacity-20">
+                  <div className="text-6xl mb-4 text-center">🤖</div>
+                  <div className="grid grid-cols-2 gap-3 text-center">
+                    <div className="bg-white bg-opacity-20 rounded-lg p-3">
+                      <div className="text-2xl font-bold">98%</div>
+                      <div className="text-xs text-blue-100">Độ phủ</div>
+                    </div>
+                    <div className="bg-white bg-opacity-20 rounded-lg p-3">
+                      <div className="text-2xl font-bold">95/100</div>
+                      <div className="text-xs text-blue-100">Công bằng</div>
+                    </div>
+                    <div className="bg-white bg-opacity-20 rounded-lg p-3">
+                      <div className="text-2xl font-bold">3s</div>
+                      <div className="text-xs text-blue-100">Xếp lịch</div>
+                    </div>
+                    <div className="bg-white bg-opacity-20 rounded-lg p-3">
+                      <div className="text-2xl font-bold">5+</div>
+                      <div className="text-xs text-blue-100">Yếu tố</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* Core Features */}
       <div className="mb-20">
         <h2 className="text-3xl sm:text-4xl font-bold text-center text-gray-800 mb-12">
