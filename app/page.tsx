@@ -578,6 +578,16 @@ export default function Home() {
       <footer className="bg-white mt-auto">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
           <div className="flex flex-col items-center gap-4">
+            <div className="flex items-center gap-4">
+              <a
+                href="https://www.diemdanh.net/help"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-xs sm:text-sm text-blue-600 hover:text-blue-700 hover:underline transition-all"
+              >
+                Trợ giúp
+              </a>
+            </div>
             <p className="text-xs sm:text-sm text-gray-600">
               © 2026 diemdanh.net - Giải pháp chấm công thông minh
             </p>
