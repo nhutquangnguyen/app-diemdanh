@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Staff, ShiftTemplate } from '@/types';
 import { supabase } from '@/lib/supabase';
 import {
@@ -8,7 +8,6 @@ import {
   calculateShiftDuration
 } from '@/lib/smartSchedule';
 import { useToast } from '@/components/Toast';
-import SmartSchedulePreview from './SmartSchedulePreview';
 
 interface SmartScheduleNewProps {
   storeId: string;
@@ -16,6 +15,7 @@ interface SmartScheduleNewProps {
   shifts: ShiftTemplate[];
   currentWeekStart: Date;
   navigateWeek: (direction: 'prev' | 'next') => void;
+  setWeekStart?: (date: Date) => void;
   goToToday: () => void;
   onScheduleApplied: () => void;
 }
@@ -26,13 +26,14 @@ export default function SmartScheduleNew({
   shifts,
   currentWeekStart,
   navigateWeek,
+  setWeekStart,
   goToToday,
   onScheduleApplied,
 }: SmartScheduleNewProps) {
   const toast = useToast();
 
   // State
-  const [step, setStep] = useState<1 | 2>(1);
+  const [step, setStep] = useState<1 | 2 | 3>(1);
   const [requirements, setRequirements] = useState<{ [key: string]: number }>({});
   const [availability, setAvailability] = useState<{ [key: string]: boolean }>({});
   const [expandedStaff, setExpandedStaff] = useState<Set<string>>(new Set());
@@ -40,8 +41,11 @@ export default function SmartScheduleNew({
   const [saving, setSaving] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [generatedSchedule, setGeneratedSchedule] = useState<any>(null);
-  const [showPreview, setShowPreview] = useState(false);
   const [bulkApplyValue, setBulkApplyValue] = useState<string>('1');
+  const [showWeekPicker, setShowWeekPicker] = useState(false);
+  const [calendarViewDate, setCalendarViewDate] = useState<Date>(currentWeekStart); // Separate state for calendar view
+  const [errorModal, setErrorModal] = useState<{ title: string; message: string; suggestions: string[]; footer?: string } | null>(null);
+  const weekPickerRef = useRef<HTMLDivElement>(null);
 
   const weekStartStr = getWeekStartDate(currentWeekStart);
   const weekDates = getWeekDates(weekStartStr);
@@ -51,6 +55,22 @@ export default function SmartScheduleNew({
   useEffect(() => {
     loadData();
   }, [weekStartStr, storeId]);
+
+  // Click outside to close week picker
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (weekPickerRef.current && !weekPickerRef.current.contains(event.target as Node)) {
+        setShowWeekPicker(false);
+      }
+    }
+
+    if (showWeekPicker) {
+      // Reset calendar view to current week's month when opening picker
+      setCalendarViewDate(new Date(currentWeekStart));
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }
+  }, [showWeekPicker, currentWeekStart]);
 
   async function loadData() {
     try {
@@ -247,21 +267,49 @@ export default function SmartScheduleNew({
     try {
       setGenerating(true);
 
-      // Validate
+      // Detailed validation
       const hasRequirements = Object.values(requirements).some(v => v > 0);
       const hasAvailability = Object.values(availability).some(v => v);
 
+      // Check if no requirements set
       if (!hasRequirements) {
-        toast.warning('Vui lòng nhập số lượng nhân viên cần thiết');
-        return;
-      }
-      if (!hasAvailability) {
-        toast.warning('Vui lòng đánh dấu lịch rảnh cho nhân viên');
+        showErrorModal(
+          'Chưa có yêu cầu nhân viên',
+          'Bạn chưa nhập số lượng nhân viên cần thiết cho bất kỳ ca làm việc nào.',
+          [
+            'Quay lại Bước 1 và nhập số lượng nhân viên cần thiết cho mỗi ca',
+            'Hoặc sử dụng tính năng "Áp dụng nhanh" để thiết lập nhanh cho tất cả'
+          ]
+        );
         return;
       }
 
-      // Save first
-      await handleSave();
+      // Check if no staff available
+      if (staff.length === 0) {
+        showErrorModal(
+          'Không có nhân viên',
+          'Cửa hàng chưa có nhân viên nào để xếp lịch.',
+          [
+            'Vào tab "Nhân viên" để thêm nhân viên mới',
+            'Đảm bảo có ít nhất 1 nhân viên trước khi tạo lịch tự động'
+          ]
+        );
+        return;
+      }
+
+      // Check if no one marked as available
+      if (!hasAvailability) {
+        showErrorModal(
+          'Không có nhân viên rảnh',
+          'Chưa có nhân viên nào được đánh dấu là có thể làm việc.',
+          [
+            'Mở rộng từng nhân viên và đánh dấu các ca làm việc họ có thể làm',
+            'Sử dụng "Áp dụng nhanh" (Tất cả tuần, T2-T6, T7-CN) để thiết lập nhanh',
+            'Ít nhất 1 nhân viên cần có ít nhất 1 ca được đánh dấu là rảnh'
+          ]
+        );
+        return;
+      }
 
       // Prepare data
       const shiftsData = [];
@@ -295,6 +343,35 @@ export default function SmartScheduleNew({
         });
       });
 
+      // Check if any shift has no available staff
+      const shiftsWithNoStaff: string[] = [];
+      for (const shiftData of shiftsData) {
+        const dayIndex = weekDates.indexOf(shiftData.date);
+        const availableStaff = staff.filter(s =>
+          isAvailable(s.id, dayIndex, shiftData.shiftTemplateId)
+        );
+
+        if (availableStaff.length === 0) {
+          const dayName = dayNames[dayIndex];
+          shiftsWithNoStaff.push(`${dayName} - ${shiftData.shiftName}`);
+        }
+      }
+
+      if (shiftsWithNoStaff.length > 0) {
+        showErrorModal(
+          'Một số ca không có nhân viên rảnh',
+          `Các ca làm việc sau không có nhân viên nào được đánh dấu là rảnh:`,
+          shiftsWithNoStaff.slice(0, 5).concat(
+            shiftsWithNoStaff.length > 5 ? [`... và ${shiftsWithNoStaff.length - 5} ca khác`] : []
+          ),
+          'Quay lại Bước 2 và đánh dấu nhân viên rảnh cho các ca này, hoặc giảm số lượng nhân viên yêu cầu ở Bước 1.'
+        );
+        return;
+      }
+
+      // Save first
+      await handleSave();
+
       // Run algorithm
       const result = generateSmartSchedule(
         shiftsData,
@@ -303,7 +380,7 @@ export default function SmartScheduleNew({
       );
 
       setGeneratedSchedule(result);
-      setShowPreview(true);
+      setStep(3); // Go to step 3 instead of showing modal
 
     } catch (error) {
       console.error('Error generating:', error);
@@ -311,6 +388,11 @@ export default function SmartScheduleNew({
     } finally {
       setGenerating(false);
     }
+  }
+
+  // Show error modal helper
+  function showErrorModal(title: string, message: string, suggestions: string[], footer?: string) {
+    setErrorModal({ title, message, suggestions, footer });
   }
 
   if (loading) {
@@ -331,7 +413,7 @@ export default function SmartScheduleNew({
               Lịch Thông Minh 🤖
             </h1>
             <p className="text-sm text-gray-600 mt-1">
-              Bước {step}/2: {step === 1 ? 'Số lượng nhân viên' : 'Lịch rảnh'}
+              Bước {step}/3: {step === 1 ? 'Số lượng nhân viên' : step === 2 ? 'Lịch rảnh' : 'Xem trước lịch'}
             </p>
           </div>
           <button
@@ -346,29 +428,190 @@ export default function SmartScheduleNew({
         <div className="flex gap-2 mb-4">
           <div className={`flex-1 h-2 rounded-full ${step >= 1 ? 'bg-blue-600' : 'bg-gray-200'}`} />
           <div className={`flex-1 h-2 rounded-full ${step >= 2 ? 'bg-blue-600' : 'bg-gray-200'}`} />
+          <div className={`flex-1 h-2 rounded-full ${step >= 3 ? 'bg-blue-600' : 'bg-gray-200'}`} />
         </div>
 
-        {/* Week Navigation */}
-        <div className="flex items-center justify-between gap-4">
-          <button onClick={() => navigateWeek('prev')} className="p-2 hover:bg-gray-100 rounded-lg">
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+        {/* Week Picker */}
+        <div ref={weekPickerRef} className="flex items-center justify-center relative">
+          <button
+            onClick={() => setShowWeekPicker(!showWeekPicker)}
+            className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+          >
+            <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+            </svg>
+            <span className="text-sm font-semibold text-gray-700">
+              {(() => {
+                const formatDM = (d: string) => {
+                  const date = new Date(d);
+                  return `${date.getDate().toString().padStart(2, '0')}/${(date.getMonth() + 1).toString().padStart(2, '0')}`;
+                };
+                return `${formatDM(weekDates[0])} - ${formatDM(weekDates[6])}`;
+              })()}
+            </span>
+            <svg className={`w-4 h-4 text-gray-600 transition-transform ${showWeekPicker ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
             </svg>
           </button>
-          <div className="text-sm font-semibold text-gray-700">
-            {(() => {
-              const formatDM = (d: string) => {
-                const date = new Date(d);
-                return `${date.getDate().toString().padStart(2, '0')}/${(date.getMonth() + 1).toString().padStart(2, '0')}`;
-              };
-              return `${formatDM(weekDates[0])} - ${formatDM(weekDates[6])}`;
-            })()}
-          </div>
-          <button onClick={() => navigateWeek('next')} className="p-2 hover:bg-gray-100 rounded-lg">
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-            </svg>
-          </button>
+
+          {/* Month Calendar Picker Dropdown */}
+          {showWeekPicker && (
+            <div className="absolute top-full mt-2 left-1/2 transform -translate-x-1/2 bg-white border border-gray-300 rounded-lg shadow-lg p-4 z-50 w-[320px] sm:w-[360px]">
+              <div className="flex items-center justify-between mb-4">
+                <button
+                  onClick={() => {
+                    // Just change the calendar view, don't change selected week
+                    const newDate = new Date(calendarViewDate);
+                    newDate.setMonth(newDate.getMonth() - 1);
+                    setCalendarViewDate(newDate);
+                  }}
+                  className="p-1 hover:bg-gray-100 rounded"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                  </svg>
+                </button>
+                <h3 className="text-sm font-semibold text-gray-800">
+                  Tháng {calendarViewDate.getMonth() + 1}/{calendarViewDate.getFullYear()}
+                </h3>
+                <button
+                  onClick={() => {
+                    // Just change the calendar view, don't change selected week
+                    const newDate = new Date(calendarViewDate);
+                    newDate.setMonth(newDate.getMonth() + 1);
+                    setCalendarViewDate(newDate);
+                  }}
+                  className="p-1 hover:bg-gray-100 rounded"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                </button>
+              </div>
+
+              {/* Calendar Grid */}
+              <div className="space-y-1">
+                {/* Day headers */}
+                <div className="grid grid-cols-7 gap-1 mb-2">
+                  {['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'].map((day) => (
+                    <div key={day} className="text-xs font-semibold text-gray-600 text-center py-1">
+                      {day}
+                    </div>
+                  ))}
+                </div>
+
+                {/* Calendar days grouped by weeks */}
+                {(() => {
+                  const year = calendarViewDate.getFullYear();
+                  const month = calendarViewDate.getMonth();
+                  const firstDay = new Date(year, month, 1);
+                  const lastDay = new Date(year, month + 1, 0);
+
+                  // Get first Monday of the calendar (might be from previous month)
+                  const firstMonday = new Date(firstDay);
+                  const dayOfWeek = firstDay.getDay();
+                  const diff = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+                  firstMonday.setDate(firstDay.getDate() + diff);
+
+                  const weeks = [];
+                  const currentDate = new Date(firstMonday);
+
+                  // Generate weeks - maximum 6 weeks to display (standard calendar)
+                  // Stop when we've passed the last day of the month
+                  while (weeks.length < 6) {
+                    const weekStart = new Date(currentDate);
+                    weekStart.setHours(0, 0, 0, 0); // Normalize to midnight
+                    const weekDays = [];
+
+                    // Collect 7 days for this week (Monday to Sunday)
+                    for (let i = 0; i < 7; i++) {
+                      weekDays.push(new Date(currentDate));
+                      currentDate.setDate(currentDate.getDate() + 1);
+                    }
+
+                    // Only add this week if it contains at least one day from the current month
+                    const hasCurrentMonthDay = weekDays.some(day => day.getMonth() === month);
+                    if (hasCurrentMonthDay) {
+                      weeks.push({ weekStart, weekDays });
+                    }
+
+                    // Stop if we've gone past the last day of the month and already have weeks
+                    if (weekStart > lastDay && weeks.length > 0) {
+                      break;
+                    }
+                  }
+
+                  const selectedWeekStart = new Date(currentWeekStart);
+                  selectedWeekStart.setHours(0, 0, 0, 0);
+
+                  return weeks.map((week, weekIdx) => {
+                    const isSelectedWeek = week.weekStart.getTime() === selectedWeekStart.getTime();
+
+                    return (
+                      <button
+                        key={weekIdx}
+                        onClick={() => {
+                          if (setWeekStart) {
+                            // Normalize the date to ensure it's set at midnight with correct day
+                            const normalizedDate = new Date(week.weekStart);
+                            normalizedDate.setHours(0, 0, 0, 0);
+                            setWeekStart(normalizedDate);
+                          } else {
+                            // Fall back to navigating multiple weeks
+                            const diffWeeks = Math.round((week.weekStart.getTime() - currentWeekStart.getTime()) / (7 * 24 * 60 * 60 * 1000));
+                            if (diffWeeks !== 0) {
+                              for (let i = 0; i < Math.abs(diffWeeks); i++) {
+                                navigateWeek(diffWeeks > 0 ? 'next' : 'prev');
+                              }
+                            }
+                          }
+                          setShowWeekPicker(false);
+                        }}
+                        className={`grid grid-cols-7 gap-1 p-1 rounded-lg transition-colors w-full ${
+                          isSelectedWeek
+                            ? 'bg-blue-100 hover:bg-blue-200'
+                            : 'hover:bg-gray-100'
+                        }`}
+                      >
+                        {week.weekDays.map((day, dayIdx) => {
+                          const isCurrentMonth = day.getMonth() === month;
+                          const isToday = day.toDateString() === new Date().toDateString();
+
+                          return (
+                            <div
+                              key={dayIdx}
+                              className={`text-xs py-1 text-center rounded ${
+                                isToday
+                                  ? 'bg-blue-600 text-white font-bold'
+                                  : isCurrentMonth
+                                    ? 'text-gray-800'
+                                    : 'text-gray-400'
+                              }`}
+                            >
+                              {day.getDate()}
+                            </div>
+                          );
+                        })}
+                      </button>
+                    );
+                  });
+                })()}
+              </div>
+
+              {/* Quick actions */}
+              <div className="mt-3 pt-3 border-t border-gray-200">
+                <button
+                  onClick={() => {
+                    goToToday();
+                    setShowWeekPicker(false);
+                  }}
+                  className="w-full px-3 py-2 text-sm text-blue-600 hover:bg-blue-50 rounded-lg font-medium"
+                >
+                  Tuần này
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
@@ -637,22 +880,593 @@ export default function SmartScheduleNew({
         </div>
       )}
 
-      {/* Preview Modal */}
-      {showPreview && generatedSchedule && (
-        <SmartSchedulePreview
-          schedule={generatedSchedule}
+      {/* STEP 3: Preview Schedule */}
+      {step === 3 && generatedSchedule && (
+        <Step3PreviewContent
+          generatedSchedule={generatedSchedule}
           staff={staff}
           shifts={shifts}
           weekDates={weekDates}
           storeId={storeId}
           weekStartStr={weekStartStr}
-          onClose={() => setShowPreview(false)}
+          dayNames={dayNames}
+          onBack={() => setStep(2)}
           onApplied={() => {
-            setShowPreview(false);
+            setStep(1);
             onScheduleApplied();
           }}
+          toast={toast}
         />
       )}
+
+      {/* Error Modal */}
+      {errorModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg shadow-2xl max-w-md w-full p-6">
+            {/* Icon and Title */}
+            <div className="flex items-start gap-3 mb-4">
+              <div className="flex-shrink-0 w-12 h-12 bg-red-100 rounded-full flex items-center justify-center">
+                <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+              </div>
+              <div className="flex-1">
+                <h3 className="text-lg font-bold text-gray-900 mb-1">{errorModal.title}</h3>
+                <p className="text-sm text-gray-600">{errorModal.message}</p>
+              </div>
+            </div>
+
+            {/* Suggestions */}
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+              <div className="text-sm font-semibold text-blue-900 mb-2">💡 Giải pháp:</div>
+              <ul className="space-y-2">
+                {errorModal.suggestions.map((suggestion, idx) => (
+                  <li key={idx} className="text-sm text-blue-800 flex gap-2">
+                    <span className="flex-shrink-0">•</span>
+                    <span>{suggestion}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            {/* Footer message if any */}
+            {errorModal.footer && (
+              <p className="text-xs text-gray-500 mb-4 italic">{errorModal.footer}</p>
+            )}
+
+            {/* Close Button */}
+            <button
+              onClick={() => setErrorModal(null)}
+              className="w-full bg-blue-600 hover:bg-blue-700 text-white px-4 py-3 rounded-lg font-semibold transition-colors"
+            >
+              Đã hiểu
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Step 3 Preview Component
+function Step3PreviewContent({
+  generatedSchedule,
+  staff,
+  shifts,
+  weekDates,
+  storeId,
+  weekStartStr,
+  dayNames,
+  onBack,
+  onApplied,
+  toast,
+}: {
+  generatedSchedule: any;
+  staff: Staff[];
+  shifts: ShiftTemplate[];
+  weekDates: string[];
+  storeId: string;
+  weekStartStr: string;
+  dayNames: string[];
+  onBack: () => void;
+  onApplied: () => void;
+  toast: any;
+}) {
+  const [applying, setApplying] = useState(false);
+  const [viewMode, setViewMode] = useState<'staff-rows' | 'date-rows'>('staff-rows');
+  const [showHelp, setShowHelp] = useState<string | null>(null);
+  const helpRef = useRef<HTMLDivElement>(null);
+
+  const { assignments, warnings, stats, staffHours, staffShiftCount } = generatedSchedule;
+
+  // Close help tooltip when clicking outside
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (helpRef.current && !helpRef.current.contains(event.target as Node)) {
+        setShowHelp(null);
+      }
+    }
+
+    if (showHelp) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }
+  }, [showHelp]);
+
+  // Get staff member by ID
+  const getStaff = (staffId: string) => staff.find(s => s.id === staffId);
+
+  // Get shift by ID
+  const getShift = (shiftId: string) => shifts.find(s => s.id === shiftId);
+
+  // Get assignments for staff on date
+  const getAssignments = (staffId: string, date: string): string[] => {
+    return assignments[staffId]?.[date] || [];
+  };
+
+  // Apply the generated schedule
+  async function handleApply() {
+    try {
+      setApplying(true);
+
+      // Create schedule generation record
+      const { data: generationData, error: genError } = await supabase
+        .from('schedule_generations')
+        .insert([
+          {
+            store_id: storeId,
+            week_start_date: weekStartStr,
+            total_shifts_required: stats.totalShiftsRequired,
+            total_shifts_filled: stats.totalShiftsFilled,
+            coverage_percent: stats.coveragePercent,
+            fairness_score: stats.fairnessScore,
+            total_warnings: warnings.length,
+            is_accepted: true,
+            accepted_at: new Date().toISOString(),
+          },
+        ])
+        .select()
+        .single();
+
+      if (genError) throw genError;
+
+      // Prepare schedule records
+      const scheduleRecords = [];
+      for (const staffId of Object.keys(assignments)) {
+        for (const date of Object.keys(assignments[staffId])) {
+          const shiftIds = assignments[staffId][date] || [];
+          for (const shiftId of shiftIds) {
+            scheduleRecords.push({
+              staff_id: staffId,
+              store_id: storeId,
+              shift_template_id: shiftId,
+              scheduled_date: date,
+              generation_id: generationData.id,
+            });
+          }
+        }
+      }
+
+      // Delete existing schedules for this week
+      const weekEnd = new Date(weekStartStr);
+      weekEnd.setDate(weekEnd.getDate() + 6);
+
+      await supabase
+        .from('staff_schedules')
+        .delete()
+        .eq('store_id', storeId)
+        .gte('scheduled_date', weekStartStr)
+        .lte('scheduled_date', weekEnd.toISOString().split('T')[0]);
+
+      // Insert new schedules
+      if (scheduleRecords.length > 0) {
+        const { error: schedError } = await supabase
+          .from('staff_schedules')
+          .insert(scheduleRecords);
+
+        if (schedError) throw schedError;
+      }
+
+      toast.success(`Đã áp dụng lịch! ${stats.totalShiftsFilled}/${stats.totalShiftsRequired} ca được xếp`);
+      onApplied();
+
+    } catch (error) {
+      console.error('Error applying schedule:', error);
+      toast.error('Lỗi khi áp dụng lịch');
+    } finally {
+      setApplying(false);
+    }
+  }
+
+  return (
+    <div className="bg-white rounded-lg shadow-lg p-4 sm:p-6">
+      {/* All Content in One Page */}
+      <div className="space-y-6">
+        {/* Stats Section */}
+        <div>
+          <h3 className="text-lg font-bold text-gray-800 mb-4">Thống Kê</h3>
+          <div>
+            {/* Statistics Cards */}
+            <div ref={helpRef} className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-4">
+              {/* Độ Phủ */}
+              <div className="bg-blue-50 rounded-lg p-3 relative">
+                <div className="flex items-center gap-1 mb-1">
+                  <div className="text-xs text-gray-600">Độ Phủ</div>
+                  <button
+                    onClick={() => setShowHelp(showHelp === 'coverage' ? null : 'coverage')}
+                    className="text-blue-600 hover:text-blue-700 transition-colors"
+                  >
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  </button>
+                </div>
+                {showHelp === 'coverage' && (
+                  <div className="absolute z-50 top-full left-0 mt-1 bg-white border border-blue-300 rounded-lg shadow-lg p-3 text-xs text-gray-700 w-48 sm:w-64 max-w-[calc(100vw-2rem)]">
+                    <p className="font-semibold text-blue-700 mb-1">Độ Phủ</p>
+                    <p>Tỷ lệ phần trăm (%) ca làm việc được xếp thành công so với tổng số ca cần xếp. Độ phủ càng cao thì lịch càng đầy đủ.</p>
+                  </div>
+                )}
+                <div className="text-2xl font-bold text-blue-600">{stats.coveragePercent}%</div>
+                <div className="text-xs text-gray-500">{stats.totalShiftsFilled}/{stats.totalShiftsRequired} ca</div>
+              </div>
+
+              {/* Công Bằng */}
+              <div className="bg-green-50 rounded-lg p-3 relative">
+                <div className="flex items-center gap-1 mb-1">
+                  <div className="text-xs text-gray-600">Công Bằng</div>
+                  <button
+                    onClick={() => setShowHelp(showHelp === 'fairness' ? null : 'fairness')}
+                    className="text-green-600 hover:text-green-700 transition-colors"
+                  >
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  </button>
+                </div>
+                {showHelp === 'fairness' && (
+                  <div className="absolute z-50 top-full right-0 mt-1 bg-white border border-green-300 rounded-lg shadow-lg p-3 text-xs text-gray-700 w-48 sm:w-64 max-w-[calc(100vw-2rem)]">
+                    <p className="font-semibold text-green-700 mb-1">Độ Công Bằng</p>
+                    <p>Điểm đánh giá mức độ cân bằng giờ làm việc giữa các nhân viên. Điểm càng cao (gần 100) thì việc phân bổ ca càng công bằng, tránh người làm nhiều người làm ít.</p>
+                  </div>
+                )}
+                <div className="text-2xl font-bold text-green-600">{stats.fairnessScore}/100</div>
+                <div className="text-xs text-gray-500">Điểm công bằng</div>
+              </div>
+
+              {/* Giờ Trung Bình */}
+              <div className="bg-purple-50 rounded-lg p-3 relative">
+                <div className="flex items-center gap-1 mb-1">
+                  <div className="text-xs text-gray-600">Giờ TB</div>
+                  <button
+                    onClick={() => setShowHelp(showHelp === 'hours' ? null : 'hours')}
+                    className="text-purple-600 hover:text-purple-700 transition-colors"
+                  >
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  </button>
+                </div>
+                {showHelp === 'hours' && (
+                  <div className="absolute z-50 top-full left-0 mt-1 bg-white border border-purple-300 rounded-lg shadow-lg p-3 text-xs text-gray-700 w-48 sm:w-64 max-w-[calc(100vw-2rem)]">
+                    <p className="font-semibold text-purple-700 mb-1">Giờ Trung Bình</p>
+                    <p>Số giờ làm việc trung bình mỗi nhân viên trong tuần. Khoảng nhỏ nhất - lớn nhất cho biết người làm ít nhất và nhiều nhất có bao nhiêu giờ.</p>
+                  </div>
+                )}
+                <div className="text-2xl font-bold text-purple-600">{stats.avgHoursPerStaff}h</div>
+                <div className="text-xs text-gray-500">{stats.minHours}h - {stats.maxHours}h</div>
+              </div>
+
+              {/* Cảnh Báo */}
+              <div className="bg-orange-50 rounded-lg p-3 relative">
+                <div className="flex items-center gap-1 mb-1">
+                  <div className="text-xs text-gray-600">Cảnh Báo</div>
+                  <button
+                    onClick={() => setShowHelp(showHelp === 'warnings' ? null : 'warnings')}
+                    className="text-orange-600 hover:text-orange-700 transition-colors"
+                  >
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  </button>
+                </div>
+                {showHelp === 'warnings' && (
+                  <div className="absolute z-50 top-full right-0 mt-1 bg-white border border-orange-300 rounded-lg shadow-lg p-3 text-xs text-gray-700 w-48 sm:w-64 max-w-[calc(100vw-2rem)]">
+                    <p className="font-semibold text-orange-700 mb-1">Cảnh Báo</p>
+                    <p>Số vấn đề tiềm ẩn được phát hiện trong lịch (vd: ca thiếu người, nhân viên làm quá nhiều giờ, làm liên tục nhiều ngày). Kiểm tra chi tiết bên dưới để xem cụ thể.</p>
+                  </div>
+                )}
+                <div className="text-2xl font-bold text-orange-600">{warnings.length}</div>
+                <div className="text-xs text-gray-500">Vấn đề phát hiện</div>
+              </div>
+            </div>
+
+            {/* Warnings List */}
+            {warnings.length > 0 && (
+              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                <div className="flex gap-2 mb-2">
+                  <svg className="w-5 h-5 text-yellow-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                  </svg>
+                  <div className="flex-1">
+                    <div className="font-semibold text-yellow-800 text-sm mb-2">Cảnh báo ({warnings.length}):</div>
+                    <div className="space-y-1 max-h-64 overflow-y-auto">
+                      {warnings.map((warning: any, idx: number) => (
+                        <div
+                          key={idx}
+                          className={`text-xs px-2 py-1 rounded ${
+                            warning.severity === 'critical'
+                              ? 'bg-red-100 text-red-800'
+                              : warning.severity === 'warning'
+                              ? 'bg-yellow-100 text-yellow-800'
+                              : 'bg-blue-100 text-blue-800'
+                          }`}
+                        >
+                          {warning.message}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Schedule Section */}
+        <div>
+          <h3 className="text-lg font-bold text-gray-800 mb-4">Lịch Làm Việc</h3>
+          <div>
+            {/* View Toggle & Legend */}
+            <div className="mb-4 space-y-3">
+              {/* Toggle Button */}
+              <div className="flex justify-end">
+                <div className="inline-flex rounded-lg border border-gray-300 bg-white p-1">
+                  <button
+                    onClick={() => setViewMode('staff-rows')}
+                    className={`px-3 sm:px-4 py-2 rounded-md text-xs sm:text-sm font-medium transition-all ${
+                      viewMode === 'staff-rows'
+                        ? 'bg-blue-600 text-white'
+                        : 'text-gray-600 hover:bg-gray-100'
+                    }`}
+                  >
+                    NV theo hàng
+                  </button>
+                  <button
+                    onClick={() => setViewMode('date-rows')}
+                    className={`px-3 sm:px-4 py-2 rounded-md text-xs sm:text-sm font-medium transition-all ${
+                      viewMode === 'date-rows'
+                        ? 'bg-blue-600 text-white'
+                        : 'text-gray-600 hover:bg-gray-100'
+                    }`}
+                  >
+                    Ngày theo hàng
+                  </button>
+                </div>
+              </div>
+
+              {/* Legend */}
+              <div className="flex flex-wrap gap-2 sm:gap-3 bg-gray-50 p-2 sm:p-3 rounded-lg">
+                {shifts.map(shift => (
+                  <div key={shift.id} className="flex items-center gap-1 sm:gap-2">
+                    <div
+                      className="w-3 h-3 sm:w-4 sm:h-4 rounded"
+                      style={{ backgroundColor: shift.color }}
+                    />
+                    <span className="text-xs font-medium text-gray-700">{shift.name}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="overflow-x-auto -mx-4 sm:-mx-6 px-4 sm:px-6">
+              {viewMode === 'staff-rows' ? (
+                // Staff as Rows
+                <table className="w-full border-collapse min-w-full">
+                  <thead>
+                    <tr className="border-b-2 border-gray-300">
+                      <th className="text-left p-2 sm:p-3 text-gray-700 font-bold text-xs sm:text-sm border-r border-gray-200 sticky left-0 bg-white z-30 shadow-[2px_0_4px_rgba(0,0,0,0.05)] w-16 sm:w-auto">
+                        <div className="whitespace-nowrap text-xs sm:text-sm">NV</div>
+                      </th>
+                      {weekDates.map((date, dayIndex) => (
+                        <th key={date} className="p-0.5 sm:p-2 text-center border-r border-gray-200 last:border-r-0 w-[25px] sm:w-[80px]">
+                          <div className="text-[9px] sm:text-xs font-semibold text-gray-600">{dayNames[dayIndex]}</div>
+                          <div className="text-[8px] sm:text-xs text-gray-500">
+                            {new Date(date).getDate()}/{new Date(date).getMonth() + 1}
+                          </div>
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {staff.map((staffMember, index) => (
+                      <tr
+                        key={staffMember.id}
+                        className={`border-b border-gray-200 ${
+                          index % 2 === 0 ? 'bg-white' : 'bg-gray-50'
+                        }`}
+                      >
+                        <td className={`p-2 sm:p-3 border-r border-gray-200 sticky left-0 z-30 shadow-[2px_0_4px_rgba(0,0,0,0.05)] ${
+                          index % 2 === 0 ? 'bg-white' : 'bg-gray-50'
+                        }`}>
+                          <div className="font-semibold text-gray-800 text-xs sm:text-sm whitespace-nowrap overflow-hidden text-ellipsis max-w-[50px] sm:max-w-none" title={staffMember.name || staffMember.full_name}>
+                            {(() => {
+                              const name = staffMember.name || staffMember.full_name;
+                              return name.length > 6 ? `${name.substring(0, 5)}...` : name;
+                            })()}
+                          </div>
+                        </td>
+                        {weekDates.map((date) => {
+                          const shiftIds = getAssignments(staffMember.id, date);
+                          const assignedShifts = shiftIds.map(id => getShift(id)).filter(Boolean);
+
+                          return (
+                            <td
+                              key={date}
+                              className="p-0 sm:p-1 border-r border-gray-200 last:border-r-0 text-center align-top w-[25px] sm:w-[80px]"
+                            >
+                              {assignedShifts.length > 0 ? (
+                                <div className="flex flex-col gap-0.5 min-h-[30px] sm:min-h-[40px] py-1">
+                                  {assignedShifts.map((shift) => shift && (
+                                    <div
+                                      key={shift.id}
+                                      className="w-full h-3 sm:h-4 rounded"
+                                      style={{ backgroundColor: shift.color }}
+                                      title={`${shift.name}\n${shift.start_time.substring(0, 5)} - ${shift.end_time.substring(0, 5)}`}
+                                    />
+                                  ))}
+                                </div>
+                              ) : (
+                                <div className="text-gray-300 text-[10px] sm:text-xs min-h-[30px] sm:min-h-[40px] flex items-center justify-center">--</div>
+                              )}
+                            </td>
+                          );
+                        })}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              ) : (
+                // Dates as Rows
+                <table className="w-full border-collapse">
+                  <thead>
+                    <tr className="border-b-2 border-gray-300">
+                      <th className="text-left pl-1 pr-1 py-2 sm:pl-2 sm:pr-3 sm:py-3 text-gray-700 font-bold text-xs sm:text-sm border-r-2 border-gray-300 sticky left-0 bg-white z-30 w-16 sm:w-auto">
+                        Ngày
+                      </th>
+                      {staff.map((staffMember) => (
+                        <th key={staffMember.id} className="p-1 sm:p-3 text-center border-r border-gray-200 last:border-r-0 min-w-[60px] sm:min-w-[120px]">
+                          <div className="font-semibold text-gray-800 text-xs sm:text-sm truncate">
+                            {staffMember.name || staffMember.full_name}
+                          </div>
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {weekDates.map((date, dayIndex) => (
+                      <tr
+                        key={date}
+                        className={`border-b border-gray-200 ${
+                          dayIndex % 2 === 0 ? 'bg-white' : 'bg-gray-50'
+                        }`}
+                      >
+                        <td className={`pl-1 pr-1 py-2 sm:pl-2 sm:pr-3 sm:py-3 border-r-2 border-gray-300 sticky left-0 z-30 w-16 sm:w-auto ${
+                          dayIndex % 2 === 0 ? 'bg-white' : 'bg-gray-50'
+                        }`}>
+                          <div className="font-semibold text-gray-800 text-xs sm:text-sm whitespace-nowrap">
+                            {dayNames[dayIndex].slice(0, 2)}
+                          </div>
+                          <div className="text-xs text-gray-500 whitespace-nowrap">
+                            {new Date(date).getDate()}/{new Date(date).getMonth() + 1}
+                          </div>
+                        </td>
+                        {staff.map((staffMember) => {
+                          const shiftIds = getAssignments(staffMember.id, date);
+                          const assignedShifts = shiftIds.map(id => getShift(id)).filter(Boolean);
+
+                          return (
+                            <td
+                              key={staffMember.id}
+                              className="p-1 sm:p-2 border-r border-gray-200 last:border-r-0 text-center align-middle"
+                            >
+                              {assignedShifts.length > 0 ? (
+                                <div className="flex flex-col gap-1">
+                                  {assignedShifts.map((shift) => shift && (
+                                    <div
+                                      key={shift.id}
+                                      className="px-1 sm:px-2 py-0.5 sm:py-1 rounded text-[10px] sm:text-xs font-medium text-white"
+                                      style={{ backgroundColor: shift.color }}
+                                    >
+                                      {shift.name}
+                                    </div>
+                                  ))}
+                                </div>
+                              ) : (
+                                <div className="text-red-500 text-[10px] sm:text-xs font-medium bg-red-50 py-0.5 sm:py-1 px-1 sm:px-2 rounded">
+                                  OFF
+                                </div>
+                              )}
+                            </td>
+                          );
+                        })}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Distribution Section */}
+        <div>
+          <h3 className="text-lg font-bold text-gray-800 mb-4">Phân Bổ</h3>
+          <div>
+            <div className="bg-gray-50 rounded-lg p-4">
+              <h4 className="font-semibold text-gray-800 text-sm mb-3">Phân Bổ Công Việc:</h4>
+              <div className="space-y-3">
+                {staff.map((staffMember) => {
+                  const hours = staffHours[staffMember.id] || 0;
+                  const shiftCount = staffShiftCount[staffMember.id] || 0;
+                  const maxHours = Math.max(...Object.values(staffHours).map(h => Number(h) || 0));
+                  const percentage = maxHours > 0 ? (hours / maxHours) * 100 : 0;
+
+                  return (
+                    <div key={staffMember.id} className="space-y-1">
+                      {/* Name and Stats Row */}
+                      <div className="flex items-center justify-between">
+                        <div className="text-sm font-medium text-gray-700 truncate" title={staffMember.name || staffMember.full_name}>
+                          {staffMember.name || staffMember.full_name}
+                        </div>
+                        <div className="text-xs font-semibold text-gray-700 ml-2">
+                          {shiftCount} ca, {hours}h
+                        </div>
+                      </div>
+                      {/* Progress Bar */}
+                      <div className="bg-gray-200 rounded-full h-2 overflow-hidden">
+                        <div
+                          className="bg-gradient-to-r from-blue-500 to-blue-600 h-full transition-all"
+                          style={{ width: `${percentage}%` }}
+                        />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Action Buttons */}
+      <div className="flex gap-3 mt-6">
+        <button
+          onClick={onBack}
+          className="px-6 py-3 border border-gray-300 text-gray-700 rounded-lg font-semibold hover:bg-gray-50"
+        >
+          Quay lại
+        </button>
+        <button
+          onClick={handleApply}
+          disabled={applying}
+          className="flex-1 bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg font-semibold flex items-center justify-center gap-2 disabled:opacity-50"
+        >
+          {applying ? (
+            <>
+              <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+              Đang Áp Dụng...
+            </>
+          ) : (
+            <>
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
+              Chấp Nhận & Áp Dụng
+            </>
+          )}
+        </button>
+      </div>
     </div>
   );
 }

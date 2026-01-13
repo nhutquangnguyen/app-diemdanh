@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Staff, ShiftTemplate, SmartScheduleResult } from '@/types';
 import { supabase } from '@/lib/supabase';
 import { useToast } from '@/components/Toast';
@@ -26,9 +26,26 @@ export default function SmartSchedulePreview({
 }: SmartSchedulePreviewProps) {
   const toast = useToast();
   const [applying, setApplying] = useState(false);
+  const [activeTab, setActiveTab] = useState<'stats' | 'schedule' | 'distribution'>('stats');
   const [viewMode, setViewMode] = useState<'staff-rows' | 'date-rows'>('staff-rows'); // Toggle between views
+  const [showHelp, setShowHelp] = useState<string | null>(null);
+  const helpRef = useRef<HTMLDivElement>(null);
 
   const { assignments, warnings, stats, staffHours, staffShiftCount } = schedule;
+
+  // Close help tooltip when clicking outside
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (helpRef.current && !helpRef.current.contains(event.target as Node)) {
+        setShowHelp(null);
+      }
+    }
+
+    if (showHelp) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }
+  }, [showHelp]);
 
   const dayNames = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
 
@@ -118,12 +135,13 @@ export default function SmartSchedulePreview({
   }
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 overflow-y-auto">
-      <div className="bg-white rounded-lg shadow-2xl max-w-6xl w-full my-8 max-h-[90vh] overflow-y-auto">
+    <div className="fixed inset-0 bg-black bg-opacity-50 z-50 overflow-y-auto">
+      <div className="min-h-full flex items-center justify-center p-4">
+        <div className="bg-white rounded-lg shadow-2xl max-w-6xl w-full my-8">
         {/* Header */}
-        <div className="sticky top-0 bg-white border-b border-gray-200 p-6 z-30">
+        <div className="sticky top-0 bg-white border-b border-gray-200 p-4 sm:p-6 z-30">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-2xl font-bold text-gray-800">Xem Trước Lịch Tự Động</h2>
+            <h2 className="text-xl sm:text-2xl font-bold text-gray-800">Xem Trước Lịch Tự Động</h2>
             <button
               onClick={onClose}
               className="text-gray-400 hover:text-gray-600"
@@ -134,25 +152,133 @@ export default function SmartSchedulePreview({
             </button>
           </div>
 
+          {/* Tabs */}
+          <div className="flex gap-2 border-b border-gray-200 -mb-px">
+            <button
+              onClick={() => setActiveTab('stats')}
+              className={`px-4 py-2 font-medium text-sm border-b-2 transition-colors ${
+                activeTab === 'stats'
+                  ? 'border-blue-600 text-blue-600'
+                  : 'border-transparent text-gray-600 hover:text-gray-800'
+              }`}
+            >
+              Thống Kê
+            </button>
+            <button
+              onClick={() => setActiveTab('schedule')}
+              className={`px-4 py-2 font-medium text-sm border-b-2 transition-colors ${
+                activeTab === 'schedule'
+                  ? 'border-blue-600 text-blue-600'
+                  : 'border-transparent text-gray-600 hover:text-gray-800'
+              }`}
+            >
+              Lịch Làm Việc
+            </button>
+            <button
+              onClick={() => setActiveTab('distribution')}
+              className={`px-4 py-2 font-medium text-sm border-b-2 transition-colors ${
+                activeTab === 'distribution'
+                  ? 'border-blue-600 text-blue-600'
+                  : 'border-transparent text-gray-600 hover:text-gray-800'
+              }`}
+            >
+              Phân Bổ
+            </button>
+          </div>
+        </div>
+
+        {/* Tab Content */}
+        <div className="p-4 sm:p-6">
+          {activeTab === 'stats' && (
+          <div>
+
           {/* Statistics */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-4">
-            <div className="bg-blue-50 rounded-lg p-3">
-              <div className="text-xs text-gray-600 mb-1">Độ Phủ</div>
+          <div ref={helpRef} className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-4">
+            <div className="bg-blue-50 rounded-lg p-3 relative">
+              <div className="flex items-center gap-1 mb-1">
+                <div className="text-xs text-gray-600">Độ Phủ</div>
+                <button
+                  onClick={() => setShowHelp(showHelp === 'coverage' ? null : 'coverage')}
+                  className="text-blue-600 hover:text-blue-700 transition-colors"
+                  aria-label="Giải thích Độ Phủ"
+                >
+                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </button>
+              </div>
+              {showHelp === 'coverage' && (
+                <div className="absolute z-50 top-full left-0 mt-1 bg-white border border-blue-300 rounded-lg shadow-lg p-3 text-xs text-gray-700 w-48 sm:w-64 max-w-[calc(100vw-2rem)]">
+                  <p className="font-semibold text-blue-700 mb-1">Độ Phủ</p>
+                  <p>Tỷ lệ phần trăm (%) ca làm việc được xếp thành công so với tổng số ca cần xếp. Độ phủ càng cao thì lịch càng đầy đủ.</p>
+                </div>
+              )}
               <div className="text-2xl font-bold text-blue-600">{stats.coveragePercent}%</div>
               <div className="text-xs text-gray-500">{stats.totalShiftsFilled}/{stats.totalShiftsRequired} ca</div>
             </div>
-            <div className="bg-green-50 rounded-lg p-3">
-              <div className="text-xs text-gray-600 mb-1">Công Bằng</div>
+            <div className="bg-green-50 rounded-lg p-3 relative">
+              <div className="flex items-center gap-1 mb-1">
+                <div className="text-xs text-gray-600">Công Bằng</div>
+                <button
+                  onClick={() => setShowHelp(showHelp === 'fairness' ? null : 'fairness')}
+                  className="text-green-600 hover:text-green-700 transition-colors"
+                  aria-label="Giải thích Độ Công Bằng"
+                >
+                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </button>
+              </div>
+              {showHelp === 'fairness' && (
+                <div className="absolute z-50 top-full right-0 mt-1 bg-white border border-green-300 rounded-lg shadow-lg p-3 text-xs text-gray-700 w-48 sm:w-64 max-w-[calc(100vw-2rem)]">
+                  <p className="font-semibold text-green-700 mb-1">Độ Công Bằng</p>
+                  <p>Điểm đánh giá mức độ cân bằng giờ làm việc giữa các nhân viên. Điểm càng cao (gần 100) thì việc phân bổ ca càng công bằng, tránh người làm nhiều người làm ít.</p>
+                </div>
+              )}
               <div className="text-2xl font-bold text-green-600">{stats.fairnessScore}/100</div>
               <div className="text-xs text-gray-500">Điểm công bằng</div>
             </div>
-            <div className="bg-purple-50 rounded-lg p-3">
-              <div className="text-xs text-gray-600 mb-1">Giờ Trung Bình</div>
+            <div className="bg-purple-50 rounded-lg p-3 relative">
+              <div className="flex items-center gap-1 mb-1">
+                <div className="text-xs text-gray-600">Giờ Trung Bình</div>
+                <button
+                  onClick={() => setShowHelp(showHelp === 'hours' ? null : 'hours')}
+                  className="text-purple-600 hover:text-purple-700 transition-colors"
+                  aria-label="Giải thích Giờ Trung Bình"
+                >
+                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </button>
+              </div>
+              {showHelp === 'hours' && (
+                <div className="absolute z-50 top-full left-0 mt-1 bg-white border border-purple-300 rounded-lg shadow-lg p-3 text-xs text-gray-700 w-48 sm:w-64 max-w-[calc(100vw-2rem)]">
+                  <p className="font-semibold text-purple-700 mb-1">Giờ Trung Bình</p>
+                  <p>Số giờ làm việc trung bình mỗi nhân viên trong tuần. Khoảng nhỏ nhất - lớn nhất cho biết người làm ít nhất và nhiều nhất có bao nhiêu giờ.</p>
+                </div>
+              )}
               <div className="text-2xl font-bold text-purple-600">{stats.avgHoursPerStaff}h</div>
               <div className="text-xs text-gray-500">{stats.minHours}h - {stats.maxHours}h</div>
             </div>
-            <div className="bg-orange-50 rounded-lg p-3">
-              <div className="text-xs text-gray-600 mb-1">Cảnh Báo</div>
+            <div className="bg-orange-50 rounded-lg p-3 relative">
+              <div className="flex items-center gap-1 mb-1">
+                <div className="text-xs text-gray-600">Cảnh Báo</div>
+                <button
+                  onClick={() => setShowHelp(showHelp === 'warnings' ? null : 'warnings')}
+                  className="text-orange-600 hover:text-orange-700 transition-colors"
+                  aria-label="Giải thích Cảnh Báo"
+                >
+                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </button>
+              </div>
+              {showHelp === 'warnings' && (
+                <div className="absolute z-50 top-full right-0 mt-1 bg-white border border-orange-300 rounded-lg shadow-lg p-3 text-xs text-gray-700 w-48 sm:w-64 max-w-[calc(100vw-2rem)]">
+                  <p className="font-semibold text-orange-700 mb-1">Cảnh Báo</p>
+                  <p>Số vấn đề tiềm ẩn được phát hiện trong lịch (vd: ca thiếu người, nhân viên làm quá nhiều giờ, làm liên tục nhiều ngày). Kiểm tra chi tiết bên dưới để xem cụ thể.</p>
+                </div>
+              )}
               <div className="text-2xl font-bold text-orange-600">{warnings.length}</div>
               <div className="text-xs text-gray-500">Vấn đề phát hiện</div>
             </div>
@@ -187,10 +313,11 @@ export default function SmartSchedulePreview({
               </div>
             </div>
           )}
-        </div>
+          </div>
+          )}
 
-        {/* Schedule Grid */}
-        <div className="p-6">
+          {activeTab === 'schedule' && (
+          <div>
           <h3 className="text-lg font-semibold text-gray-800 mb-3">Lịch Làm Việc:</h3>
 
           {/* View Toggle & Legend */}
@@ -372,9 +499,13 @@ export default function SmartSchedulePreview({
               </table>
             )}
           </div>
+          </div>
+          )}
 
+          {activeTab === 'distribution' && (
+          <div>
           {/* Workload Distribution */}
-          <div className="mt-6 bg-gray-50 rounded-lg p-4">
+          <div className="bg-gray-50 rounded-lg p-4">
             <h4 className="font-semibold text-gray-800 text-sm mb-3">Phân Bổ Công Việc:</h4>
             <div className="space-y-2">
               {staff.map((staffMember) => {
@@ -405,6 +536,8 @@ export default function SmartSchedulePreview({
               })}
             </div>
           </div>
+          </div>
+          )}
         </div>
 
         {/* Footer Actions */}
@@ -434,6 +567,7 @@ export default function SmartSchedulePreview({
               </>
             )}
           </button>
+        </div>
         </div>
       </div>
     </div>
