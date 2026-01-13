@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { Staff, ShiftTemplate, ScheduleWithDetails, WeekSummary } from '@/types';
 import StaffScheduleGrid from './StaffScheduleGrid';
@@ -24,6 +24,13 @@ interface StoreScheduleProps {
   handleTouchStart: (e: React.TouchEvent) => void;
   handleTouchMove: (e: React.TouchEvent) => void;
   handleTouchEnd: () => void;
+  selectedItem: { type: 'day' | 'staff'; id: string; date?: Date } | null;
+  setSelectedItem: (item: { type: 'day' | 'staff'; id: string; date?: Date } | null) => void;
+  clipboard: { type: 'day' | 'staff'; schedules: ScheduleWithDetails[] } | null;
+  setClipboard: (clipboard: { type: 'day' | 'staff'; schedules: ScheduleWithDetails[] } | null) => void;
+  handleToolbarCopy: () => void;
+  handleToolbarPaste: () => void;
+  handleToolbarClear: () => void;
 }
 
 export default function StoreSchedule({
@@ -47,11 +54,25 @@ export default function StoreSchedule({
   handleTouchStart,
   handleTouchMove,
   handleTouchEnd,
+  selectedItem,
+  setSelectedItem,
+  clipboard,
+  setClipboard,
+  handleToolbarCopy,
+  handleToolbarPaste,
+  handleToolbarClear,
 }: StoreScheduleProps) {
-  const [viewMode, setViewMode] = useState<'shift-based' | 'staff-based' | 'date-rows'>('staff-based');
+  const [viewMode, setViewMode] = useState<'staff-based' | 'date-rows'>('staff-based');
   const [selectedCell, setSelectedCell] = useState<{ staffId: string; date: Date } | null>(null);
   const today = formatDateSchedule(new Date());
   const weekDays = getWeekDays();
+
+  // Clear clipboard and selection when view mode changes
+  const handleViewModeChange = (newViewMode: 'staff-based' | 'date-rows') => {
+    setViewMode(newViewMode);
+    setSelectedItem(null); // Clear selection
+    setClipboard(null); // Clear clipboard
+  };
 
   // Helper function to get staff schedules for a specific date
   const getStaffSchedulesForDate = (staffId: string, date: Date): ScheduleWithDetails[] => {
@@ -62,62 +83,11 @@ export default function StoreSchedule({
     );
   };
 
-  // Render view toggle component (icon-based) - positioned in left side of week navigation
-  const ViewToggle = () => (
-    <div className="flex gap-1 bg-gray-100 rounded-lg p-1">
-      <button
-        onClick={() => setViewMode('staff-based')}
-        className={`p-2 rounded-md transition-all ${
-          viewMode === 'staff-based'
-            ? 'bg-blue-600 text-white'
-            : 'text-gray-600 hover:bg-gray-200'
-        }`}
-        title="Theo Nhân Viên"
-      >
-        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-        </svg>
-      </button>
-      <button
-        onClick={() => setViewMode('shift-based')}
-        className={`p-2 rounded-md transition-all ${
-          viewMode === 'shift-based'
-            ? 'bg-blue-600 text-white'
-            : 'text-gray-600 hover:bg-gray-200'
-        }`}
-        title="Theo Ca Làm"
-      >
-        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-        </svg>
-      </button>
-      <button
-        onClick={() => setViewMode('date-rows')}
-        className={`p-2 rounded-md transition-all ${
-          viewMode === 'date-rows'
-            ? 'bg-blue-600 text-white'
-            : 'text-gray-600 hover:bg-gray-200'
-        }`}
-        title="Ngày theo hàng"
-      >
-        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
-        </svg>
-      </button>
-    </div>
-  );
 
   // Show staff-based grid view
   if (viewMode === 'staff-based') {
     return (
       <div className="px-4 sm:px-6 py-6">
-        <div className="mb-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-base font-semibold text-gray-700">Chế độ xem:</h2>
-            <ViewToggle />
-          </div>
-        </div>
-
         <StaffScheduleGrid
           staff={staff}
           shifts={shifts}
@@ -131,6 +101,14 @@ export default function StoreSchedule({
           handleRemoveStaffFromShift={handleRemoveStaffFromShift}
           handleAssignShift={handleAssignShift}
           copyPreviousWeek={copyPreviousWeek}
+          selectedItem={selectedItem}
+          setSelectedItem={setSelectedItem}
+          clipboard={clipboard}
+          handleToolbarCopy={handleToolbarCopy}
+          handleToolbarPaste={handleToolbarPaste}
+          handleToolbarClear={handleToolbarClear}
+          viewMode={viewMode}
+          handleViewModeChange={handleViewModeChange}
         />
       </div>
     );
@@ -139,17 +117,11 @@ export default function StoreSchedule({
   // NEW: Date-rows view (Dates as rows, Staff as columns)
   if (viewMode === 'date-rows') {
     const dayNames = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
+    // Store viewMode with type assertion to avoid TypeScript flow analysis narrowing
+    const currentViewMode = viewMode as 'staff-based' | 'date-rows';
 
     return (
       <div className="px-4 sm:px-6 py-6">
-        {/* View Toggle */}
-        <div className="mb-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-base font-semibold text-gray-700">Chế độ xem:</h2>
-            <ViewToggle />
-          </div>
-        </div>
-
         {/* Header */}
         <div className="bg-white rounded-lg shadow-lg p-4 sm:p-6 mb-6">
           <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
@@ -201,6 +173,86 @@ export default function StoreSchedule({
           </div>
         </div>
 
+        {/* View Toggle + Toolbar */}
+        <div className="mb-4">
+          <div className="flex items-center gap-3">
+            {/* View Toggle */}
+            <div className="flex gap-1 bg-gray-100 rounded-lg p-1">
+              <button
+                onClick={() => handleViewModeChange('staff-based')}
+                className={`p-2 rounded-md transition-all ${
+                  currentViewMode === 'staff-based'
+                    ? 'bg-blue-600 text-white'
+                    : 'text-gray-600 hover:bg-gray-200'
+                }`}
+                title="Nhân viên theo cột"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                </svg>
+              </button>
+              <button
+                onClick={() => handleViewModeChange('date-rows')}
+                className={`p-2 rounded-md transition-all ${
+                  currentViewMode === 'date-rows'
+                    ? 'bg-blue-600 text-white'
+                    : 'text-gray-600 hover:bg-gray-200'
+                }`}
+                title="Ngày theo hàng"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+              </button>
+            </div>
+
+            {/* Divider */}
+            <div className="h-6 w-px bg-gray-300"></div>
+
+            {/* Toolbar Buttons */}
+            <div className="flex gap-1">
+            <button
+              onClick={handleToolbarCopy}
+              disabled={!selectedItem}
+              className="flex items-center gap-1 px-2 py-1.5 rounded-md text-xs font-medium transition-all
+                bg-blue-100 text-blue-700 hover:bg-blue-200
+                disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+              </svg>
+              <span>Copy</span>
+            </button>
+
+            <button
+              onClick={handleToolbarPaste}
+              disabled={!clipboard || !selectedItem}
+              className="flex items-center gap-1 px-2 py-1.5 rounded-md text-xs font-medium transition-all
+                bg-green-100 text-green-700 hover:bg-green-200
+                disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+              <span>Paste</span>
+            </button>
+
+            <button
+              onClick={handleToolbarClear}
+              disabled={!selectedItem}
+              className="flex items-center gap-1 px-2 py-1.5 rounded-md text-xs font-medium transition-all
+                bg-red-100 text-red-700 hover:bg-red-200
+                disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              </svg>
+              <span>Clear</span>
+            </button>
+            </div>
+          </div>
+        </div>
+
         {/* Transposed Schedule Grid: Dates as Rows, Staff as Columns */}
         <div className="bg-white rounded-lg shadow-lg overflow-hidden">
           <div className="overflow-x-auto">
@@ -213,14 +265,30 @@ export default function StoreSchedule({
                   {staff.map((staffMember) => {
                     const name = staffMember.name || staffMember.full_name;
                     const shortName = name.split(' ').slice(-2).join(' '); // Last 2 words for mobile
+                    const isSelected = selectedItem?.type === 'staff' && selectedItem?.id === staffMember.id;
                     return (
                       <th
                         key={staffMember.id}
-                        className="px-1 py-1.5 sm:p-3 text-center text-white font-bold text-[9px] sm:text-sm border-r border-blue-500 w-14 sm:w-28"
-                        title={name}
+                        className="px-1 py-1.5 sm:p-3 text-center border-r border-blue-500 w-14 sm:w-28"
                       >
-                        <span className="hidden sm:inline">{name}</span>
-                        <span className="sm:hidden">{shortName.length > 8 ? shortName.substring(0, 7) + '.' : shortName}</span>
+                        <button
+                          onClick={() => {
+                            if (isSelected) {
+                              setSelectedItem(null);
+                            } else {
+                              setSelectedItem({ type: 'staff', id: staffMember.id });
+                            }
+                          }}
+                          className={`w-full px-1 py-1.5 sm:px-2 sm:py-2 rounded-lg transition-all font-bold text-[9px] sm:text-sm
+                            ${isSelected
+                              ? 'bg-blue-600 text-white shadow-md ring-2 ring-blue-400'
+                              : 'text-white hover:bg-blue-700'
+                            }`}
+                          title={name}
+                        >
+                          <span className="hidden sm:inline">{name}</span>
+                          <span className="sm:hidden">{shortName.length > 8 ? shortName.substring(0, 7) + '.' : shortName}</span>
+                        </button>
                       </th>
                     );
                   })}
@@ -229,6 +297,8 @@ export default function StoreSchedule({
               <tbody>
                 {weekDays.map((day, dayIndex) => {
                   const isToday = formatDateSchedule(day) === today;
+                  const dateStr = formatDateSchedule(day);
+                  const isSelected = selectedItem?.type === 'day' && selectedItem?.id === dateStr;
 
                   return (
                     <tr
@@ -237,15 +307,34 @@ export default function StoreSchedule({
                         dayIndex % 2 === 0 ? 'bg-white' : 'bg-gray-50'
                       } ${isToday ? 'bg-yellow-50' : ''}`}
                     >
-                      <td className={`px-1 py-1 sm:p-3 border-r border-gray-200 sticky left-0 z-10 ${
-                        dayIndex % 2 === 0 ? 'bg-white' : 'bg-gray-50'
-                      } ${isToday ? 'bg-yellow-50' : ''}`}>
-                        <div className="font-semibold text-gray-800 text-[9px] sm:text-sm">
-                          {dayNames[day.getDay()]}
-                        </div>
-                        <div className="text-[7px] sm:text-xs text-gray-500">
-                          {day.getDate()}/{day.getMonth() + 1}
-                        </div>
+                      <td
+                        className={`px-1 py-1 sm:p-2 border-r border-gray-200 sticky left-0 z-10 ${
+                          dayIndex % 2 === 0 ? 'bg-white' : 'bg-gray-50'
+                        } ${isToday ? 'bg-yellow-50' : ''}`}
+                      >
+                        <button
+                          onClick={() => {
+                            if (isSelected) {
+                              setSelectedItem(null);
+                            } else {
+                              setSelectedItem({ type: 'day', id: dateStr, date: day });
+                            }
+                          }}
+                          className={`w-full px-2 py-1 rounded transition-all text-[9px] sm:text-sm ${
+                            isSelected
+                              ? 'bg-blue-600 text-white font-bold shadow-md ring-2 ring-blue-400'
+                              : isToday
+                              ? 'bg-yellow-100 text-gray-900 font-bold hover:bg-yellow-200'
+                              : 'text-gray-800 font-semibold hover:bg-gray-200'
+                          }`}
+                        >
+                          <div className="font-bold leading-tight">
+                            {dayNames[day.getDay()]}
+                          </div>
+                          <div className="text-[7px] sm:text-xs leading-tight">
+                            {day.getDate()}/{day.getMonth() + 1}
+                          </div>
+                        </button>
                       </td>
                       {staff.map((staffMember) => {
                         const staffSchedules = getStaffSchedulesForDate(staffMember.id, day);
@@ -420,16 +509,9 @@ export default function StoreSchedule({
     );
   }
 
-  // Original shift-based view
+  // Original shift-based view (unreachable - kept for safety)
   return (
     <div className="px-4 sm:px-6 py-6">
-      {/* View Toggle */}
-      <div className="mb-4">
-        <div className="flex items-center justify-between">
-          <h2 className="text-base font-semibold text-gray-700">Chế độ xem:</h2>
-          <ViewToggle />
-        </div>
-      </div>
 
       {/* Header - Same as staff-based view */}
       <div className="bg-white rounded-lg shadow-lg p-4 sm:p-6 mb-6">
@@ -514,19 +596,34 @@ export default function StoreSchedule({
                   </th>
                   {weekDays.map((day) => {
                     const isToday = formatDateSchedule(day) === today;
+                    const dateStr = formatDateSchedule(day);
+                    const isSelected = selectedItem?.type === 'day' && selectedItem?.id === dateStr;
                     return (
                       <th
                         key={day.toISOString()}
-                        className={`p-4 text-white font-bold text-sm border-r border-blue-500 ${
-                          isToday ? 'bg-yellow-500' : ''
-                        }`}
+                        className={`p-2 border-r border-blue-500`}
                       >
-                        <div className="text-center">
-                          <div>{formatDateDisplay(day, true)}</div>
-                          <div className="text-xs font-normal opacity-90">
+                        <button
+                          onClick={() => {
+                            if (isSelected) {
+                              setSelectedItem(null);
+                            } else {
+                              setSelectedItem({ type: 'day', id: dateStr, date: day });
+                            }
+                          }}
+                          className={`w-full px-2 py-1 rounded transition-all text-sm ${
+                            isSelected
+                              ? 'bg-blue-600 text-white font-bold shadow-md ring-2 ring-blue-400'
+                              : isToday
+                              ? 'bg-yellow-100 text-gray-900 font-bold hover:bg-yellow-200'
+                              : 'text-white font-semibold hover:bg-blue-700'
+                          }`}
+                        >
+                          <div className="font-bold text-sm">{formatDateDisplay(day, true)}</div>
+                          <div className="text-xs">
                             {day.getDate()}/{day.getMonth() + 1}
                           </div>
-                        </div>
+                        </button>
                       </th>
                     );
                   })}
@@ -725,6 +822,7 @@ export default function StoreSchedule({
           </div>
         </div>
       )}
+
     </div>
   );
 }

@@ -95,6 +95,14 @@ export default function StoreDetail() {
   const [pullDistance, setPullDistance] = useState(0);
   const [longPressTimer, setLongPressTimer] = useState<NodeJS.Timeout | null>(null);
 
+  // Day context menu state
+  const [dayContextMenu, setDayContextMenu] = useState<{ date: Date; x: number; y: number } | null>(null);
+  const [copiedDaySchedule, setCopiedDaySchedule] = useState<ScheduleWithDetails[] | null>(null);
+
+  // Selection state for copy/paste/clear
+  const [selectedItem, setSelectedItem] = useState<{ type: 'day' | 'staff'; id: string; date?: Date } | null>(null);
+  const [clipboard, setClipboard] = useState<{ type: 'day' | 'staff'; schedules: ScheduleWithDetails[] } | null>(null);
+
   // Salary management state
   const [selectedMonth, setSelectedMonth] = useState<string>(getCurrentMonth());
   const [salaryAdjustments, setSalaryAdjustments] = useState<SalaryAdjustment[]>([]);
@@ -611,7 +619,6 @@ export default function StoreDetail() {
       if (fetchError) throw fetchError;
 
       if (!prevSchedules || prevSchedules.length === 0) {
-        toast.warning('Không có lịch nào ở tuần trước để sao chép');
         return;
       }
 
@@ -635,7 +642,7 @@ export default function StoreDetail() {
 
       if (insertError) {
         if (insertError.code === '23505') {
-          toast.warning('Một số ca đã tồn tại trong tuần này');
+          // Duplicate entry - silently ignore
         } else {
           throw insertError;
         }
@@ -645,6 +652,285 @@ export default function StoreDetail() {
     } catch (err: any) {
       console.error('Error copying week:', err);
       toast.error('Lỗi: ' + err.message);
+    }
+  }
+
+  // Day-level copy/paste/clear functions
+  async function copyDaySchedule(date: Date) {
+    try {
+      const dateStr = formatDateSchedule(date);
+      const daySchedules = schedules.filter(s => s.scheduled_date === dateStr);
+
+      // Allow copying even if empty (to paste empty/clear target)
+      setCopiedDaySchedule(daySchedules);
+
+      // Haptic feedback
+      if ('vibrate' in navigator) {
+        navigator.vibrate(50);
+      }
+    } catch (err: any) {
+      console.error('Error copying day:', err);
+      toast.error('Lỗi khi sao chép');
+    }
+  }
+
+  async function pasteDaySchedule(date: Date) {
+    try {
+      if (!copiedDaySchedule || copiedDaySchedule.length === 0) {
+        return;
+      }
+
+      const targetDateStr = formatDateSchedule(date);
+
+      // First, delete existing schedules for the target day
+      await supabase
+        .from('staff_schedules')
+        .delete()
+        .eq('store_id', storeId)
+        .eq('scheduled_date', targetDateStr);
+
+      // Create new schedule records with the target date
+      const newSchedules = copiedDaySchedule.map(s => ({
+        staff_id: s.staff_id,
+        store_id: s.store_id,
+        shift_template_id: s.shift_template_id,
+        scheduled_date: targetDateStr,
+        notes: s.notes,
+      }));
+
+      // Insert the new schedules
+      const { error: insertError } = await supabase
+        .from('staff_schedules')
+        .insert(newSchedules);
+
+      if (insertError) throw insertError;
+
+      loadSchedules();
+
+      // Haptic feedback
+      if ('vibrate' in navigator) {
+        navigator.vibrate(50);
+      }
+    } catch (err: any) {
+      console.error('Error pasting day:', err);
+      toast.error('Lỗi khi dán lịch');
+    }
+  }
+
+  async function clearDaySchedule(date: Date) {
+    try {
+      const dateStr = formatDateSchedule(date);
+      const daySchedules = schedules.filter(s => s.scheduled_date === dateStr);
+
+      if (daySchedules.length === 0) {
+        return;
+      }
+
+      if (!confirm(`Xóa tất cả ${daySchedules.length} ca làm việc trong ngày này?`)) {
+        return;
+      }
+
+      const { error } = await supabase
+        .from('staff_schedules')
+        .delete()
+        .eq('store_id', storeId)
+        .eq('scheduled_date', dateStr);
+
+      if (error) throw error;
+
+      loadSchedules();
+
+      // Haptic feedback
+      if ('vibrate' in navigator) {
+        navigator.vibrate(50);
+      }
+    } catch (err: any) {
+      console.error('Error clearing day:', err);
+      toast.error('Lỗi khi xóa lịch');
+    }
+  }
+
+  function handleDayLongPress(date: Date, x: number, y: number) {
+    console.log('handleDayLongPress called:', { date, x, y });
+    setDayContextMenu({ date, x, y });
+
+    // Haptic feedback
+    if ('vibrate' in navigator) {
+      navigator.vibrate(50);
+    }
+  }
+
+  // New toolbar-based copy/paste/clear functions
+  function handleToolbarCopy() {
+    if (!selectedItem) {
+      return;
+    }
+
+    try {
+      let schedulesToCopy: ScheduleWithDetails[] = [];
+
+      if (selectedItem.type === 'day' && selectedItem.date) {
+        // Copy all shifts for a specific day
+        const dateStr = formatDateSchedule(selectedItem.date);
+        schedulesToCopy = schedules.filter(s => s.scheduled_date === dateStr);
+      } else if (selectedItem.type === 'staff') {
+        // Copy all shifts for a staff member for the entire week
+        const weekDays = getWeekDays();
+        const weekDateStrs = weekDays.map(d => formatDateSchedule(d));
+        schedulesToCopy = schedules.filter(
+          s => s.staff_id === selectedItem.id && weekDateStrs.includes(s.scheduled_date)
+        );
+      }
+
+      // Allow copying even if empty (to paste empty/clear target)
+      setClipboard({ type: selectedItem.type, schedules: schedulesToCopy });
+
+      if ('vibrate' in navigator) {
+        navigator.vibrate(50);
+      }
+    } catch (error) {
+      console.error('Error copying:', error);
+      toast.error('Lỗi khi sao chép');
+    }
+  }
+
+  async function handleToolbarPaste() {
+    if (!clipboard) {
+      return;
+    }
+
+    if (!selectedItem) {
+      return;
+    }
+
+    // Check type compatibility
+    if (clipboard.type !== selectedItem.type) {
+      return;
+    }
+
+    try {
+      // First, delete existing schedules in the target location
+      if (clipboard.type === 'day' && selectedItem.date) {
+        // Delete all schedules for the target day
+        const targetDateStr = formatDateSchedule(selectedItem.date);
+        await supabase
+          .from('staff_schedules')
+          .delete()
+          .eq('store_id', storeId)
+          .eq('scheduled_date', targetDateStr);
+      } else if (clipboard.type === 'staff') {
+        // Delete all schedules for the target staff for the week
+        const weekDays = getWeekDays();
+        const weekDateStrs = weekDays.map(d => formatDateSchedule(d));
+        await supabase
+          .from('staff_schedules')
+          .delete()
+          .eq('store_id', storeId)
+          .eq('staff_id', selectedItem.id)
+          .in('scheduled_date', weekDateStrs);
+      }
+
+      // Then, insert the new schedules
+      let newSchedules: any[] = [];
+
+      if (clipboard.type === 'day' && selectedItem.date) {
+        // Paste day to another day
+        const targetDateStr = formatDateSchedule(selectedItem.date);
+        newSchedules = clipboard.schedules.map(s => ({
+          staff_id: s.staff_id,
+          store_id: s.store_id,
+          shift_template_id: s.shift_template_id,
+          scheduled_date: targetDateStr,
+          notes: s.notes,
+        }));
+      } else if (clipboard.type === 'staff') {
+        // Paste staff week to another staff
+        newSchedules = clipboard.schedules.map(s => ({
+          staff_id: selectedItem.id,
+          store_id: s.store_id,
+          shift_template_id: s.shift_template_id,
+          scheduled_date: s.scheduled_date,
+          notes: s.notes,
+        }));
+      }
+
+      if (newSchedules.length > 0) {
+        const { error } = await supabase
+          .from('staff_schedules')
+          .insert(newSchedules);
+
+        if (error) throw error;
+      }
+
+      loadSchedules();
+
+      if ('vibrate' in navigator) {
+        navigator.vibrate(50);
+      }
+    } catch (error) {
+      console.error('Error pasting:', error);
+      toast.error('Lỗi khi dán');
+    }
+  }
+
+  async function handleToolbarClear() {
+    if (!selectedItem) {
+      return;
+    }
+
+    try {
+      let schedulesToDelete: ScheduleWithDetails[] = [];
+
+      if (selectedItem.type === 'day' && selectedItem.date) {
+        const dateStr = formatDateSchedule(selectedItem.date);
+        schedulesToDelete = schedules.filter(s => s.scheduled_date === dateStr);
+      } else if (selectedItem.type === 'staff') {
+        const weekDays = getWeekDays();
+        const weekDateStrs = weekDays.map(d => formatDateSchedule(d));
+        schedulesToDelete = schedules.filter(
+          s => s.staff_id === selectedItem.id && weekDateStrs.includes(s.scheduled_date)
+        );
+      }
+
+      if (schedulesToDelete.length === 0) {
+        return;
+      }
+
+      if (!confirm(`Xóa tất cả ${schedulesToDelete.length} ca làm việc?`)) {
+        return;
+      }
+
+      if (selectedItem.type === 'day' && selectedItem.date) {
+        const dateStr = formatDateSchedule(selectedItem.date);
+        const { error } = await supabase
+          .from('staff_schedules')
+          .delete()
+          .eq('store_id', storeId)
+          .eq('scheduled_date', dateStr);
+
+        if (error) throw error;
+      } else if (selectedItem.type === 'staff') {
+        const weekDays = getWeekDays();
+        const weekDateStrs = weekDays.map(d => formatDateSchedule(d));
+        const { error } = await supabase
+          .from('staff_schedules')
+          .delete()
+          .eq('store_id', storeId)
+          .eq('staff_id', selectedItem.id)
+          .in('scheduled_date', weekDateStrs);
+
+        if (error) throw error;
+      }
+
+      loadSchedules();
+      setSelectedItem(null);
+
+      if ('vibrate' in navigator) {
+        navigator.vibrate(50);
+      }
+    } catch (error) {
+      console.error('Error clearing:', error);
+      toast.error('Lỗi khi xóa');
     }
   }
 
@@ -1188,6 +1474,13 @@ export default function StoreDetail() {
               handleTouchStart={handleTouchStart}
               handleTouchMove={handleTouchMove}
               handleTouchEnd={handleTouchEnd}
+              selectedItem={selectedItem}
+              setSelectedItem={setSelectedItem}
+              clipboard={clipboard}
+              setClipboard={setClipboard}
+              handleToolbarCopy={handleToolbarCopy}
+              handleToolbarPaste={handleToolbarPaste}
+              handleToolbarClear={handleToolbarClear}
             />
           )}
 
@@ -1199,6 +1492,7 @@ export default function StoreDetail() {
               shifts={shifts}
               currentWeekStart={currentWeekStart}
               navigateWeek={navigateWeek}
+              setWeekStart={setCurrentWeekStart}
               goToToday={goToToday}
               onScheduleApplied={() => {
                 loadSchedules();
