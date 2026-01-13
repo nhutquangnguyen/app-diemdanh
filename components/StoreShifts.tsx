@@ -102,7 +102,7 @@ export default function StoreShifts({
                     required
                     value={shiftFormData.name}
                     onChange={(e) => setShiftFormData({ ...shiftFormData, name: e.target.value })}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900 placeholder:text-gray-400"
                     placeholder="VD: Ca Sáng, Ca Chiều"
                   />
                 </div>
@@ -117,7 +117,7 @@ export default function StoreShifts({
                     max="60"
                     value={shiftFormData.grace_period_minutes}
                     onChange={(e) => setShiftFormData({ ...shiftFormData, grace_period_minutes: parseInt(e.target.value) })}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900"
                   />
                 </div>
 
@@ -133,7 +133,7 @@ export default function StoreShifts({
                         const minute = shiftFormData.start_time.split(':')[1] || '00';
                         setShiftFormData({ ...shiftFormData, start_time: `${e.target.value}:${minute}` });
                       }}
-                      className="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900"
                     >
                       {Array.from({ length: 24 }, (_, i) => i.toString().padStart(2, '0')).map(h => (
                         <option key={h} value={h}>{h}</option>
@@ -147,7 +147,7 @@ export default function StoreShifts({
                         const hour = shiftFormData.start_time.split(':')[0];
                         setShiftFormData({ ...shiftFormData, start_time: `${hour}:${e.target.value}` });
                       }}
-                      className="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900"
                     >
                       {Array.from({ length: 60 }, (_, i) => i.toString().padStart(2, '0')).map(m => (
                         <option key={m} value={m}>{m}</option>
@@ -168,7 +168,7 @@ export default function StoreShifts({
                         const minute = shiftFormData.end_time.split(':')[1] || '00';
                         setShiftFormData({ ...shiftFormData, end_time: `${e.target.value}:${minute}` });
                       }}
-                      className="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900"
                     >
                       {Array.from({ length: 24 }, (_, i) => i.toString().padStart(2, '0')).map(h => (
                         <option key={h} value={h}>{h}</option>
@@ -182,7 +182,7 @@ export default function StoreShifts({
                         const hour = shiftFormData.end_time.split(':')[0];
                         setShiftFormData({ ...shiftFormData, end_time: `${hour}:${e.target.value}` });
                       }}
-                      className="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900"
                     >
                       {Array.from({ length: 60 }, (_, i) => i.toString().padStart(2, '0')).map(m => (
                         <option key={m} value={m}>{m}</option>
