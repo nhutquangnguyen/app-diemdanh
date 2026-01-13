@@ -4,7 +4,6 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import Header from '@/components/Header';
-import FeatureContent from '@/components/FeatureContent';
 import { supabase } from '@/lib/supabase';
 import { getCurrentUserSync } from '@/lib/auth';
 import { calculateDistance, formatDistance, getCurrentPosition, getStoreStatus } from '@/lib/geo';
@@ -50,11 +49,16 @@ export default function Home() {
         const currentUser = await getCurrentUser();
         if (mounted) {
           setUser(currentUser);
+          // If no user after verification, redirect to login
+          if (!currentUser) {
+            router.push('/auth/login');
+          }
         }
       } catch (error) {
         console.error('Error verifying user:', error);
         if (mounted) {
           setUser(null);
+          router.push('/auth/login');
         }
       }
     }
@@ -66,6 +70,7 @@ export default function Home() {
 
       if (event === 'SIGNED_OUT') {
         setUser(null);
+        router.push('/auth/login');
       } else if (event === 'SIGNED_IN') {
         setUser(session?.user || null);
       }
@@ -75,7 +80,7 @@ export default function Home() {
       mounted = false;
       data.subscription.unsubscribe();
     };
-  }, []);
+  }, [router]);
 
   // Update time every second
   useEffect(() => {
@@ -307,7 +312,15 @@ export default function Home() {
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex flex-col">
       <Header />
 
-      {user ? (
+      {!user ? (
+        // NOT LOGGED-IN - Show loading while redirecting to login
+        <main className="flex-1 flex items-center justify-center">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+            <p className="text-gray-600">Đang chuyển hướng đến trang đăng nhập...</p>
+          </div>
+        </main>
+      ) : (
         <main className="flex-1 flex flex-col px-4 sm:px-6 lg:px-8 py-8">
           <div className="max-w-2xl w-full mx-auto">
             {/* Greeting */}
@@ -455,9 +468,6 @@ export default function Home() {
             )}
           </div>
         </main>
-      ) : (
-        // NOT LOGGED-IN VIEW - Show Feature Page Content
-        <FeatureContent />
       )}
 
       {/* Action Dialog */}
