@@ -525,7 +525,7 @@ function validateSchedule(
         type: 'no_shifts',
         severity: 'info',
         staffId,
-        message: `Nhân viên không có ca nào - kiểm tra lại availability?`
+        message: `Nhân viên không có ca nào - kiểm tra lại lịch rảnh?`
       });
     }
   });
