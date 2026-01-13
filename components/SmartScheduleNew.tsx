@@ -343,8 +343,11 @@ export default function SmartScheduleNew({
         });
       });
 
-      // Check if any shift has no available staff
-      const shiftsWithNoStaff: string[] = [];
+      // Check if ALL shifts have no available staff (complete block)
+      const totalShiftsNeeded = shiftsData.length;
+      let shiftsWithNoStaff = 0;
+      const shiftsWithNoStaffList: string[] = [];
+
       for (const shiftData of shiftsData) {
         const dayIndex = weekDates.indexOf(shiftData.date);
         const availableStaff = staff.filter(s =>
@@ -352,21 +355,30 @@ export default function SmartScheduleNew({
         );
 
         if (availableStaff.length === 0) {
+          shiftsWithNoStaff++;
           const dayName = dayNames[dayIndex];
-          shiftsWithNoStaff.push(`${dayName} - ${shiftData.shiftName}`);
+          shiftsWithNoStaffList.push(`${dayName} - ${shiftData.shiftName}`);
         }
       }
 
-      if (shiftsWithNoStaff.length > 0) {
+      // Only block if NO shifts can be scheduled at all
+      if (totalShiftsNeeded > 0 && shiftsWithNoStaff === totalShiftsNeeded) {
         showErrorModal(
-          'Một số ca không có nhân viên rảnh',
-          `Các ca làm việc sau không có nhân viên nào được đánh dấu là rảnh:`,
-          shiftsWithNoStaff.slice(0, 5).concat(
-            shiftsWithNoStaff.length > 5 ? [`... và ${shiftsWithNoStaff.length - 5} ca khác`] : []
-          ),
-          'Quay lại Bước 2 và đánh dấu nhân viên rảnh cho các ca này, hoặc giảm số lượng nhân viên yêu cầu ở Bước 1.'
+          'Không thể tạo lịch',
+          'Không có nhân viên nào rảnh cho tất cả các ca làm việc.',
+          [
+            'Quay lại Bước 2 và đánh dấu nhân viên rảnh cho các ca',
+            'Hoặc giảm số lượng nhân viên yêu cầu ở Bước 1'
+          ]
         );
         return;
+      }
+
+      // Show warning if SOME shifts are missing staff, but continue
+      if (shiftsWithNoStaff > 0 && shiftsWithNoStaff < totalShiftsNeeded) {
+        toast.warning(
+          `Cảnh báo: ${shiftsWithNoStaff} ca không có đủ nhân viên. Hệ thống sẽ xếp lịch cho các ca có thể.`
+        );
       }
 
       // Save first
