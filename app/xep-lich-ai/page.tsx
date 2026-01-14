@@ -13,7 +13,7 @@ export default function SepLichAIPage() {
             <span className="text-6xl">🤖</span>
           </div>
           <h1 className="text-4xl sm:text-5xl font-bold text-gray-900 mb-4">
-            Sếp lịch AI
+            Xếp lịch AI
           </h1>
           <p className="text-xl sm:text-2xl text-gray-600 mb-8 max-w-3xl mx-auto">
             Xếp lịch làm việc tự động, công bằng và thông minh chỉ trong vài giây
@@ -59,7 +59,7 @@ export default function SepLichAIPage() {
         {/* Solution Section */}
         <div className="mb-20">
           <h2 className="text-3xl font-bold text-gray-900 mb-12 text-center">
-            Sếp lịch AI giải quyết tất cả
+            Xếp lịch AI giải quyết tất cả
           </h2>
           <div className="space-y-12">
             {/* Feature 1 */}
@@ -274,7 +274,7 @@ export default function SepLichAIPage() {
         {/* CTA Section */}
         <div className="text-center bg-white rounded-2xl shadow-xl p-12">
           <h2 className="text-3xl font-bold text-gray-900 mb-4">
-            Sẵn sàng thử Sếp lịch AI?
+            Sẵn sàng thử Xếp lịch AI?
           </h2>
           <p className="text-xl text-gray-600 mb-8 max-w-2xl mx-auto">
             Tham gia cùng hàng trăm quản lý đang tiết kiệm thời gian và tạo lịch công bằng hơn

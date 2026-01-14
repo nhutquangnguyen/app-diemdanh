@@ -71,8 +71,8 @@ export default function HelpLayout({ children }: HelpLayoutProps) {
                   </Link>
                 </li>
                 <li>
-                  <Link href="/help/sep-lich-ai" className="text-gray-400 hover:text-white transition-colors">
-                    Sếp Lịch AI
+                  <Link href="/help/xep-lich-ai" className="text-gray-400 hover:text-white transition-colors">
+                    Xếp Lịch AI
                   </Link>
                 </li>
                 <li>

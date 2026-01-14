@@ -28,8 +28,8 @@ export const helpArticles: HelpArticle[] = [
     popular: true,
   },
   {
-    slug: 'sep-lich-ai',
-    title: 'Sử Dụng Sếp Lịch AI',
+    slug: 'xep-lich-ai',
+    title: 'Sử Dụng Xếp Lịch AI',
     description: 'Tự động xếp lịch thông minh với AI - tiết kiệm thời gian và công bằng',
     category: 'features',
     icon: '⚡',

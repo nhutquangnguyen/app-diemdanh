@@ -129,7 +129,7 @@ export default function FeatureContent() {
                   ✨ MỚI: Tính năng AI
                 </div>
                 <h2 className="text-3xl sm:text-4xl font-bold mb-4">
-                  Sếp lịch AI 🤖
+                  Xếp lịch AI 🤖
                 </h2>
                 <p className="text-xl text-blue-100 mb-6">
                   Xếp lịch làm việc tự động, công bằng và thông minh chỉ trong vài giây
@@ -156,7 +156,7 @@ export default function FeatureContent() {
                 </ul>
                 <div className="flex flex-col sm:flex-row gap-4">
                   <Link
-                    href="/sep-lich-ai"
+                    href="/xep-lich-ai"
                     className="inline-block bg-white hover:bg-gray-100 text-purple-600 px-8 py-4 rounded-lg font-bold text-lg transition-all shadow-lg text-center"
                   >
                     Tìm hiểu thêm

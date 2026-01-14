@@ -1,8 +1,8 @@
-# Sếp lịch AI - Smart Scheduling Algorithm
+# Xếp lịch AI - Smart Scheduling Algorithm
 
 ## Overview
 
-The Sếp lịch AI (AI Schedule Boss) uses a **two-stage optimization approach** to automatically generate fair and efficient work schedules for staff members. The algorithm prioritizes work-life balance by minimizing consecutive working days and reducing instances where staff work multiple shifts in a single day.
+The Xếp lịch AI (AI Smart Scheduling) uses a **two-stage optimization approach** to automatically generate fair and efficient work schedules for staff members. The algorithm prioritizes work-life balance by minimizing consecutive working days and reducing instances where staff work multiple shifts in a single day.
 
 ## Problem Statement
 

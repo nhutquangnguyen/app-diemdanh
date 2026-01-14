@@ -207,5 +207,5 @@ components/Header.tsx          → Navigation với help link
 - Trang chủ: https://diemdanh.net/help
 - Bắt đầu: https://diemdanh.net/help/bat-dau
 - Điểm danh: https://diemdanh.net/help/diem-danh
-- Sếp lịch AI: https://diemdanh.net/help/sep-lich-ai
+- Xếp lịch AI: https://diemdanh.net/help/xep-lich-ai
 - Cài đặt app: https://diemdanh.net/help/cai-dat-app
