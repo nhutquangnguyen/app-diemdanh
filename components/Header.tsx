@@ -88,10 +88,18 @@ export default function Header() {
   }, [dropdownOpen]);
 
   async function handleSignOut() {
-    await signOut();
-    setUser(null);
-    setDropdownOpen(false);
-    router.push('/');
+    try {
+      await signOut();
+      setUser(null);
+      setDropdownOpen(false);
+      // Force a full page reload to clear all state
+      window.location.href = '/';
+    } catch (error) {
+      console.error('Logout error:', error);
+      // Even if logout fails, clear local state and redirect
+      setUser(null);
+      window.location.href = '/';
+    }
   }
 
   function getInitial(email: string) {
