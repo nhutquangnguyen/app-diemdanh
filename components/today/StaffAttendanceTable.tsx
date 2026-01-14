@@ -23,7 +23,7 @@ export default function StaffAttendanceTable({
         .filter((s: Staff) => {
           // Filter by search first
           if (!staffSearch) return true;
-          return s.full_name.toLowerCase().includes(staffSearch.toLowerCase());
+          return s.full_name?.toLowerCase().includes(staffSearch.toLowerCase()) || false;
         })
         .map((s: Staff) => {
           // Get ALL check-ins for this staff today and sort by check_in_time ascending (earliest first)

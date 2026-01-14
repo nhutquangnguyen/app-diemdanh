@@ -90,7 +90,7 @@ export default function StoreStaff({
               >
               <div className="flex items-start gap-3 mb-3">
                 <div className="w-12 h-12 sm:w-10 sm:h-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center text-white font-bold shadow flex-shrink-0">
-                  {(member.name || member.full_name)?.split(' ').slice(-2).map(n => n[0]).join('').toUpperCase() || '??'}
+                  {member.display_name.split(' ').slice(-2).map(n => n[0]).join('').toUpperCase() || '??'}
                 </div>
                 <div className="flex-1 min-w-0">
                   {editingStaffId === member.id ? (
@@ -148,9 +148,36 @@ export default function StoreStaff({
                       {member.phone && (
                         <p className="text-sm text-gray-500">{member.phone}</p>
                       )}
-                      <p className="text-sm font-medium text-green-600 mt-1">
-                        {new Intl.NumberFormat('vi-VN').format(member.hour_rate || 0)} VNĐ/giờ
-                      </p>
+                      <div className="flex items-center gap-2 mt-1 flex-wrap">
+                        <p className="text-sm font-medium text-green-600">
+                          {new Intl.NumberFormat('vi-VN').format(member.hour_rate || 0)} VNĐ/giờ
+                        </p>
+                        {/* Status Badge */}
+                        {member.status === 'invited' && (
+                          <span className="inline-flex items-center gap-1 px-2 py-1 bg-blue-100 text-blue-700 text-xs font-semibold rounded-full">
+                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                            </svg>
+                            Đã mời
+                          </span>
+                        )}
+                        {member.status === 'active' && (
+                          <span className="inline-flex items-center gap-1 px-2 py-1 bg-green-100 text-green-700 text-xs font-semibold rounded-full">
+                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                            </svg>
+                            Đang hoạt động
+                          </span>
+                        )}
+                        {member.status === 'expired' && (
+                          <span className="inline-flex items-center gap-1 px-2 py-1 bg-yellow-100 text-yellow-700 text-xs font-semibold rounded-full">
+                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            Hết hạn
+                          </span>
+                        )}
+                      </div>
                     </>
                   )}
                 </div>
@@ -158,7 +185,10 @@ export default function StoreStaff({
               {editingStaffId !== member.id && (
                 <div className="flex gap-2">
                   <button
-                    onClick={() => {
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      console.log('🔧 [STAFF] Edit button clicked for:', member.id);
                       setEditingStaffId(member.id);
                       setEditHourRate(String(member.hour_rate || 0));
                       setEditName(member.name || '');
@@ -168,7 +198,12 @@ export default function StoreStaff({
                     Sửa thông tin
                   </button>
                   <button
-                    onClick={() => deleteStaff(member.id)}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      console.log('🗑️ [STAFF] Delete button clicked for:', member.id, member.display_name);
+                      deleteStaff(member.id);
+                    }}
                     className="flex-1 sm:flex-none text-red-600 hover:text-red-800 font-semibold px-4 py-2 rounded-lg hover:bg-red-50 transition-all text-sm"
                   >
                     Xóa

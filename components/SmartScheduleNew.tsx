@@ -757,10 +757,10 @@ export default function SmartScheduleNew({
                 >
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center text-white font-bold">
-                      {(staffMember.name || staffMember.full_name)?.split(' ').slice(-2).map(n => n[0]).join('').toUpperCase()}
+                      {staffMember.display_name.split(' ').slice(-2).map(n => n[0]).join('').toUpperCase()}
                     </div>
                     <div className="text-left">
-                      <div className="font-semibold text-gray-800">{staffMember.name || staffMember.full_name}</div>
+                      <div className="font-semibold text-gray-800">{staffMember.display_name}</div>
                       <div className={`text-xs px-2 py-1 rounded-full inline-block ${badgeColor}`}>
                         {badgeEmoji} {available}/{total}
                       </div>
@@ -1301,11 +1301,8 @@ function Step3PreviewContent({
                         <td className={`p-2 sm:p-3 border-r border-gray-200 sticky left-0 z-30 shadow-[2px_0_4px_rgba(0,0,0,0.05)] ${
                           index % 2 === 0 ? 'bg-white' : 'bg-gray-50'
                         }`}>
-                          <div className="font-semibold text-gray-800 text-xs sm:text-sm whitespace-nowrap overflow-hidden text-ellipsis max-w-[50px] sm:max-w-none" title={staffMember.name || staffMember.full_name}>
-                            {(() => {
-                              const name = staffMember.name || staffMember.full_name;
-                              return name.length > 6 ? `${name.substring(0, 5)}...` : name;
-                            })()}
+                          <div className="font-semibold text-gray-800 text-xs sm:text-sm whitespace-nowrap overflow-hidden text-ellipsis max-w-[50px] sm:max-w-none" title={staffMember.display_name}>
+                            {staffMember.display_name.length > 6 ? `${staffMember.display_name.substring(0, 5)}...` : staffMember.display_name}
                           </div>
                         </td>
                         {weekDates.map((date) => {
@@ -1349,7 +1346,7 @@ function Step3PreviewContent({
                       {staff.map((staffMember) => (
                         <th key={staffMember.id} className="p-1 sm:p-3 text-center border-r border-gray-200 last:border-r-0 min-w-[60px] sm:min-w-[120px]">
                           <div className="font-semibold text-gray-800 text-xs sm:text-sm truncate">
-                            {staffMember.name || staffMember.full_name}
+                            {staffMember.display_name}
                           </div>
                         </th>
                       ))}
@@ -1428,8 +1425,8 @@ function Step3PreviewContent({
                     <div key={staffMember.id} className="space-y-1">
                       {/* Name and Stats Row */}
                       <div className="flex items-center justify-between">
-                        <div className="text-sm font-medium text-gray-700 truncate" title={staffMember.name || staffMember.full_name}>
-                          {staffMember.name || staffMember.full_name}
+                        <div className="text-sm font-medium text-gray-700 truncate" title={staffMember.display_name}>
+                          {staffMember.display_name}
                         </div>
                         <div className="text-xs font-semibold text-gray-700 ml-2">
                           {shiftCount} ca, {hours}h

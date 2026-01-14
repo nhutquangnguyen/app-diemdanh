@@ -17,8 +17,9 @@ export default function AddStaff() {
   const [user, setUser] = useState<any>(null);
   const [store, setStore] = useState<any>(null);
   const [loading, setLoading] = useState(false);
-  const [email, setEmail] = useState('');
+  const [emails, setEmails] = useState('');
   const [hourRate, setHourRate] = useState('25000'); // Default hourly rate
+  const [results, setResults] = useState<any[]>([]);
 
   useEffect(() => {
     checkAuth();
@@ -54,63 +55,65 @@ export default function AddStaff() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
+    setResults([]);
 
     try {
-      const trimmedEmail = email.trim().toLowerCase();
+      // Parse emails - support comma-separated and newline-separated
+      const emailList = emails
+        .split(/[,\n]/)
+        .map(e => e.trim())
+        .filter(e => e.length > 0);
 
-      // Step 1: Check if this email exists in our platform by querying a safe table
-      // We'll use a database function or check staff/users indirectly
-      const { data: existingUsers, error: userCheckError } = await supabase
-        .rpc('get_user_by_email', { email_input: trimmedEmail });
-
-      if (userCheckError) {
-        // If the RPC doesn't exist, fall back to checking auth metadata
-        console.error('RPC error:', userCheckError);
-        toast.warning('Email này chưa đăng ký tài khoản trên hệ thống. Vui lòng yêu cầu người này đăng ký tài khoản trước.');
+      if (emailList.length === 0) {
+        toast.error('Vui lòng nhập ít nhất một email');
         setLoading(false);
         return;
       }
 
-      if (!existingUsers || existingUsers.length === 0) {
-        toast.warning('Email này chưa đăng ký tài khoản trên hệ thống. Vui lòng yêu cầu người này đăng ký tài khoản trước.');
-        setLoading(false);
-        return;
+      // Call API to add staff
+      const response = await fetch('/api/staff/add', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          storeId,
+          emails: emailList,
+          hourlyRate: parseFloat(hourRate) || 0,
+          storeName: store?.name || 'Cửa hàng'
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Có lỗi xảy ra');
       }
 
-      const registeredUser = existingUsers[0];
+      setResults(data.results);
 
-      // Step 2: Check if staff already exists in this store
-      const { data: existingStaff } = await supabase
-        .from('staff')
-        .select('id')
-        .eq('email', trimmedEmail)
-        .eq('store_id', storeId)
-        .single();
+      // Count successes
+      const addedCount = data.results.filter((r: any) => r.status === 'added').length;
+      const invitedCount = data.results.filter((r: any) => r.status === 'invited').length;
+      const errorCount = data.results.filter((r: any) => r.status === 'error' || r.status === 'already_exists').length;
 
-      if (existingStaff) {
-        toast.warning('Email này đã được thêm vào danh sách nhân viên');
-        setLoading(false);
-        return;
+      // Show summary
+      if (addedCount > 0) {
+        toast.success(`✅ Đã thêm ${addedCount} nhân viên`);
+      }
+      if (invitedCount > 0) {
+        toast.success(`📧 Đã gửi lời mời đến ${invitedCount} email`);
+      }
+      if (errorCount > 0) {
+        toast.warning(`⚠️ ${errorCount} email không thể xử lý`);
       }
 
-      // Step 3: Add staff with data from registered user
-      const { error } = await supabase
-        .from('staff')
-        .insert([
-          {
-            store_id: storeId,
-            user_id: registeredUser.id,
-            email: trimmedEmail,
-            full_name: registeredUser.full_name || trimmedEmail.split('@')[0],
-            phone: registeredUser.phone || null,
-            hour_rate: parseFloat(hourRate) || 0,
-          },
-        ]);
-
-      if (error) throw error;
-
-      toast.success('Thêm email thành công!');
-      router.push(`/owner/stores/${storeId}`);
+      // If all successful, redirect after 2 seconds
+      if (errorCount === 0 && data.results.length > 0) {
+        setTimeout(() => {
+          router.push(`/owner/stores/${storeId}`);
+        }, 2000);
+      }
     } catch (error: any) {
       console.error('Error adding staff:', error);
       toast.error('Lỗi: ' + error.message);
@@ -130,25 +133,29 @@ export default function AddStaff() {
               Thêm Nhân Viên
             </h2>
             <p className="text-gray-600">
-              Chỉ thêm được email đã đăng ký tài khoản trên hệ thống. Những email trong danh sách mới có thể điểm danh.
+              Thêm một hoặc nhiều email. Nếu email chưa có tài khoản, hệ thống sẽ tự động gửi lời mời.
             </p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-6">
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-2">
-                Email *
+                Email (một hoặc nhiều) *
               </label>
-              <input
-                type="email"
+              <textarea
                 required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                placeholder="nhanvien@example.com"
+                value={emails}
+                onChange={(e) => setEmails(e.target.value)}
+                rows={5}
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono text-sm"
+                placeholder="nhanvien1@example.com, nhanvien2@example.com
+hoặc mỗi email một dòng:
+nhanvien3@example.com
+nhanvien4@example.com"
               />
               <p className="text-sm text-gray-500 mt-1">
-                Email phải đã đăng ký tài khoản trên diemdanh.net
+                💡 Nhập nhiều email cách nhau bởi dấu phẩy hoặc xuống dòng.
+                Email đã có tài khoản sẽ được thêm ngay, email chưa có sẽ nhận lời mời.
               </p>
             </div>
 
@@ -185,10 +192,70 @@ export default function AddStaff() {
                 disabled={loading}
                 className="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-semibold transition-all disabled:opacity-50"
               >
-                {loading ? 'Đang thêm...' : 'Thêm Email'}
+                {loading ? 'Đang xử lý...' : 'Thêm Nhân Viên'}
               </button>
             </div>
           </form>
+
+          {/* Results Display */}
+          {results.length > 0 && (
+            <div className="mt-8 pt-6 border-t border-gray-200">
+              <h3 className="text-lg font-semibold text-gray-800 mb-4">Kết Quả</h3>
+              <div className="space-y-2">
+                {results.map((result, index) => (
+                  <div
+                    key={index}
+                    className={`flex items-start gap-3 p-3 rounded-lg ${
+                      result.status === 'added'
+                        ? 'bg-green-50 border border-green-200'
+                        : result.status === 'invited'
+                        ? 'bg-blue-50 border border-blue-200'
+                        : result.status === 'already_exists'
+                        ? 'bg-yellow-50 border border-yellow-200'
+                        : 'bg-red-50 border border-red-200'
+                    }`}
+                  >
+                    <div className="flex-shrink-0 mt-0.5">
+                      {result.status === 'added' && (
+                        <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                        </svg>
+                      )}
+                      {result.status === 'invited' && (
+                        <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                        </svg>
+                      )}
+                      {result.status === 'already_exists' && (
+                        <svg className="w-5 h-5 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                        </svg>
+                      )}
+                      {result.status === 'error' && (
+                        <svg className="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-gray-900 truncate">{result.email}</p>
+                      <p className={`text-sm ${
+                        result.status === 'added'
+                          ? 'text-green-700'
+                          : result.status === 'invited'
+                          ? 'text-blue-700'
+                          : result.status === 'already_exists'
+                          ? 'text-yellow-700'
+                          : 'text-red-700'
+                      }`}>
+                        {result.message}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </main>
 

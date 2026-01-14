@@ -4,6 +4,7 @@ import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { signUp, signInWithGoogle } from '@/lib/auth';
+import { supabase } from '@/lib/supabase';
 
 export const runtime = 'edge';
 
@@ -19,13 +20,63 @@ function SignupContent() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [returnUrl, setReturnUrl] = useState('/');
+  const [inviteToken, setInviteToken] = useState<string | null>(null);
+  const [invitation, setInvitation] = useState<any>(null);
+  const [loadingInvite, setLoadingInvite] = useState(false);
 
   useEffect(() => {
     const url = searchParams.get('returnUrl');
+    const token = searchParams.get('invite_token');
+
     if (url) {
       setReturnUrl(url);
     }
+
+    if (token) {
+      setInviteToken(token);
+      loadInvitation(token);
+    }
   }, [searchParams]);
+
+  async function loadInvitation(token: string) {
+    setLoadingInvite(true);
+    try {
+      const { data, error } = await supabase
+        .from('staff')
+        .select(`
+          *,
+          stores (
+            name
+          )
+        `)
+        .eq('invitation_token', token)
+        .eq('status', 'invited')
+        .single();
+
+      if (error || !data) {
+        setError('Lời mời không hợp lệ hoặc đã hết hạn');
+        setInviteToken(null);
+        return;
+      }
+
+      // Check if expired
+      const expiresAt = new Date(data.invitation_expires_at);
+      if (expiresAt < new Date()) {
+        setError('Lời mời đã hết hạn. Vui lòng liên hệ quản lý để gửi lại lời mời.');
+        setInviteToken(null);
+        return;
+      }
+
+      setInvitation(data);
+      // Pre-fill email from invitation
+      setFormData(prev => ({ ...prev, email: data.email }));
+    } catch (err) {
+      console.error('Error loading invitation:', err);
+      setError('Không thể tải thông tin lời mời');
+    } finally {
+      setLoadingInvite(false);
+    }
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -45,7 +96,59 @@ function SignupContent() {
     }
 
     try {
-      await signUp(formData.email, formData.password, formData.fullName);
+      console.log('🚀 [SIGNUP] Starting signup process...', { email: formData.email, hasInviteToken: !!inviteToken });
+
+      const data = await signUp(formData.email, formData.password, formData.fullName);
+
+      console.log('✅ [SIGNUP] Signup successful!', { userId: data.user?.id, email: data.user?.email });
+
+      // Auto-link staff records using server-side API (bypasses RLS)
+      if (data.user) {
+        console.log('🔗 [SIGNUP] Calling link-account API...', {
+          userId: data.user.id,
+          email: formData.email,
+          hasToken: !!inviteToken,
+        });
+
+        try {
+          const linkResponse = await fetch('/api/staff/link-account', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              userId: data.user.id,
+              email: formData.email,
+              fullName: formData.fullName,
+              invitationToken: inviteToken,
+            }),
+          });
+
+          console.log('🔗 [SIGNUP] API response status:', linkResponse.status);
+
+          const linkResult = await linkResponse.json();
+          console.log('🔗 [SIGNUP] API response:', linkResult);
+
+          if (linkResult.success && linkResult.linked) {
+            // Successfully linked to store(s)
+            if (linkResult.storeNames && linkResult.storeNames.length > 0) {
+              const storesList = linkResult.storeNames.join(', ');
+              alert(`Đăng ký thành công! Bạn đã được thêm vào: ${storesList}`);
+            } else {
+              alert('Đăng ký thành công! Bạn đã được thêm vào cửa hàng.');
+            }
+            router.push('/');
+            return;
+          } else if (linkResult.error) {
+            console.error('❌ [SIGNUP] Error linking staff records:', linkResult.error);
+            alert(`Cảnh báo: Không thể liên kết tài khoản với cửa hàng. Lỗi: ${linkResult.error}`);
+          } else {
+            console.warn('⚠️ [SIGNUP] No staff records found to link');
+          }
+        } catch (linkError) {
+          console.error('❌ [SIGNUP] Error calling link-account API:', linkError);
+          alert('Cảnh báo: Không thể liên kết tài khoản với cửa hàng. Vui lòng liên hệ quản lý.');
+        }
+      }
+
       alert('Đăng ký thành công!');
       router.push(returnUrl);
     } catch (err: any) {
@@ -88,6 +191,23 @@ function SignupContent() {
           <h1 className="text-3xl font-bold text-gray-800 mb-2">Đăng Ký</h1>
           <p className="text-gray-600">Tạo tài khoản mới</p>
         </div>
+
+        {/* Invitation Banner */}
+        {invitation && !loadingInvite && (
+          <div className="mb-6 bg-blue-50 border-l-4 border-blue-500 p-4 rounded">
+            <div className="flex items-start gap-3">
+              <svg className="w-6 h-6 text-blue-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+              </svg>
+              <div>
+                <p className="font-semibold text-blue-900 mb-1">Lời mời làm nhân viên</p>
+                <p className="text-sm text-blue-800">
+                  Bạn đã được mời tham gia <span className="font-semibold">{invitation.stores?.name || 'cửa hàng'}</span>
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
 
         {error && (
           <div className="bg-red-50 text-red-600 p-4 rounded-lg mb-6">
@@ -144,9 +264,17 @@ function SignupContent() {
               required
               value={formData.email}
               onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900 placeholder-gray-400"
+              readOnly={!!invitation}
+              className={`w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 placeholder-gray-400 ${
+                invitation ? 'bg-gray-100 cursor-not-allowed' : 'bg-white'
+              }`}
               placeholder="email@example.com"
             />
+            {invitation && (
+              <p className="text-xs text-gray-500 mt-1">
+                Email được cung cấp từ lời mời
+              </p>
+            )}
           </div>
 
           <div>

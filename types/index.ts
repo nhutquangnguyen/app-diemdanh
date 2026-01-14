@@ -20,13 +20,18 @@ export interface Store {
 
 export interface Staff {
   id: string;
-  user_id: string;
+  user_id: string | null;
   email: string;
-  full_name: string;
+  full_name: string | null;
   name?: string; // Custom memorable name (optional)
-  phone: string;
+  display_name: string; // Auto-computed: name > full_name > email (always non-null)
+  phone: string | null;
   store_id: string;
   hour_rate: number; // Hourly rate in VND
+  status?: 'active' | 'invited' | 'expired' | 'inactive'; // Staff status
+  invited_at?: string;
+  invitation_token?: string | null;
+  invitation_expires_at?: string;
   created_at: string;
 }
 

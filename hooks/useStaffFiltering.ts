@@ -27,7 +27,7 @@ export function useStaffFiltering(
   const filteredStaff = useMemo(() => {
     return staff.filter((s: Staff) => {
       // Filter by search first
-      if (staffSearch && !s.full_name.toLowerCase().includes(staffSearch.toLowerCase())) {
+      if (staffSearch && !s.full_name?.toLowerCase().includes(staffSearch.toLowerCase())) {
         return false;
       }
 

@@ -274,9 +274,9 @@ export default function StaffScheduleGrid({
                             ? 'bg-blue-600 text-white font-bold shadow-md ring-2 ring-blue-400'
                             : 'font-semibold text-gray-800 hover:bg-blue-200'
                         }`}
-                        title={staffMember.name || staffMember.full_name}
+                        title={staffMember.display_name}
                       >
-                        {staffMember.name || staffMember.full_name}
+                        {staffMember.display_name}
                       </button>
                     </td>
 
@@ -392,11 +392,10 @@ export default function StaffScheduleGrid({
                             ? 'bg-blue-600 text-white font-bold shadow-sm ring-1 ring-blue-400'
                             : 'font-semibold text-gray-800 hover:bg-blue-200'
                         }`}
-                        title={staffMember.name || staffMember.full_name}
+                        title={staffMember.display_name}
                       >
                         {(() => {
-                          const name = staffMember.name || staffMember.full_name;
-                          const shortName = name.split(' ').slice(-2).join(' ');
+                          const shortName = staffMember.display_name.split(' ').slice(-2).join(' ');
                           return shortName.length > 9 ? `${shortName.substring(0, 8)}..` : shortName;
                         })()}
                       </button>
@@ -472,7 +471,7 @@ export default function StaffScheduleGrid({
             // Remove this shift
             const scheduleToRemove = staffShifts.find(s => s.shift_template_id === shiftId);
             if (scheduleToRemove && handleRemoveStaffFromShift) {
-              handleRemoveStaffFromShift(scheduleToRemove.id, staffMember.name || staffMember.full_name);
+              handleRemoveStaffFromShift(scheduleToRemove.id, staffMember.display_name);
             }
           } else {
             // Add this shift directly
@@ -506,7 +505,7 @@ export default function StaffScheduleGrid({
               <div className="space-y-3 mb-4">
                 <div>
                   <div className="text-sm text-gray-600">Nhân viên</div>
-                  <div className="font-semibold text-gray-800">{staffMember.name || staffMember.full_name}</div>
+                  <div className="font-semibold text-gray-800">{staffMember.display_name}</div>
                 </div>
                 <div>
                   <div className="text-sm text-gray-600">Ngày</div>

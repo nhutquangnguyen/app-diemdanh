@@ -334,9 +334,9 @@ export default function StoreToday({
                     ) : (
                       <div className="divide-y divide-gray-200">
                         {staffWithStatus.map(({ staff: staffMember, checkIn, status, lateMinutes }) => {
-                          const displayName = staffMember.name || staffMember.full_name;
+                          const displayName = staffMember.display_name;
                           const initials = displayName
-                            ?.split(' ')
+                            .split(' ')
                             .slice(-2)
                             .map((n: string) => n[0])
                             .join('')
@@ -455,7 +455,7 @@ export default function StoreToday({
       {/* Photo Detail Modal */}
       {selectedCheckIn && (() => {
         const staffMember = staff.find(s => s.id === selectedCheckIn.staff_id);
-        const displayName = staffMember ? (staffMember.name || staffMember.full_name) : 'N/A';
+        const displayName = staffMember ? staffMember.display_name : 'N/A';
 
         return (
           <div

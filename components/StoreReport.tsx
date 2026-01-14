@@ -307,7 +307,7 @@ export default function StoreReport({ storeId }: StoreReportProps) {
       const search = searchTerm.toLowerCase();
       return (
         (report.staff.name && report.staff.name.toLowerCase().includes(search)) ||
-        report.staff.full_name.toLowerCase().includes(search) ||
+        (report.staff.full_name && report.staff.full_name.toLowerCase().includes(search)) ||
         report.staff.email.toLowerCase().includes(search)
       );
     })
@@ -319,8 +319,8 @@ export default function StoreReport({ storeId }: StoreReportProps) {
 
       // Handle nested staff object
       if (sortColumn === 'staff') {
-        aValue = a.staff.name || a.staff.full_name;
-        bValue = b.staff.name || b.staff.full_name;
+        aValue = a.staff.name || a.staff.full_name || a.staff.email;
+        bValue = b.staff.name || b.staff.full_name || b.staff.email;
       }
 
       // Compare values
@@ -524,7 +524,7 @@ export default function StoreReport({ storeId }: StoreReportProps) {
             </div>
             <div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-lg p-4 border border-purple-200">
               <div className="text-xl font-bold text-purple-600 mb-1 truncate">
-                {bestStaff ? ((bestStaff.staff.name || bestStaff.staff.full_name).split(' ').slice(-2).join(' ')) : 'N/A'}
+                {bestStaff ? ((bestStaff.staff.name || bestStaff.staff.full_name || bestStaff.staff.email).split(' ').slice(-2).join(' ')) : 'N/A'}
               </div>
               <div className="text-sm text-gray-600">Xuất sắc nhất</div>
             </div>

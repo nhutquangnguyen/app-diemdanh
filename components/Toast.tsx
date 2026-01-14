@@ -97,20 +97,23 @@ export function Toast({ message, type = 'info', duration = 3000, onClose }: Toas
 
 // Toast Container Hook
 interface ToastData {
-  id: number;
+  id: string;
   message: string;
   type: ToastType;
 }
+
+let toastCounter = 0;
 
 export function useToast() {
   const [toasts, setToasts] = useState<ToastData[]>([]);
 
   const showToast = (message: string, type: ToastType = 'info') => {
-    const id = Date.now();
+    // Use timestamp + counter to ensure uniqueness even for rapid toasts
+    const id = `${Date.now()}-${toastCounter++}`;
     setToasts((prev) => [...prev, { id, message, type }]);
   };
 
-  const removeToast = (id: number) => {
+  const removeToast = (id: string) => {
     setToasts((prev) => prev.filter((toast) => toast.id !== id));
   };
 

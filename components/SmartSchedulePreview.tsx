@@ -392,11 +392,8 @@ export default function SmartSchedulePreview({
                       <td className={`p-2 sm:p-3 border-r border-gray-200 sticky left-0 z-20 shadow-[2px_0_4px_rgba(0,0,0,0.05)] ${
                         index % 2 === 0 ? 'bg-white' : 'bg-gray-50'
                       }`}>
-                        <div className="font-semibold text-gray-800 text-xs sm:text-sm whitespace-nowrap overflow-hidden text-ellipsis max-w-[60px] sm:max-w-none" title={staffMember.name || staffMember.full_name}>
-                          {(() => {
-                            const name = staffMember.name || staffMember.full_name;
-                            return name.length > 8 ? `${name.substring(0, 7)}...` : name;
-                          })()}
+                        <div className="font-semibold text-gray-800 text-xs sm:text-sm whitespace-nowrap overflow-hidden text-ellipsis max-w-[60px] sm:max-w-none" title={staffMember.display_name}>
+                          {staffMember.display_name.length > 8 ? `${staffMember.display_name.substring(0, 7)}...` : staffMember.display_name}
                         </div>
                       </td>
                       {weekDates.map((date) => {
@@ -440,7 +437,7 @@ export default function SmartSchedulePreview({
                     {staff.map((staffMember) => (
                       <th key={staffMember.id} className="p-3 text-center border-r border-gray-200 last:border-r-0 min-w-[120px]">
                         <div className="font-semibold text-gray-800 text-sm">
-                          {staffMember.name || staffMember.full_name}
+                          {staffMember.display_name}
                         </div>
                       </th>
                     ))}
@@ -516,8 +513,8 @@ export default function SmartSchedulePreview({
 
                 return (
                   <div key={staffMember.id} className="flex items-center gap-3">
-                    <div className="w-32 text-sm text-gray-700 truncate" title={staffMember.name || staffMember.full_name}>
-                      {staffMember.name || staffMember.full_name}
+                    <div className="w-32 text-sm text-gray-700 truncate" title={staffMember.display_name}>
+                      {staffMember.display_name}
                     </div>
                     <div className="flex-1 bg-gray-200 rounded-full h-6 overflow-hidden">
                       <div

@@ -28,6 +28,7 @@ import StoreStaff from '@/components/StoreStaff';
 import StoreSalary from '@/components/StoreSalary';
 import StaffSalaryDetail from '@/components/salary/StaffSalaryDetail';
 import AdjustmentForm from '@/components/salary/AdjustmentForm';
+import ConfirmDialog from '@/components/ConfirmDialog';
 import { calculateStaffMonthlySalary, getCurrentMonth } from '@/lib/salaryCalculations';
 
 export default function StoreDetail() {
@@ -91,6 +92,21 @@ export default function StoreDetail() {
   // Touch/swipe state for mobile gestures
   const [touchStart, setTouchStart] = useState<{ x: number; y: number; time: number } | null>(null);
   const [touchEnd, setTouchEnd] = useState<{ x: number; y: number } | null>(null);
+
+  // Confirmation dialog state
+  const [confirmDialog, setConfirmDialog] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    onConfirm: () => void;
+    isLoading?: boolean;
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    onConfirm: () => {},
+    isLoading: false,
+  });
   const [isPulling, setIsPulling] = useState(false);
   const [pullDistance, setPullDistance] = useState(0);
   const [longPressTimer, setLongPressTimer] = useState<NodeJS.Timeout | null>(null);
@@ -130,20 +146,72 @@ export default function StoreDetail() {
     }
   }, [selectedMonth, storeId, activeTab]);
 
-  async function deleteStaff(staffId: string) {
-    try {
-      const { error } = await supabase
-        .from('staff')
-        .delete()
-        .eq('id', staffId);
+  function deleteStaff(staffId: string) {
+    console.log('🗑️ [DELETE_STAFF] Function called with staffId:', staffId);
+    const staffMember = staff.find(s => s.id === staffId);
+    console.log('🗑️ [DELETE_STAFF] Found staff member:', staffMember);
+    const staffName = staffMember?.display_name || 'nhân viên này';
 
-      if (error) throw error;
+    console.log('🗑️ [DELETE_STAFF] Opening confirmation dialog');
+    setConfirmDialog({
+      isOpen: true,
+      title: 'Xóa nhân viên',
+      message: `Bạn có chắc chắn muốn xóa ${staffName}? Hành động này không thể hoàn tác.`,
+      onConfirm: async () => {
+        console.log('🔥 [DELETE_STAFF] onConfirm callback STARTED! staffId:', staffId);
+        setConfirmDialog(prev => {
+          console.log('🔥 [DELETE_STAFF] Setting isLoading to true');
+          return { ...prev, isLoading: true };
+        });
+        try {
+          // Get current user
+          console.log('🔥 [DELETE_STAFF] Getting current user...');
+          const { data: { user }, error: userError } = await supabase.auth.getUser();
 
-      loadStoreData();
-    } catch (error) {
-      console.error('Error deleting staff:', error);
-      toast.error('Lỗi khi xóa nhân viên');
-    }
+          if (userError || !user) {
+            console.error('🔥 [DELETE_STAFF] Failed to get current user:', userError);
+            toast.error('Không thể xác thực người dùng');
+            setConfirmDialog(prev => ({ ...prev, isLoading: false }));
+            return;
+          }
+
+          console.log('🔥 [DELETE_STAFF] Current user:', user.id);
+          console.log('🔥 [DELETE_STAFF] Calling delete API...');
+
+          // Call API endpoint to delete staff (bypasses RLS)
+          const response = await fetch('/api/staff/delete', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              staffId,
+              userId: user.id,
+            }),
+          });
+
+          const result = await response.json();
+          console.log('🔥 [DELETE_STAFF] API response:', result);
+
+          if (!response.ok) {
+            if (result.error === 'Only store owner can delete staff members') {
+              toast.error('Chỉ chủ cửa hàng mới có thể xóa nhân viên');
+            } else {
+              toast.error(result.error || 'Không thể xóa nhân viên');
+            }
+            setConfirmDialog(prev => ({ ...prev, isLoading: false }));
+            return;
+          }
+
+          console.log('🔥 [DELETE_STAFF] Delete successful!');
+          toast.success('Đã xóa nhân viên thành công');
+          setConfirmDialog({ isOpen: false, title: '', message: '', onConfirm: () => {} });
+          loadStoreData();
+        } catch (error) {
+          console.error('🔥 [DELETE_STAFF] Error deleting staff:', error);
+          toast.error('Lỗi khi xóa nhân viên');
+          setConfirmDialog(prev => ({ ...prev, isLoading: false }));
+        }
+      },
+    });
   }
 
   async function updateStaffInfo(staffId: string) {
@@ -154,15 +222,29 @@ export default function StoreDetail() {
         return;
       }
 
-      const { error } = await supabase
-        .from('staff')
-        .update({
-          hour_rate: rate,
-          name: editName.trim() || null
-        })
-        .eq('id', staffId);
+      // Get current user
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      if (userError || !user) {
+        toast.error('Không thể xác thực người dùng');
+        return;
+      }
 
-      if (error) throw error;
+      // Update via API
+      const response = await fetch('/api/staff/update', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: user.id,
+          staffId,
+          hourRate: rate,
+          name: editName.trim() || null,
+        }),
+      });
+
+      const result = await response.json();
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to update staff');
+      }
 
       // Reset state first
       setEditingStaffId(null);
@@ -171,9 +253,9 @@ export default function StoreDetail() {
 
       // Reload data
       await loadStoreData();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error updating staff info:', error);
-      toast.error('Lỗi khi cập nhật thông tin nhân viên');
+      toast.error('Lỗi khi cập nhật thông tin nhân viên: ' + error.message);
     }
   }
 
@@ -182,29 +264,45 @@ export default function StoreDetail() {
     e.preventDefault();
 
     try {
+      // Get current user
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      if (userError || !user) {
+        toast.error('Không thể xác thực người dùng');
+        return;
+      }
+
       if (editingShift) {
-        // Update existing shift
-        const { error } = await supabase
-          .from('shift_templates')
-          .update({
-            ...shiftFormData,
-            updated_at: new Date().toISOString(),
-          })
-          .eq('id', editingShift.id);
+        // Update existing shift via API
+        const response = await fetch('/api/shifts', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            userId: user.id,
+            shiftId: editingShift.id,
+            shiftData: shiftFormData,
+          }),
+        });
 
-        if (error) throw error;
+        const result = await response.json();
+        if (!response.ok) {
+          throw new Error(result.error || 'Failed to update shift');
+        }
       } else {
-        // Create new shift
-        const { error } = await supabase
-          .from('shift_templates')
-          .insert([
-            {
-              store_id: storeId,
-              ...shiftFormData,
-            },
-          ]);
+        // Create new shift via API
+        const response = await fetch('/api/shifts', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            userId: user.id,
+            storeId,
+            shiftData: shiftFormData,
+          }),
+        });
 
-        if (error) throw error;
+        const result = await response.json();
+        if (!response.ok) {
+          throw new Error(result.error || 'Failed to create shift');
+        }
       }
 
       resetShiftForm();
@@ -215,20 +313,45 @@ export default function StoreDetail() {
     }
   }
 
-  async function deleteShift(shiftId: string) {
-    try {
-      const { error } = await supabase
-        .from('shift_templates')
-        .delete()
-        .eq('id', shiftId);
+  function deleteShift(shiftId: string) {
+    const shift = shifts.find(s => s.id === shiftId);
+    const shiftName = shift?.name || 'ca làm việc này';
 
-      if (error) throw error;
+    setConfirmDialog({
+      isOpen: true,
+      title: 'Xóa ca làm việc',
+      message: `Bạn có chắc chắn muốn xóa ca "${shiftName}"? Tất cả lịch làm việc liên quan sẽ bị xóa. Hành động này không thể hoàn tác.`,
+      onConfirm: async () => {
+        setConfirmDialog(prev => ({ ...prev, isLoading: true }));
+        try {
+          // Get current user
+          const { data: { user }, error: userError } = await supabase.auth.getUser();
+          if (userError || !user) {
+            toast.error('Không thể xác thực người dùng');
+            setConfirmDialog(prev => ({ ...prev, isLoading: false }));
+            return;
+          }
 
-      loadStoreData();
-    } catch (error) {
-      console.error('Error deleting shift:', error);
-      toast.error('Lỗi khi xóa ca làm việc');
-    }
+          // Delete via API
+          const response = await fetch(`/api/shifts?shiftId=${shiftId}&userId=${user.id}`, {
+            method: 'DELETE',
+          });
+
+          const result = await response.json();
+          if (!response.ok) {
+            throw new Error(result.error || 'Failed to delete shift');
+          }
+
+          toast.success('Đã xóa ca làm việc thành công');
+          setConfirmDialog({ isOpen: false, title: '', message: '', onConfirm: () => {} });
+          loadStoreData();
+        } catch (error: any) {
+          console.error('Error deleting shift:', error);
+          toast.error('Lỗi khi xóa ca làm việc: ' + error.message);
+          setConfirmDialog(prev => ({ ...prev, isLoading: false }));
+        }
+      },
+    });
   }
 
   function startEditShift(shift: ShiftTemplate) {
@@ -282,17 +405,33 @@ export default function StoreDetail() {
   }) {
     setSettingsLoading(true);
     try {
-      const { error } = await supabase
-        .from('stores')
-        .update(settings)
-        .eq('id', storeId);
+      // Get current user
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      if (userError || !user) {
+        toast.error('Không thể xác thực người dùng');
+        return;
+      }
 
-      if (error) throw error;
+      // Update via API
+      const response = await fetch('/api/stores/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: user.id,
+          storeId,
+          settings,
+        }),
+      });
+
+      const result = await response.json();
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to update settings');
+      }
 
       loadStoreData();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error updating settings:', error);
-      toast.error('Lỗi khi cập nhật cài đặt');
+      toast.error('Lỗi khi cập nhật cài đặt: ' + error.message);
     } finally {
       setSettingsLoading(false);
     }
@@ -328,8 +467,34 @@ export default function StoreDetail() {
         .select('*')
         .eq('store_id', storeId);
 
-      if (!staffError) {
-        setStaff(staffData || []);
+      if (!staffError && staffData) {
+        // Auto-fix: Update invited staff who have created accounts
+        const invitedWithAccounts = staffData.filter(
+          s => s.status === 'invited' && s.user_id !== null
+        );
+
+        if (invitedWithAccounts.length > 0) {
+          console.log(`Auto-fixing ${invitedWithAccounts.length} invited staff with accounts`);
+          for (const staff of invitedWithAccounts) {
+            await supabase
+              .from('staff')
+              .update({
+                status: 'active',
+                invitation_token: null
+              })
+              .eq('id', staff.id);
+          }
+
+          // Reload staff data to get updated statuses
+          const { data: updatedStaffData } = await supabase
+            .from('staff')
+            .select('*')
+            .eq('store_id', storeId);
+
+          setStaff(updatedStaffData || []);
+        } else {
+          setStaff(staffData);
+        }
       }
 
       // Load shifts
@@ -504,6 +669,13 @@ export default function StoreDetail() {
     setIsAssigning(true);
 
     try {
+      // Get current user
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      if (userError || !user) {
+        toast.error('Không thể xác thực người dùng');
+        return;
+      }
+
       const existing = getStaffForShiftAndDate(selectedShift.id, new Date(selectedDate));
       const existingStaffIds = existing.map(s => s.staff_id);
 
@@ -515,12 +687,15 @@ export default function StoreDetail() {
           .filter(s => toRemove.includes(s.staff_id))
           .map(s => s.id);
 
-        const { error: deleteError } = await supabase
-          .from('staff_schedules')
-          .delete()
-          .in('id', scheduleIdsToRemove);
+        // Delete via API
+        const deleteResponse = await fetch(`/api/schedules?userId=${user.id}&storeId=${storeId}&scheduleIds=${scheduleIdsToRemove.join(',')}`, {
+          method: 'DELETE',
+        });
 
-        if (deleteError) throw deleteError;
+        const deleteResult = await deleteResponse.json();
+        if (!deleteResponse.ok) {
+          throw new Error(deleteResult.error || 'Failed to remove schedules');
+        }
       }
 
       if (toAdd.length > 0) {
@@ -532,11 +707,21 @@ export default function StoreDetail() {
           notes: null,
         }));
 
-        const { error: insertError } = await supabase
-          .from('staff_schedules')
-          .insert(newSchedules);
+        // Insert via API
+        const insertResponse = await fetch('/api/schedules', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            userId: user.id,
+            storeId,
+            schedules: newSchedules,
+          }),
+        });
 
-        if (insertError) throw insertError;
+        const insertResult = await insertResponse.json();
+        if (!insertResponse.ok) {
+          throw new Error(insertResult.error || 'Failed to add schedules');
+        }
       }
 
       setShowAssignModal(false);
@@ -552,17 +737,27 @@ export default function StoreDetail() {
   async function handleRemoveStaffFromShift(scheduleId: string, staffName: string) {
     setIsRemoving(scheduleId);
     try {
-      const { error: deleteError } = await supabase
-        .from('staff_schedules')
-        .delete()
-        .eq('id', scheduleId);
+      // Get current user
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      if (userError || !user) {
+        toast.error('Không thể xác thực người dùng');
+        return;
+      }
 
-      if (deleteError) throw deleteError;
+      // Delete via API
+      const response = await fetch(`/api/schedules?userId=${user.id}&storeId=${storeId}&scheduleId=${scheduleId}`, {
+        method: 'DELETE',
+      });
+
+      const result = await response.json();
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to remove schedule');
+      }
 
       loadSchedules();
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error removing schedule:', err);
-      toast.error('Lỗi khi xóa lịch');
+      toast.error('Lỗi khi xóa lịch: ' + err.message);
     } finally {
       setIsRemoving(null);
     }
@@ -570,22 +765,39 @@ export default function StoreDetail() {
 
   async function handleAssignShift(staffId: string, shiftId: string, date: string) {
     try {
-      const { error: insertError } = await supabase
-        .from('staff_schedules')
-        .insert({
-          staff_id: staffId,
-          store_id: storeId,
-          shift_template_id: shiftId,
-          scheduled_date: date,
-          notes: null,
-        });
+      // Get current user
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      if (userError || !user) {
+        toast.error('Không thể xác thực người dùng');
+        return;
+      }
 
-      if (insertError) throw insertError;
+      // Create via API
+      const response = await fetch('/api/schedules', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: user.id,
+          storeId,
+          schedules: [{
+            staff_id: staffId,
+            store_id: storeId,
+            shift_template_id: shiftId,
+            scheduled_date: date,
+            notes: null,
+          }],
+        }),
+      });
+
+      const result = await response.json();
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to assign shift');
+      }
 
       loadSchedules();
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error assigning shift:', err);
-      toast.error('Lỗi khi xếp ca');
+      toast.error('Lỗi khi xếp ca: ' + err.message);
     }
   }
 
@@ -636,15 +848,30 @@ export default function StoreDetail() {
         };
       });
 
-      const { error: insertError } = await supabase
-        .from('staff_schedules')
-        .insert(newSchedules);
+      // Get current user
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      if (userError || !user) {
+        toast.error('Không thể xác thực người dùng');
+        return;
+      }
 
-      if (insertError) {
-        if (insertError.code === '23505') {
+      // Insert via API
+      const insertResponse = await fetch('/api/schedules', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: user.id,
+          storeId,
+          schedules: newSchedules,
+        }),
+      });
+
+      const insertResult = await insertResponse.json();
+      if (!insertResponse.ok) {
+        if (insertResult.code === '23505') {
           // Duplicate entry - silently ignore
         } else {
-          throw insertError;
+          throw new Error(insertResult.error || 'Failed to copy week schedules');
         }
       }
 
@@ -682,12 +909,22 @@ export default function StoreDetail() {
 
       const targetDateStr = formatDateSchedule(date);
 
-      // First, delete existing schedules for the target day
-      await supabase
-        .from('staff_schedules')
-        .delete()
-        .eq('store_id', storeId)
-        .eq('scheduled_date', targetDateStr);
+      // Get current user
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      if (userError || !user) {
+        toast.error('Không thể xác thực người dùng');
+        return;
+      }
+
+      // First, delete existing schedules for the target day via API
+      const deleteResponse = await fetch(`/api/schedules?userId=${user.id}&storeId=${storeId}&scheduledDate=${targetDateStr}`, {
+        method: 'DELETE',
+      });
+
+      if (!deleteResponse.ok) {
+        const deleteResult = await deleteResponse.json();
+        throw new Error(deleteResult.error || 'Failed to clear existing schedules');
+      }
 
       // Create new schedule records with the target date
       const newSchedules = copiedDaySchedule.map(s => ({
@@ -698,12 +935,21 @@ export default function StoreDetail() {
         notes: s.notes,
       }));
 
-      // Insert the new schedules
-      const { error: insertError } = await supabase
-        .from('staff_schedules')
-        .insert(newSchedules);
+      // Insert the new schedules via API
+      const insertResponse = await fetch('/api/schedules', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: user.id,
+          storeId,
+          schedules: newSchedules,
+        }),
+      });
 
-      if (insertError) throw insertError;
+      const insertResult = await insertResponse.json();
+      if (!insertResponse.ok) {
+        throw new Error(insertResult.error || 'Failed to paste schedules');
+      }
 
       loadSchedules();
 
@@ -730,13 +976,22 @@ export default function StoreDetail() {
         return;
       }
 
-      const { error } = await supabase
-        .from('staff_schedules')
-        .delete()
-        .eq('store_id', storeId)
-        .eq('scheduled_date', dateStr);
+      // Get current user
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      if (userError || !user) {
+        toast.error('Không thể xác thực người dùng');
+        return;
+      }
 
-      if (error) throw error;
+      // Delete via API
+      const response = await fetch(`/api/schedules?userId=${user.id}&storeId=${storeId}&scheduledDate=${dateStr}`, {
+        method: 'DELETE',
+      });
+
+      const result = await response.json();
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to clear day schedule');
+      }
 
       loadSchedules();
 
@@ -809,25 +1064,37 @@ export default function StoreDetail() {
     }
 
     try {
+      // Get current user
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      if (userError || !user) {
+        toast.error('Không thể xác thực người dùng');
+        return;
+      }
+
       // First, delete existing schedules in the target location
       if (clipboard.type === 'day' && selectedItem.date) {
-        // Delete all schedules for the target day
+        // Delete all schedules for the target day via API
         const targetDateStr = formatDateSchedule(selectedItem.date);
-        await supabase
-          .from('staff_schedules')
-          .delete()
-          .eq('store_id', storeId)
-          .eq('scheduled_date', targetDateStr);
+        const deleteResponse = await fetch(`/api/schedules?userId=${user.id}&storeId=${storeId}&scheduledDate=${targetDateStr}`, {
+          method: 'DELETE',
+        });
+
+        if (!deleteResponse.ok) {
+          const deleteResult = await deleteResponse.json();
+          throw new Error(deleteResult.error || 'Failed to clear existing schedules');
+        }
       } else if (clipboard.type === 'staff') {
-        // Delete all schedules for the target staff for the week
+        // Delete all schedules for the target staff for the week via API
         const weekDays = getWeekDays();
         const weekDateStrs = weekDays.map(d => formatDateSchedule(d));
-        await supabase
-          .from('staff_schedules')
-          .delete()
-          .eq('store_id', storeId)
-          .eq('staff_id', selectedItem.id)
-          .in('scheduled_date', weekDateStrs);
+        const deleteResponse = await fetch(`/api/schedules?userId=${user.id}&storeId=${storeId}&staffId=${selectedItem.id}&scheduledDates=${weekDateStrs.join(',')}`, {
+          method: 'DELETE',
+        });
+
+        if (!deleteResponse.ok) {
+          const deleteResult = await deleteResponse.json();
+          throw new Error(deleteResult.error || 'Failed to clear existing schedules');
+        }
       }
 
       // Then, insert the new schedules
@@ -855,11 +1122,21 @@ export default function StoreDetail() {
       }
 
       if (newSchedules.length > 0) {
-        const { error } = await supabase
-          .from('staff_schedules')
-          .insert(newSchedules);
+        // Insert via API
+        const insertResponse = await fetch('/api/schedules', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            userId: user.id,
+            storeId,
+            schedules: newSchedules,
+          }),
+        });
 
-        if (error) throw error;
+        const insertResult = await insertResponse.json();
+        if (!insertResponse.ok) {
+          throw new Error(insertResult.error || 'Failed to paste schedules');
+        }
       }
 
       loadSchedules();
@@ -867,9 +1144,9 @@ export default function StoreDetail() {
       if ('vibrate' in navigator) {
         navigator.vibrate(50);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error pasting:', error);
-      toast.error('Lỗi khi dán');
+      toast.error('Lỗi khi dán: ' + error.message);
     }
   }
 
@@ -900,26 +1177,34 @@ export default function StoreDetail() {
         return;
       }
 
+      // Get current user
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      if (userError || !user) {
+        toast.error('Không thể xác thực người dùng');
+        return;
+      }
+
       if (selectedItem.type === 'day' && selectedItem.date) {
         const dateStr = formatDateSchedule(selectedItem.date);
-        const { error } = await supabase
-          .from('staff_schedules')
-          .delete()
-          .eq('store_id', storeId)
-          .eq('scheduled_date', dateStr);
+        const response = await fetch(`/api/schedules?userId=${user.id}&storeId=${storeId}&scheduledDate=${dateStr}`, {
+          method: 'DELETE',
+        });
 
-        if (error) throw error;
+        const result = await response.json();
+        if (!response.ok) {
+          throw new Error(result.error || 'Failed to clear schedules');
+        }
       } else if (selectedItem.type === 'staff') {
         const weekDays = getWeekDays();
         const weekDateStrs = weekDays.map(d => formatDateSchedule(d));
-        const { error } = await supabase
-          .from('staff_schedules')
-          .delete()
-          .eq('store_id', storeId)
-          .eq('staff_id', selectedItem.id)
-          .in('scheduled_date', weekDateStrs);
+        const response = await fetch(`/api/schedules?userId=${user.id}&storeId=${storeId}&staffId=${selectedItem.id}&scheduledDates=${weekDateStrs.join(',')}`, {
+          method: 'DELETE',
+        });
 
-        if (error) throw error;
+        const result = await response.json();
+        if (!response.ok) {
+          throw new Error(result.error || 'Failed to clear schedules');
+        }
       }
 
       loadSchedules();
@@ -1070,47 +1355,86 @@ export default function StoreDetail() {
 
       const existingConfirmation = salaryConfirmations.find(c => c.staff_id === staffId);
 
+      // Get current user
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      if (userError || !user) {
+        toast.error('Không thể xác thực người dùng');
+        return;
+      }
+
       if (currentStatus === 'paid') {
         // Unpay - update status to draft
         if (existingConfirmation) {
-          const { error } = await supabase
-            .from('salary_confirmations')
-            .update({ status: 'draft', paid_at: null })
-            .eq('id', existingConfirmation.id);
+          const response = await fetch('/api/salary', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              userId: user.id,
+              storeId,
+              operation: 'update_confirmation',
+              data: {
+                confirmationId: existingConfirmation.id,
+                status: 'draft',
+                paid_at: null,
+              },
+            }),
+          });
 
-          if (error) throw error;
+          const result = await response.json();
+          if (!response.ok) {
+            throw new Error(result.error || 'Failed to update payment status');
+          }
         }
       } else {
         // Mark as paid
         if (existingConfirmation) {
-          const { error } = await supabase
-            .from('salary_confirmations')
-            .update({ status: 'paid', paid_at: new Date().toISOString() })
-            .eq('id', existingConfirmation.id);
+          const response = await fetch('/api/salary', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              userId: user.id,
+              storeId,
+              operation: 'update_confirmation',
+              data: {
+                confirmationId: existingConfirmation.id,
+                status: 'paid',
+                paid_at: new Date().toISOString(),
+              },
+            }),
+          });
 
-          if (error) throw error;
+          const result = await response.json();
+          if (!response.ok) {
+            throw new Error(result.error || 'Failed to update payment status');
+          }
         } else {
-          const { error } = await supabase
-            .from('salary_confirmations')
-            .insert([{
-              staff_id: staffId,
-              store_id: storeId,
-              month: selectedMonth,
-              provisional_amount: calculation.provisional.total,
-              adjustments_amount: calculation.adjustments.total,
-              final_amount: calculation.final_amount,
-              status: 'paid',
-              paid_at: new Date().toISOString(),
-            }]);
+          const response = await fetch('/api/salary', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              userId: user.id,
+              storeId,
+              operation: 'create_confirmation',
+              data: {
+                staffId,
+                month: selectedMonth,
+                total_salary: calculation.final_amount,
+                status: 'paid',
+              },
+            }),
+          });
 
-          if (error) throw error;
+          const result = await response.json();
+          if (!response.ok) {
+            throw new Error(result.error || 'Failed to create payment confirmation');
+          }
         }
       }
 
       loadSalaryData();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error toggling payment status:', error);
-      toast.error('Lỗi khi cập nhật trạng thái thanh toán');
+      toast.error('Lỗi khi cập nhật trạng thái thanh toán: ' + error.message);
     }
   }
 
@@ -1132,52 +1456,88 @@ export default function StoreDetail() {
     note: string;
   }) {
     try {
+      // Get current user
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      if (userError || !user) {
+        toast.error('Không thể xác thực người dùng');
+        return;
+      }
+
       if (editingAdjustment) {
-        // Update existing adjustment
-        const { error } = await supabase
-          .from('salary_adjustments')
-          .update({
-            type: data.type,
-            amount: data.amount,
-            adjustment_date: data.date,
-            note: data.note,
-          })
-          .eq('id', editingAdjustment.id);
+        // Update existing adjustment via API
+        const response = await fetch('/api/salary', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            userId: user.id,
+            storeId,
+            operation: 'update_adjustment',
+            data: {
+              adjustmentId: editingAdjustment.id,
+              type: data.type,
+              amount: data.amount,
+              adjustment_date: data.date,
+              description: data.note,
+            },
+          }),
+        });
 
-        if (error) throw error;
+        const result = await response.json();
+        if (!response.ok) {
+          throw new Error(result.error || 'Failed to update adjustment');
+        }
       } else {
-        // Create new adjustment
-        const { error } = await supabase
-          .from('salary_adjustments')
-          .insert([{
-            staff_id: staffId,
-            store_id: storeId,
-            type: data.type,
-            amount: data.amount,
-            adjustment_date: data.date,
-            note: data.note,
-          }]);
+        // Create new adjustment via API
+        const response = await fetch('/api/salary', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            userId: user.id,
+            storeId,
+            operation: 'create_adjustment',
+            data: {
+              staffId,
+              type: data.type,
+              amount: data.amount,
+              adjustment_date: data.date,
+              description: data.note,
+            },
+          }),
+        });
 
-        if (error) throw error;
+        const result = await response.json();
+        if (!response.ok) {
+          throw new Error(result.error || 'Failed to create adjustment');
+        }
       }
 
       setShowAdjustmentForm(false);
       setEditingAdjustment(null);
       loadSalaryData();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error saving adjustment:', error);
-      toast.error('Lỗi khi lưu điều chỉnh');
+      toast.error('Lỗi khi lưu điều chỉnh: ' + error.message);
     }
   }
 
   async function handleDeleteAdjustment(adjustmentId: string) {
     try {
-      const { error } = await supabase
-        .from('salary_adjustments')
-        .delete()
-        .eq('id', adjustmentId);
+      // Get current user
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      if (userError || !user) {
+        toast.error('Không thể xác thực người dùng');
+        return;
+      }
 
-      if (error) throw error;
+      // Delete via API
+      const response = await fetch(`/api/salary?userId=${user.id}&storeId=${storeId}&adjustmentId=${adjustmentId}`, {
+        method: 'DELETE',
+      });
+
+      const result = await response.json();
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to delete adjustment');
+      }
 
       loadSalaryData();
     } catch (error) {
@@ -1782,7 +2142,7 @@ export default function StoreDetail() {
         const staffMember = staff.find(s => s.id === selectedStaffForSalary);
         return staffMember && (
           <AdjustmentForm
-            staffName={staffMember.full_name}
+            staffName={staffMember.full_name || staffMember.email}
             month={selectedMonth}
             editingAdjustment={editingAdjustment}
             onSave={(data) => handleSaveAdjustment(selectedStaffForSalary, data)}
@@ -1793,6 +2153,22 @@ export default function StoreDetail() {
           />
         );
       })()}
+
+      {/* Confirmation Dialog */}
+      <ConfirmDialog
+        isOpen={confirmDialog.isOpen}
+        onClose={() => {
+          console.log('🔔 [PAGE] ConfirmDialog onClose called!');
+          setConfirmDialog({ isOpen: false, title: '', message: '', onConfirm: () => {} });
+        }}
+        onConfirm={confirmDialog.onConfirm}
+        title={confirmDialog.title}
+        message={confirmDialog.message}
+        confirmText="Xóa"
+        cancelText="Hủy"
+        confirmButtonClass="bg-red-600 hover:bg-red-700"
+        isLoading={confirmDialog.isLoading}
+      />
 
       {/* Toast Container */}
       <toast.ToastContainer />
