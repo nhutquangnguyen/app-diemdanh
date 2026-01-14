@@ -24,7 +24,7 @@ Hệ thống trợ giúp đầy đủ với các bài viết hướng dẫn chi 
 - Tính năng đặc biệt: Sớm/muộn, offline, ghi chú
 - Thời gian đọc: 3 phút
 
-### 3. Sếp Lịch AI (`/help/sep-lich-ai`)
+### 3. Xếp Lịch AI (`/help/xep-lich-ai`)
 - Hướng dẫn sử dụng AI để xếp lịch tự động
 - Giải thích thuật toán
 - Xử lý các trường hợp đặc biệt
