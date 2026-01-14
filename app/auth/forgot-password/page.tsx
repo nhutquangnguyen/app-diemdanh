@@ -26,7 +26,7 @@ export default function ForgotPasswordPage() {
       );
 
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: 'https://diemdanh.net/auth/reset-password',
+        redirectTo: 'https://app.diemdanh.net/auth/reset-password',
       });
 
       if (error) throw error;
