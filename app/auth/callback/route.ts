@@ -12,12 +12,31 @@ export async function GET(request: Request) {
     try {
       const { data: sessionData } = await supabase.auth.exchangeCodeForSession(code);
 
-      // Auto-link staff records using internal API (for OAuth signups)
+      // Auto-link staff records and verify email for OAuth signups
       if (sessionData?.user) {
         const userEmail = sessionData.user.email;
         const userName = sessionData.user.user_metadata?.full_name || sessionData.user.user_metadata?.name;
 
         if (userEmail) {
+          try {
+            // Auto-verify email for OAuth users (Google already verified their email)
+            const verifyResponse = await fetch(new URL('/api/auth/auto-verify-oauth', requestUrl.origin), {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                userId: sessionData.user.id,
+                email: userEmail,
+              }),
+            });
+
+            if (verifyResponse.ok) {
+              console.log(`Auto-verified email for OAuth user: ${userEmail}`);
+            }
+          } catch (verifyError) {
+            console.error('Error auto-verifying OAuth user email:', verifyError);
+            // Don't block login if verification fails
+          }
+
           try {
             // Call the link-account API (it uses service role to bypass RLS)
             const linkResponse = await fetch(new URL('/api/staff/link-account', requestUrl.origin), {

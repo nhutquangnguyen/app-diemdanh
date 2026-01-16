@@ -1,6 +1,7 @@
 import { supabase } from './supabase';
 
 export async function signUp(email: string, password: string, fullName: string) {
+  // Sign up WITHOUT auto-confirming email
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
@@ -8,10 +9,14 @@ export async function signUp(email: string, password: string, fullName: string) 
       data: {
         full_name: fullName,
       },
+      // This tells Supabase to NOT send confirmation email
+      // and NOT auto-confirm the email
+      emailRedirectTo: undefined,
     },
   });
 
   if (error) throw error;
+
   return data;
 }
 
@@ -22,6 +27,52 @@ export async function signIn(email: string, password: string) {
   });
 
   if (error) throw error;
+
+  console.log('[AUTH] SignIn data:', {
+    userId: data.user?.id,
+    email: data.user?.email,
+  });
+
+  // Check if email is verified using our custom email_verification_tokens table
+  if (data.user) {
+    // Check if user has ANY record in email_verification_tokens (verified or not)
+    const { data: allTokens, error: verificationError } = await supabase
+      .from('email_verification_tokens')
+      .select('verified_at, user_id')
+      .eq('email', data.user.email)
+      .limit(1);
+
+    if (verificationError) {
+      console.error('[AUTH] Error checking verification status:', verificationError);
+      // Continue with login - don't block on database errors
+    } else if (allTokens && allTokens.length > 0) {
+      // User has a record - check if it's verified
+      const token = allTokens[0];
+      if (!token.verified_at) {
+        // New user who hasn't verified their email yet
+        console.log('[AUTH] Email not verified (unverified token exists), blocking login');
+
+        // Store user info for verification page
+        if (typeof window !== 'undefined') {
+          sessionStorage.setItem('signup_user_id', token.user_id);
+          sessionStorage.setItem('signup_email', data.user.email || '');
+          sessionStorage.setItem('signup_full_name', data.user.user_metadata?.full_name || '');
+        }
+
+        await supabase.auth.signOut();
+
+        // Return a special error object that includes redirect info
+        const error = new Error('UNVERIFIED_EMAIL');
+        (error as any).needsVerification = true;
+        throw error;
+      }
+      console.log('[AUTH] Email verified (verified token exists), allowing login');
+    } else {
+      // No record found - old user who signed up before email verification was implemented
+      console.log('[AUTH] No verification record found - old user, allowing login');
+    }
+  }
+
   return data;
 }
 

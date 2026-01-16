@@ -105,55 +105,114 @@ function SignupContent() {
 
       console.log('✅ [SIGNUP] Signup successful!', { userId: data.user?.id, email: data.user?.email });
 
-      // Auto-link staff records using server-side API (bypasses RLS)
       if (data.user) {
-        console.log('🔗 [SIGNUP] Calling link-account API...', {
-          userId: data.user.id,
-          email: formData.email,
-          hasToken: !!inviteToken,
-        });
+        // Check if this is an invited user
+        if (inviteToken) {
+          console.log('👥 [SIGNUP] Invited user - auto-verifying email');
 
+          // Auto-verify email for invited users (they already proved email access via invitation)
+          try {
+            const autoVerifyResponse = await fetch('/api/auth/auto-verify-oauth', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                userId: data.user.id,
+                email: formData.email,
+              }),
+            });
+
+            if (autoVerifyResponse.ok) {
+              console.log('✅ [SIGNUP] Auto-verified invited user');
+            }
+          } catch (verifyError) {
+            console.error('❌ [SIGNUP] Error auto-verifying invited user:', verifyError);
+          }
+
+          // Auto-link staff account
+          try {
+            const linkResponse = await fetch('/api/staff/link-account', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                userId: data.user.id,
+                email: formData.email,
+                fullName: formData.fullName,
+                invitationToken: inviteToken,
+              }),
+            });
+
+            const linkResult = await linkResponse.json();
+
+            if (linkResult.success && linkResult.linked) {
+              console.log('✅ [SIGNUP] Linked invited user to store(s)');
+
+              // Sign out and redirect to login
+              const { signOut } = await import('@/lib/auth');
+              await signOut();
+
+              // Show success message
+              const storesList = linkResult.storeNames?.join(', ') || 'cửa hàng';
+              alert(`Đăng ký thành công! Bạn đã được thêm vào: ${storesList}\n\nVui lòng đăng nhập để tiếp tục.`);
+              router.push(`/auth/login${returnUrl && returnUrl !== '/' ? `?returnUrl=${returnUrl}` : ''}`);
+              return;
+            }
+          } catch (linkError) {
+            console.error('❌ [SIGNUP] Error linking invited user:', linkError);
+          }
+
+          // If linking failed, still allow login
+          const { signOut } = await import('@/lib/auth');
+          await signOut();
+          alert('Đăng ký thành công! Vui lòng đăng nhập để tiếp tục.');
+          router.push(`/auth/login${returnUrl && returnUrl !== '/' ? `?returnUrl=${returnUrl}` : ''}`);
+          return;
+        }
+
+        // Regular user (not invited) - send verification code
         try {
-          const linkResponse = await fetch('/api/staff/link-account', {
+          const verificationResponse = await fetch('/api/auth/send-verification', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               userId: data.user.id,
               email: formData.email,
               fullName: formData.fullName,
-              invitationToken: inviteToken,
             }),
           });
 
-          console.log('🔗 [SIGNUP] API response status:', linkResponse.status);
+          const verificationData = await verificationResponse.json();
 
-          const linkResult = await linkResponse.json();
-          console.log('🔗 [SIGNUP] API response:', linkResult);
-
-          if (linkResult.success && linkResult.linked) {
-            // Successfully linked to store(s)
-            if (linkResult.storeNames && linkResult.storeNames.length > 0) {
-              const storesList = linkResult.storeNames.join(', ');
-              alert(`Đăng ký thành công! Bạn đã được thêm vào: ${storesList}`);
-            } else {
-              alert('Đăng ký thành công! Bạn đã được thêm vào cửa hàng.');
-            }
-            router.push('/');
-            return;
-          } else if (linkResult.error) {
-            console.error('❌ [SIGNUP] Error linking staff records:', linkResult.error);
-            alert(`Cảnh báo: Không thể liên kết tài khoản với cửa hàng. Lỗi: ${linkResult.error}`);
-          } else {
-            console.warn('⚠️ [SIGNUP] No staff records found to link');
+          if (!verificationResponse.ok) {
+            console.error('❌ [SIGNUP] Error sending verification email:', verificationData.error);
+            // Continue anyway, user can request resend
           }
-        } catch (linkError) {
-          console.error('❌ [SIGNUP] Error calling link-account API:', linkError);
-          alert('Cảnh báo: Không thể liên kết tài khoản với cửa hàng. Vui lòng liên hệ quản lý.');
+        } catch (verificationError) {
+          console.error('❌ [SIGNUP] Error calling send-verification API:', verificationError);
+          // Continue anyway, user can request resend
         }
+
+        // Store signup info for verification page
+        sessionStorage.setItem('signup_user_id', data.user.id);
+        sessionStorage.setItem('signup_email', formData.email);
+        sessionStorage.setItem('signup_full_name', formData.fullName);
+        if (returnUrl && returnUrl !== '/') {
+          sessionStorage.setItem('signup_return_url', returnUrl);
+        }
+
+        // IMPORTANT: Sign out the user immediately after signup
+        // They must verify their email before they can login
+        console.log('🔒 [SIGNUP] Signing out user - must verify email first');
+        const { signOut } = await import('@/lib/auth');
+        await signOut();
+
+        // Redirect to email verification page
+        router.push('/auth/verify-email');
+        return;
       }
 
-      alert('Đăng ký thành công!');
-      router.push(returnUrl);
+      // If no user was created, show error
+      alert('Đăng ký thất bại. Vui lòng thử lại.');
+      router.push('/auth/signup');
     } catch (err: any) {
       // Translate common error messages to Vietnamese
       let errorMessage = 'Đăng ký thất bại';

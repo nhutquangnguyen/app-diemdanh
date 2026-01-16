@@ -26,26 +26,48 @@ function LoginContent() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    console.log('[LOGIN] Form submitted', { email });
     setLoading(true);
     setError('');
 
     try {
-      await signIn(email, password);
+      console.log('[LOGIN] Calling signIn...');
+      const data = await signIn(email, password);
+      console.log('[LOGIN] SignIn successful', data);
+
+      console.log('[LOGIN] Redirecting to:', returnUrl);
       router.push(returnUrl);
     } catch (err: any) {
+      console.error('[LOGIN] Error:', err);
+
+      // Check if this is an unverified email error
+      if (err.needsVerification || err.message === 'UNVERIFIED_EMAIL') {
+        console.log('[LOGIN] Email not verified, redirecting to verification page');
+        // Store return URL for after verification
+        if (returnUrl && returnUrl !== '/') {
+          sessionStorage.setItem('signup_return_url', returnUrl);
+        }
+        // Mark that user came from login flow
+        sessionStorage.setItem('from_login', 'true');
+        // Redirect to verification page
+        router.push('/auth/verify-email');
+        return;
+      }
+
       // Translate common error messages to Vietnamese
       let errorMessage = 'Đăng nhập thất bại';
       if (err.message) {
         if (err.message.includes('Invalid login credentials')) {
           errorMessage = 'Email hoặc mật khẩu không đúng';
         } else if (err.message.includes('Email not confirmed')) {
-          errorMessage = 'Email chưa được xác nhận';
+          errorMessage = 'Email chưa được xác nhận. Vui lòng kiểm tra email để xác thực tài khoản.';
         } else if (err.message.includes('Too many requests')) {
           errorMessage = 'Quá nhiều yêu cầu, vui lòng thử lại sau';
         } else {
           errorMessage = err.message;
         }
       }
+      console.log('[LOGIN] Setting error:', errorMessage);
       setError(errorMessage);
     } finally {
       setLoading(false);
