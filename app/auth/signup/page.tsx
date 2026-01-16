@@ -5,6 +5,8 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { signUp, signInWithGoogle } from '@/lib/auth';
 import { supabase } from '@/lib/supabase';
+import { validatePassword, getPasswordErrorMessage } from '@/lib/password-validation';
+import PasswordRequirements from '@/components/PasswordRequirements';
 
 export const runtime = 'edge';
 
@@ -89,8 +91,9 @@ function SignupContent() {
       return;
     }
 
-    if (formData.password.length < 6) {
-      setError('Mật khẩu phải có ít nhất 6 ký tự');
+    const passwordValidation = validatePassword(formData.password);
+    if (!passwordValidation.isValid) {
+      setError(getPasswordErrorMessage(formData.password));
       setLoading(false);
       return;
     }
@@ -155,14 +158,17 @@ function SignupContent() {
       // Translate common error messages to Vietnamese
       let errorMessage = 'Đăng ký thất bại';
       if (err.message) {
-        if (err.message.includes('User already registered')) {
+        const msg = err.message.toLowerCase();
+        if (msg.includes('user already registered')) {
           errorMessage = 'Email này đã được đăng ký';
-        } else if (err.message.includes('Email rate limit exceeded')) {
+        } else if (msg.includes('email rate limit exceeded')) {
           errorMessage = 'Quá nhiều yêu cầu, vui lòng thử lại sau';
-        } else if (err.message.includes('Invalid email')) {
+        } else if (msg.includes('invalid email')) {
           errorMessage = 'Email không hợp lệ';
-        } else if (err.message.includes('Password should be at least')) {
-          errorMessage = 'Mật khẩu phải có ít nhất 6 ký tự';
+        } else if (msg.includes('password') && msg.includes('contain')) {
+          errorMessage = getPasswordErrorMessage(formData.password);
+        } else if (msg.includes('password') && (msg.includes('weak') || msg.includes('should be at least'))) {
+          errorMessage = 'Mật khẩu không đủ mạnh. Vui lòng kiểm tra các yêu cầu bên dưới.';
         } else {
           errorMessage = err.message;
         }
@@ -290,6 +296,9 @@ function SignupContent() {
               placeholder="••••••••"
             />
           </div>
+
+          {/* Always show password requirements */}
+          <PasswordRequirements password={formData.password} />
 
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-2">

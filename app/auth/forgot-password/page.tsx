@@ -1,38 +1,41 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Header from '@/components/Header';
 
 export const runtime = 'edge';
 
 export default function ForgotPasswordPage() {
+  const router = useRouter();
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState('');
   const [error, setError] = useState('');
 
   async function handleResetPassword(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
-    setMessage('');
     setError('');
 
     try {
-      const { createClient } = await import('@supabase/supabase-js');
-      const supabase = createClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-      );
-
-      const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: 'https://app.diemdanh.net/auth/reset-password',
+      const response = await fetch('/api/auth/request-reset', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
       });
 
-      if (error) throw error;
+      const data = await response.json();
 
-      setMessage('Đã gửi email đặt lại mật khẩu! Vui lòng kiểm tra hộp thư của bạn.');
-      setEmail('');
+      if (!response.ok) {
+        throw new Error(data.error || 'Có lỗi xảy ra');
+      }
+
+      // Store email in sessionStorage for next step
+      sessionStorage.setItem('reset_email', email);
+
+      // Redirect to verification page
+      router.push('/auth/verify-code');
     } catch (error: any) {
       setError(error.message || 'Có lỗi xảy ra. Vui lòng thử lại.');
     } finally {
@@ -50,14 +53,8 @@ export default function ForgotPasswordPage() {
             Quên Mật Khẩu
           </h2>
           <p className="text-gray-600 mb-6 text-center text-sm">
-            Nhập email của bạn để nhận link đặt lại mật khẩu
+            Bước 1: Nhập email để nhận mã xác thực
           </p>
-
-          {message && (
-            <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg">
-              <p className="text-green-700 text-sm">{message}</p>
-            </div>
-          )}
 
           {error && (
             <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
@@ -85,13 +82,13 @@ export default function ForgotPasswordPage() {
               disabled={loading}
               className="w-full bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white px-6 py-3 rounded-lg font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {loading ? 'Đang gửi...' : 'Gửi Email Đặt Lại Mật Khẩu'}
+              {loading ? 'Đang gửi...' : 'Gửi Mã Xác Thực'}
             </button>
           </form>
 
           <div className="mt-6 text-center">
-            <Link href="/auth/login" className="text-blue-600 hover:text-blue-700 text-sm font-semibold">
-              Quay lại Đăng Nhập
+            <Link href="/auth/login" className="text-gray-600 hover:text-gray-700 text-sm">
+              ← Quay lại Đăng Nhập
             </Link>
           </div>
         </div>
