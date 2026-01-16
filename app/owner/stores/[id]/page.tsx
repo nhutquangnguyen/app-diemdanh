@@ -44,7 +44,7 @@ export default function StoreDetail() {
   const [settingsLoading, setSettingsLoading] = useState(false);
 
   // Tab navigation state
-  const [activeTab, setActiveTab] = useState<'today' | 'overview' | 'shifts' | 'staff' | 'settings' | 'schedule' | 'smart-schedule' | 'report' | 'salary'>('today');
+  const [activeTab, setActiveTab] = useState<'today' | 'overview' | 'shifts' | 'staff' | 'settings' | 'schedule' | 'smart-schedule' | 'report' | 'salary' | 'qr'>('today');
   const [showMoreMenu, setShowMoreMenu] = useState(false);
 
   // Filter state for staff overview
@@ -1700,7 +1700,7 @@ export default function StoreDetail() {
               type="button"
               onClick={() => setShowMoreMenu(!showMoreMenu)}
               className={`w-full px-4 py-3 rounded-lg font-semibold transition-all ${
-                activeTab === 'settings' || activeTab === 'shifts' || activeTab === 'staff' || activeTab === 'smart-schedule' || showMoreMenu
+                activeTab === 'settings' || activeTab === 'shifts' || activeTab === 'staff' || activeTab === 'smart-schedule' || activeTab === 'qr' || showMoreMenu
                   ? 'bg-blue-600 text-white'
                   : 'text-gray-700 hover:bg-gray-100'
               } flex items-center justify-center gap-2`}
@@ -1750,6 +1750,19 @@ export default function StoreDetail() {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
                   </svg>
                   <span className="font-semibold text-gray-700">Xếp lịch AI</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveTab('qr');
+                    setShowMoreMenu(false);
+                  }}
+                  className="w-full text-left px-4 py-3 hover:bg-gray-100 transition-all flex items-center gap-3"
+                >
+                  <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
+                  </svg>
+                  <span className="font-semibold text-gray-700">Mã QR</span>
                 </button>
                 <button
                   type="button"
@@ -1892,16 +1905,91 @@ export default function StoreDetail() {
             />
           )}
 
+          {/* QR CODE TAB */}
+          {activeTab === 'qr' && (
+            <div className="px-3 sm:px-6 py-4 sm:py-6">
+              <div className="max-w-2xl mx-auto">
+                {/* Header */}
+                <div className="mb-4 sm:mb-6">
+                  <h2 className="text-xl sm:text-2xl font-bold text-gray-800 mb-2">Mã QR Điểm Danh</h2>
+                  <p className="text-sm sm:text-base text-gray-600">In hoặc chia sẻ mã QR này để nhân viên có thể điểm danh dễ dàng</p>
+                </div>
+
+                {/* QR Code Display */}
+                <div className="bg-white rounded-xl sm:rounded-2xl shadow-lg p-4 sm:p-8 border-2 border-gray-200">
+                  <div className="text-center">
+                    {/* Store Name */}
+                    <div className="mb-4 sm:mb-6">
+                      <h3 className="text-lg sm:text-xl font-bold text-gray-800 mb-1">{store.name}</h3>
+                      <p className="text-xs sm:text-sm text-gray-600">{store.address}</p>
+                    </div>
+
+                    {/* QR Code */}
+                    <div className="bg-white p-4 sm:p-8 rounded-xl inline-block border-2 sm:border-4 border-blue-500 shadow-xl max-w-full">
+                      <QRCode
+                        id="qr-code"
+                        value={`https://www.diemdanh.net/checkin/submit?store=${store.id}`}
+                        size={200}
+                        level="H"
+                        className="w-full h-auto max-w-[200px] sm:max-w-[256px]"
+                      />
+                    </div>
+
+                    {/* Instructions */}
+                    <div className="mt-4 sm:mt-6 bg-blue-50 rounded-lg p-3 sm:p-4">
+                      <p className="text-xs sm:text-sm text-blue-800 font-medium mb-2">Hướng dẫn sử dụng:</p>
+                      <ol className="text-xs sm:text-sm text-blue-700 text-left space-y-1 max-w-md mx-auto">
+                        <li>1. Nhân viên quét mã QR bằng camera điện thoại</li>
+                        <li>2. Hoặc nhấn vào link để mở trang điểm danh</li>
+                        <li>3. Chọn ca làm việc và hoàn tất điểm danh</li>
+                      </ol>
+                    </div>
+
+                    {/* Action Buttons */}
+                    <div className="mt-4 sm:mt-6 flex flex-col sm:flex-row flex-wrap gap-2 sm:gap-3 justify-center">
+                      <button
+                        type="button"
+                        onClick={downloadQRCode}
+                        className="bg-blue-600 hover:bg-blue-700 text-white px-4 sm:px-6 py-2.5 sm:py-3 rounded-lg font-semibold flex items-center justify-center gap-2 transition-all shadow-md text-sm sm:text-base"
+                      >
+                        <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                        </svg>
+                        Tải xuống QR
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          navigator.clipboard.writeText(`https://www.diemdanh.net/checkin/submit?store=${store.id}`);
+                          toast.success('Đã copy link điểm danh!');
+                        }}
+                        className="bg-white hover:bg-gray-50 text-gray-700 border-2 border-gray-300 px-4 sm:px-6 py-2.5 sm:py-3 rounded-lg font-semibold flex items-center justify-center gap-2 transition-all shadow-md text-sm sm:text-base"
+                      >
+                        <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                        </svg>
+                        Copy Link
+                      </button>
+                    </div>
+
+                    {/* Link Display */}
+                    <div className="mt-4 sm:mt-6">
+                      <div className="bg-gray-100 rounded-lg p-2.5 sm:p-3 text-xs sm:text-sm text-gray-700 font-mono break-all">
+                        https://www.diemdanh.net/checkin/submit?store={store.id}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* SETTINGS TAB */}
           {activeTab === 'settings' && (
             <StoreSettings
               store={store}
               settingsLoading={settingsLoading}
-              downloadQRCode={downloadQRCode}
               updateStoreSettings={updateStoreSettings}
-              onCopyLink={() => {
-                navigator.clipboard.writeText(`https://www.diemdanh.net/checkin/submit?store=${store.id}`);
-              }}
             />
           )}
         </div>
@@ -1953,7 +2041,7 @@ export default function StoreDetail() {
                 type="button"
                 onClick={() => setShowMoreMenu(!showMoreMenu)}
                 className={`w-full flex flex-col items-center py-2 px-1 rounded-lg transition-all ${
-                  activeTab === 'settings' || activeTab === 'shifts' || activeTab === 'staff' || activeTab === 'smart-schedule' || showMoreMenu
+                  activeTab === 'settings' || activeTab === 'shifts' || activeTab === 'staff' || activeTab === 'smart-schedule' || activeTab === 'qr' || showMoreMenu
                     ? 'bg-blue-600 text-white'
                     : 'text-gray-600'
                 }`}
@@ -2003,6 +2091,19 @@ export default function StoreDetail() {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
                     </svg>
                     <span className="font-semibold text-gray-700">Xếp lịch AI</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActiveTab('qr');
+                      setShowMoreMenu(false);
+                    }}
+                    className="w-full text-left px-4 py-3 hover:bg-gray-100 transition-all flex items-center gap-3"
+                  >
+                    <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
+                    </svg>
+                    <span className="font-semibold text-gray-700">Mã QR</span>
                   </button>
                   <button
                     type="button"

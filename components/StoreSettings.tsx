@@ -1,62 +1,18 @@
-import QRCode from 'react-qr-code';
 import { Store } from '@/types';
 
 interface StoreSettingsProps {
   store: Store;
   settingsLoading: boolean;
-  downloadQRCode: () => void;
   updateStoreSettings: (settings: Partial<Store>) => void;
-  onCopyLink: () => void;
 }
 
 export default function StoreSettings({
   store,
   settingsLoading,
-  downloadQRCode,
   updateStoreSettings,
-  onCopyLink,
 }: StoreSettingsProps) {
   return (
     <div className="px-4 sm:px-6 py-6">
-      {/* QR CODE & SHARING */}
-      <div className="bg-gray-50 rounded-lg p-4 mb-6">
-        <h3 className="text-lg font-semibold text-gray-800 mb-4">Mã QR Điểm Danh</h3>
-        <div className="text-center">
-          <div className="bg-white p-6 rounded-lg inline-block border-2 border-gray-200">
-            <QRCode
-              id="qr-code"
-              value={`https://www.diemdanh.net/checkin/submit?store=${store.id}`}
-              size={200}
-              level="H"
-            />
-          </div>
-          <div className="mt-4">
-            <div className="flex flex-wrap gap-2 justify-center">
-              <button
-                type="button"
-                onClick={downloadQRCode}
-                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-semibold flex items-center gap-2 transition-all"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                </svg>
-                Tải xuống
-              </button>
-              <button
-                type="button"
-                onClick={onCopyLink}
-                className="bg-gray-200 hover:bg-gray-300 text-gray-700 px-4 py-2 rounded-lg font-semibold flex items-center gap-2 transition-all"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                </svg>
-                Copy Link
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-
       {/* SINGLE UNIFIED FORM */}
       <form onSubmit={(e) => {
         e.preventDefault();
