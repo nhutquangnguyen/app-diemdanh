@@ -41,6 +41,9 @@ export default function SmartScheduleNew({
   const [saving, setSaving] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [generatedSchedule, setGeneratedSchedule] = useState<any>(null);
+  const [submissionStatus, setSubmissionStatus] = useState<{ [staffId: string]: { submitted: boolean; isOverride: boolean } }>({});
+  const [lockedStaff, setLockedStaff] = useState<Set<string>>(new Set()); // Staff IDs that are locked
+  const [originalAvailability, setOriginalAvailability] = useState<{ [key: string]: boolean }>({}); // Store original staff submissions
   const [bulkApplyValue, setBulkApplyValue] = useState<string>('1');
   const [showWeekPicker, setShowWeekPicker] = useState(false);
   const [calendarViewDate, setCalendarViewDate] = useState<Date>(currentWeekStart); // Separate state for calendar view
@@ -102,11 +105,36 @@ export default function SmartScheduleNew({
       if (availError) throw availError;
 
       const availMap: { [key: string]: boolean } = {};
+      const originalMap: { [key: string]: boolean } = {}; // Store original staff submissions
+      const statusMap: { [staffId: string]: { submitted: boolean; isOverride: boolean } } = {};
+      const locked = new Set<string>();
+
+      // Track submission status per staff
+      staff.forEach(s => {
+        statusMap[s.id] = { submitted: false, isOverride: false };
+      });
+
       availData?.forEach(item => {
         const key = `${item.staff_id}_${item.day_of_week}_${item.shift_template_id}`;
         availMap[key] = item.is_available;
+
+        // Track if staff has submitted and whether it's an override
+        if (statusMap[item.staff_id]) {
+          statusMap[item.staff_id].submitted = true;
+          if (item.is_owner_override) {
+            statusMap[item.staff_id].isOverride = true;
+          } else {
+            // This is staff's own submission - save as original and lock
+            originalMap[key] = item.is_available;
+            locked.add(item.staff_id);
+          }
+        }
       });
+
       setAvailability(availMap);
+      setOriginalAvailability(originalMap);
+      setSubmissionStatus(statusMap);
+      setLockedStaff(locked);
 
     } catch (error) {
       console.error('Error loading data:', error);
@@ -203,6 +231,41 @@ export default function SmartScheduleNew({
     return { available, total };
   }
 
+  // Toggle lock/unlock for a staff member
+  function toggleLock(staffId: string) {
+    setLockedStaff(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(staffId)) {
+        newSet.delete(staffId);
+      } else {
+        newSet.add(staffId);
+      }
+      return newSet;
+    });
+  }
+
+  // Reset to staff's original submission
+  function resetToOriginal(staffId: string) {
+    const newAvail = { ...availability };
+
+    // Clear current availability for this staff
+    Object.keys(newAvail).forEach(key => {
+      if (key.startsWith(`${staffId}_`)) {
+        delete newAvail[key];
+      }
+    });
+
+    // Restore original
+    Object.entries(originalAvailability).forEach(([key, value]) => {
+      if (key.startsWith(`${staffId}_`)) {
+        newAvail[key] = value;
+      }
+    });
+
+    setAvailability(newAvail);
+    toast.success('Đã khôi phục lịch rảnh gốc của nhân viên');
+  }
+
   // Save to database
   async function handleSave() {
     try {
@@ -222,11 +285,21 @@ export default function SmartScheduleNew({
           };
         });
 
+      // Get current user for tracking
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Not authenticated');
+
       // Prepare availability records
       const availRecords = Object.entries(availability)
         .filter(([_, isAvail]) => isAvail)
         .map(([key]) => {
           const [staffId, dayOfWeek, shiftTemplateId] = key.split('_');
+          const status = submissionStatus[staffId];
+
+          // Determine if this is an override
+          // It's an override if: staff submitted originally AND owner unlocked to edit
+          const isOverride = status && status.submitted && !status.isOverride && !lockedStaff.has(staffId);
+
           return {
             staff_id: staffId,
             store_id: storeId,
@@ -234,6 +307,10 @@ export default function SmartScheduleNew({
             shift_template_id: shiftTemplateId,
             day_of_week: parseInt(dayOfWeek),
             is_available: true,
+            created_by: user.id,
+            modified_by: user.id,
+            is_owner_override: isOverride,
+            override_reason: isOverride ? 'Owner manually edited availability' : null,
           };
         });
 
@@ -254,6 +331,12 @@ export default function SmartScheduleNew({
       }
 
       toast.success('Đã lưu thành công');
+      await loadData(); // Reload to update submission status
+
+      // Navigate to next step only from step 1
+      if (step === 1) {
+        setStep(2);
+      }
     } catch (error) {
       console.error('Error saving:', error);
       toast.error('Lỗi khi lưu dữ liệu');
@@ -718,7 +801,7 @@ export default function SmartScheduleNew({
           {/* Actions */}
           <div className="mt-6 flex gap-3">
             <button
-              onClick={() => { handleSave(); setStep(2); }}
+              onClick={handleSave}
               disabled={saving}
               className="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-semibold"
             >
@@ -731,10 +814,48 @@ export default function SmartScheduleNew({
       {/* STEP 2: Availability */}
       {step === 2 && (
         <div className="space-y-4">
+          {/* Submission Status Summary */}
+          <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border-2 border-blue-200 p-4">
+            <h3 className="font-bold text-gray-800 mb-3 flex items-center gap-2">
+              <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              Trạng thái gửi lịch rảnh
+            </h3>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <div className="bg-white rounded-lg p-3 text-center shadow-sm">
+                <div className="text-2xl font-bold text-gray-700">{staff.length}</div>
+                <div className="text-xs text-gray-600 mt-1">Tổng nhân viên</div>
+              </div>
+              <div className="bg-white rounded-lg p-3 text-center shadow-sm">
+                <div className="text-2xl font-bold text-green-600">
+                  {Object.values(submissionStatus).filter(s => s.submitted && !s.isOverride).length}
+                </div>
+                <div className="text-xs text-gray-600 mt-1">✅ Đã gửi</div>
+              </div>
+              <div className="bg-white rounded-lg p-3 text-center shadow-sm">
+                <div className="text-2xl font-bold text-orange-600">
+                  {Object.values(submissionStatus).filter(s => s.submitted && s.isOverride).length}
+                </div>
+                <div className="text-xs text-gray-600 mt-1">⚠️ Override</div>
+              </div>
+              <div className="bg-white rounded-lg p-3 text-center shadow-sm">
+                <div className="text-2xl font-bold text-red-600">
+                  {Object.values(submissionStatus).filter(s => !s.submitted).length}
+                </div>
+                <div className="text-xs text-gray-600 mt-1">⏳ Chưa gửi</div>
+              </div>
+            </div>
+            <div className="mt-3 text-xs text-gray-600 bg-white/50 rounded-lg p-2">
+              💡 <span className="font-semibold">Lưu ý:</span> Bạn có thể đặt lịch rảnh cho nhân viên chưa gửi. Lịch này sẽ được đánh dấu là "Override" và nhân viên sẽ được thông báo.
+            </div>
+          </div>
+
           {staff.map(staffMember => {
             const { available, total } = countStaffAvailability(staffMember.id);
             const percentage = total > 0 ? (available / total) * 100 : 0;
             const isExpanded = expandedStaff.has(staffMember.id);
+            const status = submissionStatus[staffMember.id] || { submitted: false, isOverride: false };
 
             let badgeColor = 'bg-gray-200 text-gray-700';
             let badgeEmoji = '⚪';
@@ -744,7 +865,7 @@ export default function SmartScheduleNew({
             else { badgeColor = 'bg-red-100 text-red-700'; badgeEmoji = '🔴'; }
 
             return (
-              <div key={staffMember.id} className="bg-white rounded-lg shadow">
+              <div key={staffMember.id} className={`bg-white rounded-lg shadow ${status.isOverride ? 'border-2 border-orange-300' : ''}`}>
                 {/* Staff Header */}
                 <button
                   onClick={() => {
@@ -760,7 +881,29 @@ export default function SmartScheduleNew({
                       {staffMember.display_name.split(' ').slice(-2).map(n => n[0]).join('').toUpperCase()}
                     </div>
                     <div className="text-left">
-                      <div className="font-semibold text-gray-800">{staffMember.display_name}</div>
+                      <div className="flex items-center gap-2">
+                        <div className="font-semibold text-gray-800">{staffMember.display_name}</div>
+                        {lockedStaff.has(staffMember.id) && (
+                          <svg className="w-4 h-4 text-gray-500" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
+                          </svg>
+                        )}
+                        {status.submitted && !status.isOverride && (
+                          <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-semibold">
+                            ✅ Đã gửi
+                          </span>
+                        )}
+                        {status.isOverride && (
+                          <span className="text-xs bg-orange-100 text-orange-700 px-2 py-0.5 rounded-full font-semibold">
+                            ⚠️ Override
+                          </span>
+                        )}
+                        {!status.submitted && (
+                          <span className="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded-full font-semibold">
+                            ⏳ Chưa gửi
+                          </span>
+                        )}
+                      </div>
                       <div className={`text-xs px-2 py-1 rounded-full inline-block ${badgeColor}`}>
                         {badgeEmoji} {available}/{total}
                       </div>
@@ -779,31 +922,84 @@ export default function SmartScheduleNew({
                 {/* Expanded Content */}
                 {isExpanded && (
                   <div className="p-4 border-t border-gray-200">
+                    {/* Lock/Unlock Controls */}
+                    {status.submitted && !status.isOverride && (
+                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="flex items-center gap-2 flex-1">
+                            {lockedStaff.has(staffMember.id) ? (
+                              <>
+                                <svg className="w-5 h-5 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
+                                  <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
+                                </svg>
+                                <span className="text-xs text-blue-800 font-medium">
+                                  Lịch đã khóa (dữ liệu nhân viên gửi)
+                                </span>
+                              </>
+                            ) : (
+                              <>
+                                <svg className="w-5 h-5 text-orange-600" fill="currentColor" viewBox="0 0 20 20">
+                                  <path d="M10 2a5 5 0 00-5 5v2a2 2 0 00-2 2v5a2 2 0 002 2h10a2 2 0 002-2v-5a2 2 0 00-2-2H7V7a3 3 0 015.905-.75 1 1 0 001.937-.5A5.002 5.002 0 0010 2z" />
+                                </svg>
+                                <span className="text-xs text-orange-800 font-medium">
+                                  Đã mở khóa - Có thể chỉnh sửa
+                                </span>
+                              </>
+                            )}
+                          </div>
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => toggleLock(staffMember.id)}
+                              className={`px-3 py-1.5 rounded text-xs font-semibold transition-all ${
+                                lockedStaff.has(staffMember.id)
+                                  ? 'bg-orange-600 hover:bg-orange-700 text-white'
+                                  : 'bg-blue-600 hover:bg-blue-700 text-white'
+                              }`}
+                            >
+                              {lockedStaff.has(staffMember.id) ? '🔓 Mở khóa' : '🔒 Khóa lại'}
+                            </button>
+                            {!lockedStaff.has(staffMember.id) && (
+                              <button
+                                onClick={() => resetToOriginal(staffMember.id)}
+                                className="px-3 py-1.5 bg-gray-500 hover:bg-gray-600 text-white rounded text-xs font-semibold"
+                              >
+                                ↺ Reset
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
                     {/* Quick Actions */}
                     <div className="bg-gray-50 rounded-lg p-3 mb-4">
                       <div className="text-xs font-semibold text-gray-600 mb-2">Áp dụng nhanh:</div>
                       <div className="flex flex-wrap gap-2">
                         <button
                           onClick={() => quickApplyStaff(staffMember.id, 'all')}
-                          className="px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white rounded text-xs font-semibold"
+                          disabled={lockedStaff.has(staffMember.id)}
+                          className="px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white rounded text-xs font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                           Tất cả tuần
                         </button>
                         <button
                           onClick={() => quickApplyStaff(staffMember.id, 'weekdays')}
-                          className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded text-xs font-semibold"
+                          disabled={lockedStaff.has(staffMember.id)}
+                          className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded text-xs font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                           T2-T6
                         </button>
                         <button
                           onClick={() => quickApplyStaff(staffMember.id, 'weekends')}
-                          className="px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white rounded text-xs font-semibold"
+                          disabled={lockedStaff.has(staffMember.id)}
+                          className="px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white rounded text-xs font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                           T7-CN
                         </button>
                         <button
                           onClick={() => quickApplyStaff(staffMember.id, 'clear')}
-                          className="px-3 py-1.5 bg-gray-500 hover:bg-gray-600 text-white rounded text-xs font-semibold"
+                          disabled={lockedStaff.has(staffMember.id)}
+                          className="px-3 py-1.5 bg-gray-500 hover:bg-gray-600 text-white rounded text-xs font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                           Bỏ chọn
                         </button>
@@ -834,11 +1030,13 @@ export default function SmartScheduleNew({
                               </td>
                               {weekDates.map((_, dayIndex) => {
                                 const checked = isAvailable(staffMember.id, dayIndex, shift.id);
+                                const isLocked = lockedStaff.has(staffMember.id);
                                 return (
                                   <td key={dayIndex} className="p-2 text-center">
                                     <button
-                                      onClick={() => toggleAvailability(staffMember.id, dayIndex, shift.id)}
-                                      className="w-full h-8 flex items-center justify-center"
+                                      onClick={() => !isLocked && toggleAvailability(staffMember.id, dayIndex, shift.id)}
+                                      disabled={isLocked}
+                                      className={`w-full h-8 flex items-center justify-center ${isLocked ? 'cursor-not-allowed opacity-50' : ''}`}
                                     >
                                       {checked ? (
                                         <svg className="w-5 h-5 text-green-600" fill="currentColor" viewBox="0 0 20 20">

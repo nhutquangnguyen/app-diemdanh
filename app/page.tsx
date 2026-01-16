@@ -230,7 +230,15 @@ export default function Home() {
     }
   }
 
-  async function handleStoreClick(store: StoreWithDistance) {
+  // Navigate to staff page for this store
+  function handleStoreClick(store: StoreWithDistance) {
+    router.push(`/stores/${store.id}/staff`);
+  }
+
+  // Quick check-in action
+  async function handleQuickCheckIn(store: StoreWithDistance, e: React.MouseEvent) {
+    e.stopPropagation(); // Prevent navigation to staff page
+
     const checkInStatus = store.checkInStatus || { type: 'none' };
 
     // Third+ click: Show dialog to choose action
@@ -469,44 +477,75 @@ export default function Home() {
                   }
 
                   return (
-                    <button
+                    <div
                       key={store.id}
-                      onClick={() => handleStoreClick(store)}
-                      disabled={isFar || gpsLoading}
-                      className={`w-full text-left p-4 rounded-xl border-2 transition-all ${
+                      className={`w-full rounded-xl border-2 transition-all overflow-hidden ${
                         isFar
-                          ? 'bg-gray-100 border-gray-300 cursor-not-allowed opacity-60'
-                          : 'bg-white border-blue-500 hover:shadow-lg active:scale-[0.98]'
+                          ? 'bg-gray-100 border-gray-300 opacity-60'
+                          : 'bg-white border-blue-500 hover:shadow-lg'
                       }`}
                     >
-                      <div className="flex items-start gap-3">
-                        {/* Status Dot */}
-                        <div className="flex-shrink-0 mt-1.5">
-                          <div className={`w-3 h-3 rounded-full ${
-                            checkInStatus.type === 'active' ? 'bg-green-500' : 'bg-gray-400'
-                          }`} />
-                        </div>
+                      <div className="flex">
+                        {/* Main Button - Navigate to Staff Page */}
+                        <button
+                          onClick={() => handleStoreClick(store)}
+                          disabled={isFar}
+                          className="flex-1 text-left p-4 hover:bg-blue-50 transition-all disabled:cursor-not-allowed"
+                        >
+                          <div className="flex items-start gap-3">
+                            {/* Status Dot */}
+                            <div className="flex-shrink-0 mt-1.5">
+                              <div className={`w-3 h-3 rounded-full ${
+                                checkInStatus.type === 'active' ? 'bg-green-500' : 'bg-gray-400'
+                              }`} />
+                            </div>
 
-                        <div className="flex-1">
-                          {/* Store Name */}
-                          <h3 className="font-bold text-gray-800 text-xl mb-1">
-                            {store.name}
-                          </h3>
+                            <div className="flex-1">
+                              {/* Store Name */}
+                              <h3 className="font-bold text-gray-800 text-lg mb-1">
+                                {store.name}
+                              </h3>
 
-                          {/* Distance info (if GPS required and available) */}
-                          {distanceText && (
-                            <p className="text-xs text-gray-500 mb-1">
-                              {distanceText}
-                            </p>
-                          )}
+                              {/* Distance info (if GPS required and available) */}
+                              {distanceText && (
+                                <p className="text-xs text-gray-500 mb-1">
+                                  {distanceText}
+                                </p>
+                              )}
 
-                          {/* Action Text - Black (or gray if disabled) */}
-                          <p className={`text-sm font-medium ${isFar ? 'text-gray-500' : 'text-gray-800'}`}>
-                            {actionText}
-                          </p>
-                        </div>
+                              {/* Action Text */}
+                              <p className="text-xs text-gray-600">
+                                Xem lịch & lịch sử
+                              </p>
+                            </div>
+                          </div>
+                        </button>
+
+                        {/* Quick Check-in Button */}
+                        <button
+                          onClick={(e) => handleQuickCheckIn(store, e)}
+                          disabled={isFar || gpsLoading}
+                          className={`flex flex-col items-center justify-center px-4 py-3 border-l-2 transition-all min-w-[80px] ${
+                            isFar || gpsLoading
+                              ? 'bg-gray-200 cursor-not-allowed'
+                              : checkInStatus.type === 'active'
+                                ? 'bg-orange-50 hover:bg-orange-100 border-orange-300'
+                                : 'bg-blue-50 hover:bg-blue-100 border-blue-300'
+                          }`}
+                        >
+                          <svg className={`w-6 h-6 mb-1 ${
+                            checkInStatus.type === 'active' ? 'text-orange-600' : 'text-blue-600'
+                          }`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          </svg>
+                          <span className={`text-xs font-semibold ${
+                            checkInStatus.type === 'active' ? 'text-orange-600' : 'text-blue-600'
+                          }`}>
+                            {checkInStatus.type === 'active' ? 'Ra Ca' : 'Vào Ca'}
+                          </span>
+                        </button>
                       </div>
-                    </button>
+                    </div>
                   );
                 })}
                 </div>

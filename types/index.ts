@@ -48,6 +48,7 @@ export interface CheckIn {
   id: string;
   staff_id: string;
   store_id: string;
+  shift_template_id: string;
   check_in_time: string;
   check_out_time?: string;
   latitude: number;
@@ -59,6 +60,7 @@ export interface CheckIn {
   selfie_url: string;
   checkout_selfie_url?: string;
   status: 'success' | 'late' | 'wrong_location';
+  notes?: string;
   created_at: string;
 }
 
