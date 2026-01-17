@@ -310,10 +310,16 @@ export default function Home() {
   // Get greeting info
   function getCurrentGreeting() {
     const time = currentTime.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-    return { time };
+    const date = currentTime.toLocaleDateString('vi-VN', {
+      weekday: 'long',
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric'
+    });
+    return { time, date };
   }
 
-  const { time } = getCurrentGreeting();
+  const { time, date } = getCurrentGreeting();
   const firstName = user?.user_metadata?.full_name?.split(' ').slice(-1)[0] || user?.email?.split('@')[0];
 
   return (
@@ -337,6 +343,7 @@ export default function Home() {
                 Xin chào, {firstName}
               </h2>
               <p className="text-lg font-semibold text-orange-600">{time}</p>
+              <p className="text-sm text-gray-600 mt-1">{date}</p>
             </div>
 
             {/* GPS Error */}
@@ -436,8 +443,7 @@ export default function Home() {
                   const noGps = store.status === 'no-gps';
                   const checkInStatus = store.checkInStatus || { type: 'none' };
 
-                  // Determine action text and distance display
-                  let actionText = '';
+                  // Determine distance display
                   let distanceText = '';
 
                   // Show distance for GPS-required stores with radius context
@@ -455,25 +461,6 @@ export default function Home() {
                     } else if (gpsLoading) {
                       distanceText = 'Đang lấy vị trí GPS...';
                     }
-                  }
-
-                  if (isFar) {
-                    actionText = 'Ngoài phạm vi';
-                  } else if (checkInStatus.type === 'none') {
-                    // First click → Check-in
-                    actionText = 'Nhấn để check-in';
-                  } else if (checkInStatus.type === 'active') {
-                    // Currently checked in - show status clearly
-                    const checkInTime = new Date(checkInStatus.activeCheckIn.check_in_time);
-                    const timeStr = checkInTime.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
-                    actionText = `Đang làm việc (vào ca lúc ${timeStr})`;
-                  } else if (checkInStatus.type === 'completed') {
-                    // Already checked out - show completed status
-                    const checkInTime = new Date(checkInStatus.lastCompletedCheckIn.check_in_time);
-                    const checkOutTime = new Date(checkInStatus.lastCompletedCheckIn.check_out_time);
-                    const inTime = checkInTime.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
-                    const outTime = checkOutTime.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
-                    actionText = `Ca cuối: ${inTime} → ${outTime}`;
                   }
 
                   return (
