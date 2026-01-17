@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { getCurrentUser } from '@/lib/auth';
 import Header from '@/components/Header';
+import PasswordRequirements from '@/components/PasswordRequirements';
+import { validatePassword } from '@/lib/password-validation';
 
 export default function SettingsPage() {
   const router = useRouter();
@@ -87,9 +89,15 @@ export default function SettingsPage() {
     setSaving(true);
     setMessage(null);
 
-    // Validate passwords
-    if (newPassword.length < 6) {
-      setMessage({ type: 'error', text: 'Mật khẩu mới phải có ít nhất 6 ký tự' });
+    // Validate password against requirements
+    const validation = validatePassword(newPassword);
+    if (!validation.isValid) {
+      setMessage({
+        type: 'error',
+        text: validation.failedRequirements.length > 0
+          ? `Mật khẩu thiếu: ${validation.failedRequirements.join(', ')}`
+          : 'Mật khẩu không đáp ứng yêu cầu bảo mật'
+      });
       setSaving(false);
       return;
     }
@@ -111,10 +119,11 @@ export default function SettingsPage() {
 
       setMessage({ type: 'success', text: 'Đã đổi mật khẩu thành công!' });
 
-      // Clear password fields
+      // Clear password fields and hide form
       setCurrentPassword('');
       setNewPassword('');
       setConfirmPassword('');
+      setShowPasswordForm(false);
     } catch (error: any) {
       console.error('Error changing password:', error);
       setMessage({ type: 'error', text: error.message || 'Có lỗi xảy ra khi đổi mật khẩu' });
@@ -254,11 +263,13 @@ export default function SettingsPage() {
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
                   required
-                  minLength={6}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   placeholder="Nhập mật khẩu mới (tối thiểu 6 ký tự)"
                 />
               </div>
+
+              {/* Always show password requirements */}
+              <PasswordRequirements password={newPassword} />
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -269,7 +280,6 @@ export default function SettingsPage() {
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   required
-                  minLength={6}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   placeholder="Nhập lại mật khẩu mới"
                 />
