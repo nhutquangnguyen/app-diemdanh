@@ -24,8 +24,11 @@ export default function HelpLayout({ children }: HelpLayoutProps) {
             {/* About */}
             <div>
               <h3 className="font-bold text-lg mb-4">DiemDanh.net</h3>
-              <p className="text-gray-400 text-sm">
+              <p className="text-gray-400 text-sm mb-2">
                 Hệ thống điểm danh và quản lý lịch làm việc thông minh cho doanh nghiệp
+              </p>
+              <p className="text-gray-500 text-xs">
+                Sản phẩm của Công ty CP Thương Mại OBN
               </p>
             </div>
 
@@ -87,17 +90,24 @@ export default function HelpLayout({ children }: HelpLayoutProps) {
             <div>
               <h3 className="font-bold text-lg mb-4">Liên Hệ</h3>
               <ul className="space-y-2 text-sm text-gray-400">
-                <li className="flex items-center gap-2">
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                <li className="flex items-start gap-2">
+                  <svg className="w-4 h-4 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                   </svg>
-                  support@diemdanh.net
+                  <span>39/7 đường 23, P.Hiệp Bình, TP. Hồ Chí Minh</span>
                 </li>
                 <li className="flex items-center gap-2">
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                  </svg>
+                  office.obn@gmail.com
+                </li>
+                <li className="flex items-center gap-2">
+                  <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
                   </svg>
-                  1900-xxxx-xx
+                  078 777 4949
                 </li>
               </ul>
               <div className="flex gap-3 mt-4">
@@ -116,7 +126,9 @@ export default function HelpLayout({ children }: HelpLayoutProps) {
           </div>
 
           <div className="border-t border-gray-700 mt-8 pt-8 text-center text-sm text-gray-400">
-            <p>&copy; {new Date().getFullYear()} DiemDanh.net. All rights reserved.</p>
+            <p className="font-semibold text-white mb-2">Công ty Cổ Phần Thương Mại OBN</p>
+            <p>MST: 0317247895 | Ngày cấp: 14/04/2022 | Nơi cấp: Chi cục thuế Thủ Đức</p>
+            <p className="mt-2">&copy; {new Date().getFullYear()} DiemDanh.net. All rights reserved.</p>
           </div>
         </div>
       </footer>
