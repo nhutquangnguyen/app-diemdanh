@@ -334,6 +334,7 @@ export default function SmartScheduleNew({
       await loadData(); // Reload to update submission status
 
       // Navigate to next step only from step 1
+      // Step 2 uses handleGenerate instead of handleSave
       if (step === 1) {
         setStep(2);
       }
@@ -360,7 +361,7 @@ export default function SmartScheduleNew({
           'Chưa có yêu cầu nhân viên',
           'Bạn chưa nhập số lượng nhân viên cần thiết cho bất kỳ ca làm việc nào.',
           [
-            'Quay lại Bước 1 và nhập số lượng nhân viên cần thiết cho mỗi ca',
+            'Quay lại Bước 2 và nhập số lượng nhân viên cần thiết cho mỗi ca',
             'Hoặc sử dụng tính năng "Áp dụng nhanh" để thiết lập nhanh cho tất cả'
           ]
         );
@@ -450,8 +451,8 @@ export default function SmartScheduleNew({
           'Không thể tạo lịch',
           'Không có nhân viên nào rảnh cho tất cả các ca làm việc.',
           [
-            'Quay lại Bước 2 và đánh dấu nhân viên rảnh cho các ca',
-            'Hoặc giảm số lượng nhân viên yêu cầu ở Bước 1'
+            'Quay lại Bước 1 và đánh dấu nhân viên rảnh cho các ca',
+            'Hoặc giảm số lượng nhân viên yêu cầu ở Bước 2'
           ]
         );
         return;
@@ -508,7 +509,7 @@ export default function SmartScheduleNew({
               Lịch Thông Minh 🤖
             </h1>
             <p className="text-sm text-gray-600 mt-1">
-              Bước {step}/3: {step === 1 ? 'Số lượng nhân viên' : step === 2 ? 'Lịch rảnh' : 'Xem trước lịch'}
+              Bước {step}/3: {step === 1 ? 'Lịch rảnh' : step === 2 ? 'Số lượng nhân viên' : 'Xem trước lịch'}
             </p>
           </div>
           <button
@@ -710,8 +711,8 @@ export default function SmartScheduleNew({
         </div>
       </div>
 
-      {/* STEP 1: Requirements */}
-      {step === 1 && (
+      {/* STEP 2: Requirements (swapped from 1) */}
+      {step === 2 && (
         <div className="bg-white rounded-lg shadow-lg p-4 sm:p-6">
           <h2 className="text-lg font-bold text-gray-800 mb-4">Số Lượng Nhân Viên Cần</h2>
 
@@ -801,18 +802,33 @@ export default function SmartScheduleNew({
           {/* Actions */}
           <div className="mt-6 flex gap-3">
             <button
-              onClick={handleSave}
-              disabled={saving}
-              className="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-semibold"
+              onClick={() => setStep(1)}
+              className="px-6 py-3 border border-gray-300 text-gray-700 rounded-lg font-semibold hover:bg-gray-50"
             >
-              {saving ? 'Đang lưu...' : 'Lưu & Tiếp'}
+              Quay lại
+            </button>
+            <button
+              onClick={handleGenerate}
+              disabled={generating}
+              className="flex-1 bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg font-semibold flex items-center justify-center gap-2"
+            >
+              {generating ? (
+                <>
+                  <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                  Đang tạo...
+                </>
+              ) : (
+                <>
+                  🤖 Tạo Lịch Tự Động
+                </>
+              )}
             </button>
           </div>
         </div>
       )}
 
-      {/* STEP 2: Availability */}
-      {step === 2 && (
+      {/* STEP 1: Availability (swapped from 2) */}
+      {step === 1 && (
         <div className="space-y-4">
           {/* Submission Status Summary */}
           <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border-2 border-blue-200 p-4">
@@ -1065,26 +1081,11 @@ export default function SmartScheduleNew({
           {/* Actions */}
           <div className="flex gap-3 mt-6">
             <button
-              onClick={() => setStep(1)}
-              className="px-6 py-3 border border-gray-300 text-gray-700 rounded-lg font-semibold hover:bg-gray-50"
+              onClick={handleSave}
+              disabled={saving}
+              className="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-semibold"
             >
-              Quay lại
-            </button>
-            <button
-              onClick={handleGenerate}
-              disabled={generating}
-              className="flex-1 bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg font-semibold flex items-center justify-center gap-2"
-            >
-              {generating ? (
-                <>
-                  <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                  Đang tạo...
-                </>
-              ) : (
-                <>
-                  🤖 Tạo Lịch Tự Động
-                </>
-              )}
+              {saving ? 'Đang lưu...' : 'Lưu & Tiếp tục'}
             </button>
           </div>
         </div>

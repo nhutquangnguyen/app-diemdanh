@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
@@ -46,6 +46,8 @@ export default function StoreDetail() {
   // Tab navigation state
   const [activeTab, setActiveTab] = useState<'today' | 'overview' | 'shifts' | 'staff' | 'settings' | 'schedule' | 'smart-schedule' | 'report' | 'salary' | 'qr'>('today');
   const [showMoreMenu, setShowMoreMenu] = useState(false);
+  const moreMenuRefDesktop = useRef<HTMLDivElement>(null);
+  const moreMenuRefMobile = useRef<HTMLDivElement>(null);
 
   // Filter state for staff overview
   const [staffFilter, setStaffFilter] = useState<'all' | 'working' | 'late' | 'not_checked'>('all');
@@ -145,6 +147,25 @@ export default function StoreDetail() {
       loadSalaryData();
     }
   }, [selectedMonth, storeId, activeTab]);
+
+  // Close more menu when clicking outside
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      const clickedInsideDesktop = moreMenuRefDesktop.current?.contains(event.target as Node);
+      const clickedInsideMobile = moreMenuRefMobile.current?.contains(event.target as Node);
+
+      if (!clickedInsideDesktop && !clickedInsideMobile) {
+        setShowMoreMenu(false);
+      }
+    }
+
+    if (showMoreMenu) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => {
+        document.removeEventListener('mousedown', handleClickOutside);
+      };
+    }
+  }, [showMoreMenu]);
 
   function deleteStaff(staffId: string) {
     console.log('🗑️ [DELETE_STAFF] Function called with staffId:', staffId);
@@ -1686,21 +1707,21 @@ export default function StoreDetail() {
             Lịch
           </button>
           <button
-            onClick={() => setActiveTab('salary')}
+            onClick={() => setActiveTab('smart-schedule')}
             className={`flex-1 px-4 py-3 rounded-lg font-semibold transition-all ${
-              activeTab === 'salary'
+              activeTab === 'smart-schedule'
                 ? 'bg-blue-600 text-white'
                 : 'text-gray-700 hover:bg-gray-100'
             }`}
           >
-            Lương
+            Xếp lịch AI
           </button>
-          <div className="relative flex-1">
+          <div ref={moreMenuRefDesktop} className="relative flex-1">
             <button
               type="button"
               onClick={() => setShowMoreMenu(!showMoreMenu)}
               className={`w-full px-4 py-3 rounded-lg font-semibold transition-all ${
-                activeTab === 'settings' || activeTab === 'shifts' || activeTab === 'staff' || activeTab === 'smart-schedule' || activeTab === 'qr' || showMoreMenu
+                activeTab === 'settings' || activeTab === 'shifts' || activeTab === 'staff' || activeTab === 'salary' || activeTab === 'qr' || showMoreMenu
                   ? 'bg-blue-600 text-white'
                   : 'text-gray-700 hover:bg-gray-100'
               } flex items-center justify-center gap-2`}
@@ -1741,15 +1762,15 @@ export default function StoreDetail() {
                 <button
                   type="button"
                   onClick={() => {
-                    setActiveTab('smart-schedule');
+                    setActiveTab('salary');
                     setShowMoreMenu(false);
                   }}
                   className="w-full text-left px-4 py-3 hover:bg-gray-100 transition-all flex items-center gap-3"
                 >
                   <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
-                  <span className="font-semibold text-gray-700">Xếp lịch AI</span>
+                  <span className="font-semibold text-gray-700">Lương</span>
                 </button>
                 <button
                   type="button"
@@ -2024,24 +2045,24 @@ export default function StoreDetail() {
               <span className="text-xs font-semibold">Lịch</span>
             </button>
             <button
-              onClick={() => setActiveTab('salary')}
+              onClick={() => setActiveTab('smart-schedule')}
               className={`w-full flex flex-col items-center py-2 px-1 rounded-lg transition-all ${
-                activeTab === 'salary'
+                activeTab === 'smart-schedule'
                   ? 'bg-blue-600 text-white'
                   : 'text-gray-600'
               }`}
             >
               <svg className="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
               </svg>
-              <span className="text-xs font-semibold">Lương</span>
+              <span className="text-xs font-semibold">Xếp lịch AI</span>
             </button>
-            <div className="relative">
+            <div ref={moreMenuRefMobile} className="relative">
               <button
                 type="button"
                 onClick={() => setShowMoreMenu(!showMoreMenu)}
                 className={`w-full flex flex-col items-center py-2 px-1 rounded-lg transition-all ${
-                  activeTab === 'settings' || activeTab === 'shifts' || activeTab === 'staff' || activeTab === 'smart-schedule' || activeTab === 'qr' || showMoreMenu
+                  activeTab === 'settings' || activeTab === 'shifts' || activeTab === 'staff' || activeTab === 'salary' || activeTab === 'qr' || showMoreMenu
                     ? 'bg-blue-600 text-white'
                     : 'text-gray-600'
                 }`}
@@ -2082,15 +2103,15 @@ export default function StoreDetail() {
                   <button
                     type="button"
                     onClick={() => {
-                      setActiveTab('smart-schedule');
+                      setActiveTab('salary');
                       setShowMoreMenu(false);
                     }}
                     className="w-full text-left px-4 py-3 hover:bg-gray-100 transition-all flex items-center gap-3"
                   >
                     <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
-                    <span className="font-semibold text-gray-700">Xếp lịch AI</span>
+                    <span className="font-semibold text-gray-700">Lương</span>
                   </button>
                   <button
                     type="button"
