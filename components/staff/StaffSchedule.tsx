@@ -136,40 +136,44 @@ export default function StaffSchedule({ storeId, staffId, shifts }: StaffSchedul
     <div className="px-4 py-6 space-y-6">
       {/* Week Navigator */}
       <div className="bg-white rounded-xl shadow-md p-4">
-        <div className="flex items-center justify-between mb-4">
-          <button
-            onClick={() => navigateWeek('prev')}
-            className="p-2 hover:bg-gray-100 rounded-lg transition-all"
-          >
-            <svg className="w-6 h-6 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-            </svg>
-          </button>
-
-          <div className="text-center">
-            <div className="text-sm font-semibold text-gray-700">
-              {(() => {
-                const formatDM = (d: Date) => {
-                  return `${d.getDate().toString().padStart(2, '0')}/${(d.getMonth() + 1).toString().padStart(2, '0')}`;
-                };
-                return `${formatDM(weekDates[0])} - ${formatDM(weekDates[6])}`;
-              })()}
-            </div>
+        <div className="bg-gray-50 rounded-lg py-2 px-3 mb-4">
+          <div className="flex items-center justify-between mb-2">
             <button
-              onClick={goToToday}
-              className="text-xs text-blue-600 hover:underline mt-1"
+              onClick={() => navigateWeek('prev')}
+              className="p-1 hover:bg-gray-200 rounded transition-all"
             >
-              Tuần này
+              <svg className="w-5 h-5 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+              </svg>
+            </button>
+
+            <div className="text-center">
+              <div className="text-sm font-semibold text-gray-700">
+                {(() => {
+                  const formatDM = (d: Date) => {
+                    return `${d.getDate().toString().padStart(2, '0')}/${(d.getMonth() + 1).toString().padStart(2, '0')}`;
+                  };
+                  return `${formatDM(weekDates[0])} - ${formatDM(weekDates[6])}`;
+                })()}
+              </div>
+            </div>
+
+            <button
+              onClick={() => navigateWeek('next')}
+              className="p-1 hover:bg-gray-200 rounded transition-all"
+            >
+              <svg className="w-5 h-5 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
             </button>
           </div>
 
+          {/* Tuần này button */}
           <button
-            onClick={() => navigateWeek('next')}
-            className="p-2 hover:bg-gray-100 rounded-lg transition-all"
+            onClick={goToToday}
+            className="w-full bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold py-2 px-4 rounded-lg transition-colors shadow-sm"
           >
-            <svg className="w-6 h-6 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-            </svg>
+            Tuần này
           </button>
         </div>
 

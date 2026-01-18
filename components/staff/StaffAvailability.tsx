@@ -17,6 +17,8 @@ export default function StaffAvailability({ storeId, staffId, staffName, shifts 
   const [availability, setAvailability] = useState<{ [key: string]: boolean }>({});
   const [isOwnerOverride, setIsOwnerOverride] = useState(false);
   const [overrideReason, setOverrideReason] = useState<string | null>(null);
+  const [hasSubmitted, setHasSubmitted] = useState(false);
+  const [lastSubmittedAt, setLastSubmittedAt] = useState<string | null>(null);
   const [currentWeekStart, setCurrentWeekStart] = useState<Date>(() => {
     const today = new Date();
     const day = today.getDay();
@@ -45,7 +47,8 @@ export default function StaffAvailability({ storeId, staffId, staffName, shifts 
         .select('*')
         .eq('staff_id', staffId)
         .eq('store_id', storeId)
-        .eq('week_start_date', weekStartStr);
+        .eq('week_start_date', weekStartStr)
+        .order('created_at', { ascending: false });
 
       if (error) throw error;
 
@@ -53,6 +56,7 @@ export default function StaffAvailability({ storeId, staffId, staffName, shifts 
       const availMap: { [key: string]: boolean } = {};
       let hasOverride = false;
       let reason: string | null = null;
+      let latestTimestamp: string | null = null;
 
       (data || []).forEach(item => {
         const key = `${item.day_of_week}_${item.shift_template_id}`;
@@ -63,11 +67,18 @@ export default function StaffAvailability({ storeId, staffId, staffName, shifts 
           hasOverride = true;
           reason = item.override_reason;
         }
+
+        // Get latest timestamp
+        if (!latestTimestamp && item.created_at) {
+          latestTimestamp = item.created_at;
+        }
       });
 
       setAvailability(availMap);
       setIsOwnerOverride(hasOverride);
       setOverrideReason(reason);
+      setHasSubmitted(data && data.length > 0);
+      setLastSubmittedAt(latestTimestamp);
 
     } catch (error) {
       console.error('Error loading availability:', error);
@@ -166,6 +177,8 @@ export default function StaffAvailability({ storeId, staffId, staffName, shifts 
       }
 
       toast.success('Đã lưu lịch rảnh thành công');
+      // Reload to update submission status
+      await loadAvailability();
     } catch (error: any) {
       console.error('Error saving availability:', error);
       console.error('Error details:', JSON.stringify(error, null, 2));
@@ -175,10 +188,51 @@ export default function StaffAvailability({ storeId, staffId, staffName, shifts 
     }
   }
 
+  async function handleRecall() {
+    if (!confirm('Bạn có chắc chắn muốn thu hồi lịch rảnh đã gửi? Bạn sẽ cần gửi lại từ đầu.')) {
+      return;
+    }
+
+    try {
+      setSaving(true);
+      const weekStartStr = currentWeekStart.toISOString().split('T')[0];
+
+      // Delete all non-overridden records for this week
+      const { error } = await supabase
+        .from('staff_availability')
+        .delete()
+        .eq('staff_id', staffId)
+        .eq('store_id', storeId)
+        .eq('week_start_date', weekStartStr)
+        .eq('is_owner_override', false);
+
+      if (error) throw error;
+
+      toast.success('Đã thu hồi lịch rảnh thành công');
+      // Reload to update submission status
+      await loadAvailability();
+    } catch (error: any) {
+      console.error('Error recalling availability:', error);
+      toast.error(`Lỗi khi thu hồi lịch rảnh: ${error?.message || 'Unknown error'}`);
+    } finally {
+      setSaving(false);
+    }
+  }
+
   function navigateWeek(direction: 'prev' | 'next') {
     const newDate = new Date(currentWeekStart);
     newDate.setDate(newDate.getDate() + (direction === 'next' ? 7 : -7));
     setCurrentWeekStart(newDate);
+  }
+
+  function goToCurrentWeek() {
+    const today = new Date();
+    const day = today.getDay();
+    const diff = today.getDate() - day + (day === 0 ? -6 : 1);
+    const monday = new Date(today.setDate(diff));
+    // Always start from next week for availability submission
+    monday.setDate(monday.getDate() + 7);
+    setCurrentWeekStart(monday);
   }
 
   // Calculate week dates
@@ -201,11 +255,59 @@ export default function StaffAvailability({ storeId, staffId, staffName, shifts 
     <div className="px-4 py-6 pb-32 space-y-6">
       {/* Header */}
       <div className="bg-white rounded-xl shadow-md p-4">
-        <h2 className="text-lg font-bold text-gray-800 mb-2">Gửi Lịch Rảnh</h2>
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-          <p className="text-sm text-gray-700">
-            <span className="font-semibold">💡 Hướng dẫn:</span> Đánh dấu các ca bạn có thể làm. Chủ cửa hàng sẽ dùng thông tin này để tạo lịch tự động công bằng.
-          </p>
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-lg font-bold text-gray-800">Gửi Lịch Rảnh</h2>
+          {!isOwnerOverride && (
+            <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
+              hasSubmitted
+                ? 'bg-green-100 text-green-700'
+                : 'bg-orange-100 text-orange-700'
+            }`}>
+              {hasSubmitted ? 'Đã gửi' : 'Chưa gửi'}
+            </span>
+          )}
+        </div>
+
+        {/* Week Navigator */}
+        <div className="bg-gray-50 rounded-lg py-2 px-3">
+          <div className="flex items-center justify-between mb-2">
+            <button
+              onClick={() => navigateWeek('prev')}
+              className="p-1 hover:bg-gray-200 rounded transition-all"
+            >
+              <svg className="w-5 h-5 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+              </svg>
+            </button>
+
+            <div className="text-center">
+              <div className="text-sm font-semibold text-gray-700">
+                {(() => {
+                  const formatDM = (d: Date) => {
+                    return `${d.getDate().toString().padStart(2, '0')}/${(d.getMonth() + 1).toString().padStart(2, '0')}`;
+                  };
+                  return `${formatDM(weekDates[0])} - ${formatDM(weekDates[6])}`;
+                })()}
+              </div>
+            </div>
+
+            <button
+              onClick={() => navigateWeek('next')}
+              className="p-1 hover:bg-gray-200 rounded transition-all"
+            >
+              <svg className="w-5 h-5 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
+            </button>
+          </div>
+
+          {/* Tuần tới button */}
+          <button
+            onClick={goToCurrentWeek}
+            className="w-full bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold py-2 px-4 rounded-lg transition-colors shadow-sm"
+          >
+            Tuần tới
+          </button>
         </div>
       </div>
 
@@ -226,41 +328,6 @@ export default function StaffAvailability({ storeId, staffId, staffName, shifts 
           </div>
         </div>
       )}
-
-      {/* Week Navigator */}
-      <div className="bg-white rounded-xl shadow-md p-4">
-        <div className="flex items-center justify-between">
-          <button
-            onClick={() => navigateWeek('prev')}
-            className="p-2 hover:bg-gray-100 rounded-lg transition-all"
-          >
-            <svg className="w-6 h-6 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-            </svg>
-          </button>
-
-          <div className="text-center">
-            <div className="text-sm font-semibold text-gray-700">
-              {(() => {
-                const formatDM = (d: Date) => {
-                  return `${d.getDate().toString().padStart(2, '0')}/${(d.getMonth() + 1).toString().padStart(2, '0')}`;
-                };
-                return `${formatDM(weekDates[0])} - ${formatDM(weekDates[6])}`;
-              })()}
-            </div>
-            <div className="text-xs text-gray-500 mt-1">Tuần {Math.ceil(currentWeekStart.getDate() / 7)}</div>
-          </div>
-
-          <button
-            onClick={() => navigateWeek('next')}
-            className="p-2 hover:bg-gray-100 rounded-lg transition-all"
-          >
-            <svg className="w-6 h-6 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-            </svg>
-          </button>
-        </div>
-      </div>
 
       {/* Quick Apply */}
       {!isOwnerOverride && (
@@ -349,15 +416,32 @@ export default function StaffAvailability({ storeId, staffId, staffName, shifts 
         </div>
       </div>
 
-      {/* Save Button */}
+      {/* Action Buttons */}
       {!isOwnerOverride && (
-        <button
-          onClick={handleSave}
-          disabled={saving}
-          className="w-full bg-blue-600 hover:bg-blue-700 text-white px-6 py-4 rounded-xl font-semibold transition-all disabled:opacity-50 shadow-lg"
-        >
-          {saving ? 'Đang lưu...' : 'Lưu Lịch Rảnh'}
-        </button>
+        <div className="space-y-3">
+          <button
+            onClick={handleSave}
+            disabled={saving}
+            className={`w-full text-white px-6 py-4 rounded-xl font-semibold transition-all disabled:opacity-50 shadow-lg ${
+              hasSubmitted
+                ? 'bg-blue-600 hover:bg-blue-700'
+                : 'bg-green-600 hover:bg-green-700'
+            }`}
+          >
+            {saving ? 'Đang lưu...' : (hasSubmitted ? 'Cập Nhật Lịch Rảnh' : 'Gửi Lịch Rảnh')}
+          </button>
+
+          {/* Recall button - only show when already submitted */}
+          {hasSubmitted && (
+            <button
+              onClick={handleRecall}
+              disabled={saving}
+              className="w-full bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-xl font-semibold transition-all disabled:opacity-50 shadow-lg"
+            >
+              {saving ? 'Đang xử lý...' : 'Thu Hồi Lịch Rảnh'}
+            </button>
+          )}
+        </div>
       )}
     </div>
   );
