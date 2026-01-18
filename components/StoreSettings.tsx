@@ -96,8 +96,9 @@ export default function StoreSettings({
   function applyToAll() {
     const newReqs: { [key: string]: number } = {};
     shifts.forEach(shift => {
-      for (let day = 2; day <= 8; day++) { // T2-CN (Monday=2...Sunday=8, we'll convert to 1-7)
-        const key = `${shift.id}_${day === 8 ? 1 : day}`; // Convert CN(8) to Sunday(1)
+      // Use DB format: 0=Sunday, 1=Monday, 2=Tuesday...6=Saturday
+      for (let day = 0; day <= 6; day++) {
+        const key = `${shift.id}_${day}`;
         newReqs[key] = requirementsCount;
       }
     });
@@ -449,10 +450,10 @@ export default function StoreSettings({
             </div>
           </div>
 
-          {/* Staff Requirements Section */}
+          {/* Staff Requirements Section - Exactly like Smart Schedule */}
           {store.auto_schedule_enabled && (
-            <div className="bg-white rounded-lg p-4 mt-3 border-2 border-blue-300">
-              <h4 className="text-base font-bold text-gray-800 mb-3">Số Lượng Nhân Viên Cần</h4>
+            <div className="bg-white rounded-lg shadow-lg p-4 sm:p-6 mt-3">
+              <h2 className="text-lg font-bold text-gray-800 mb-4">Số Lượng Nhân Viên Cần</h2>
 
               {loadingShifts ? (
                 <div className="text-center py-8 text-gray-500">Đang tải...</div>
@@ -462,74 +463,81 @@ export default function StoreSettings({
                 </div>
               ) : (
                 <>
-                  {/* Quick Apply Section */}
-                  <div className="bg-gray-50 rounded-lg p-3 mb-4">
-                    <div className="text-sm font-medium text-gray-700 mb-2">Áp dụng nhanh:</div>
-                    <div className="flex items-center gap-2">
+                  {/* Bulk apply - Exactly like Smart Schedule */}
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+                    <div className="text-sm font-semibold text-gray-700 mb-3">Áp dụng nhanh:</div>
+                    <div className="flex flex-wrap gap-2 items-center">
                       <input
                         type="number"
-                        min="1"
-                        max="10"
+                        min="0"
                         value={requirementsCount}
                         onChange={(e) => setRequirementsCount(parseInt(e.target.value) || 1)}
-                        className="w-20 px-3 py-2 border border-gray-300 rounded-lg text-center font-bold"
+                        className="w-20 px-3 py-2 border border-gray-300 rounded-lg text-center font-semibold focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        placeholder="0"
                       />
                       <button
                         type="button"
                         onClick={applyToAll}
-                        className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-lg transition-all"
+                        className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold text-sm transition-colors"
                       >
                         Áp dụng cho tất cả
                       </button>
                       <button
                         type="button"
                         onClick={clearAll}
-                        className="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white text-sm font-semibold rounded-lg transition-all"
+                        className="px-4 py-2 bg-gray-500 hover:bg-gray-600 text-white rounded-lg font-semibold text-sm transition-colors"
                       >
                         Xóa tất cả
                       </button>
                     </div>
                   </div>
 
-                  {/* Requirements Grid */}
+                  {/* Requirements Grid - Exactly like Smart Schedule */}
                   <div className="overflow-x-auto">
                     <table className="w-full border-collapse">
                       <thead>
-                        <tr className="bg-gray-100">
-                          <th className="px-3 py-2 text-left text-sm font-semibold text-gray-700 border">Ca</th>
-                          <th className="px-3 py-2 text-center text-xs font-semibold text-gray-700 border">T2</th>
-                          <th className="px-3 py-2 text-center text-xs font-semibold text-gray-700 border">T3</th>
-                          <th className="px-3 py-2 text-center text-xs font-semibold text-gray-700 border">T4</th>
-                          <th className="px-3 py-2 text-center text-xs font-semibold text-gray-700 border">T5</th>
-                          <th className="px-3 py-2 text-center text-xs font-semibold text-gray-700 border">T6</th>
-                          <th className="px-3 py-2 text-center text-xs font-semibold text-gray-700 border">T7</th>
-                          <th className="px-3 py-2 text-center text-xs font-semibold text-gray-700 border">CN</th>
+                        <tr className="border-b-2 border-gray-300">
+                          <th className="text-left p-2 sm:p-3 text-gray-700 font-bold text-xs sm:text-sm sticky left-0 bg-white z-10 min-w-[80px] sm:min-w-0">
+                            Ca
+                          </th>
+                          {['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'].map((day, idx) => (
+                            <th key={idx} className="p-1 sm:p-2 text-center text-gray-700 font-bold text-[10px] sm:text-xs w-[40px] sm:w-16">
+                              {day}
+                            </th>
+                          ))}
                         </tr>
                       </thead>
                       <tbody>
-                        {shifts.map((shift) => (
-                          <tr key={shift.id} className="hover:bg-gray-50">
-                            <td className="px-3 py-2 border">
-                              <div className="flex items-center gap-2">
-                                <div
-                                  className="w-3 h-3 rounded-full flex-shrink-0"
-                                  style={{ backgroundColor: shift.color }}
-                                />
-                                <span className="text-sm font-medium text-gray-800">{shift.name}</span>
+                        {shifts.map((shift, shiftIdx) => (
+                          <tr key={shift.id} className={`border-b ${shiftIdx % 2 === 0 ? 'bg-white' : 'bg-gray-50'}`}>
+                            <td className="p-2 sm:p-3 sticky left-0 bg-inherit z-10 min-w-[80px] sm:min-w-0">
+                              <div className="flex items-center gap-1 sm:gap-2">
+                                <div className="w-2 h-2 sm:w-3 sm:h-3 rounded-full flex-shrink-0" style={{ backgroundColor: shift.color }} />
+                                <span className="font-semibold text-xs sm:text-sm text-gray-800 truncate">{shift.name}</span>
                               </div>
                             </td>
-                            {[2, 3, 4, 5, 6, 7, 1].map((dayOfWeek) => (
-                              <td key={dayOfWeek} className="px-2 py-2 border">
-                                <input
-                                  type="number"
-                                  min="0"
-                                  max="10"
-                                  value={getRequirementValue(shift.id, dayOfWeek)}
-                                  onChange={(e) => handleRequirementChange(shift.id, dayOfWeek, parseInt(e.target.value) || 0)}
-                                  className="w-full px-2 py-1 border border-gray-300 rounded text-center font-medium text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                />
-                              </td>
-                            ))}
+                            {[1, 2, 3, 4, 5, 6, 0].map((day, dayIndex) => {
+                              const value = getRequirementValue(shift.id, day);
+                              return (
+                                <td key={dayIndex} className="p-0.5 sm:p-2 text-center w-[40px] sm:w-16">
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      const newValue = prompt('Nhập số lượng nhân viên cần:', value.toString());
+                                      if (newValue !== null) {
+                                        const num = parseInt(newValue);
+                                        if (!isNaN(num) && num >= 0) {
+                                          handleRequirementChange(shift.id, day, num);
+                                        }
+                                      }
+                                    }}
+                                    className="w-8 h-8 sm:w-12 sm:h-12 bg-white hover:bg-blue-50 border-2 border-gray-300 hover:border-blue-500 rounded sm:rounded-lg mx-auto font-bold text-sm sm:text-lg text-gray-800 transition-all active:scale-95"
+                                  >
+                                    {value}
+                                  </button>
+                                </td>
+                              );
+                            })}
                           </tr>
                         ))}
                       </tbody>
@@ -537,14 +545,25 @@ export default function StoreSettings({
                   </div>
 
                   {/* Save Button */}
-                  <button
-                    type="button"
-                    onClick={saveRequirements}
-                    disabled={savingRequirements}
-                    className="w-full mt-4 bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white px-4 py-3 rounded-lg font-semibold transition-all"
-                  >
-                    {savingRequirements ? 'Đang lưu...' : '💾 Lưu Yêu Cầu Nhân Viên'}
-                  </button>
+                  <div className="mt-6 flex gap-3">
+                    <button
+                      type="button"
+                      onClick={saveRequirements}
+                      disabled={savingRequirements}
+                      className="flex-1 bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg font-semibold flex items-center justify-center gap-2 disabled:bg-gray-400"
+                    >
+                      {savingRequirements ? (
+                        <>
+                          <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                          Đang lưu...
+                        </>
+                      ) : (
+                        <>
+                          💾 Lưu Yêu Cầu Nhân Viên
+                        </>
+                      )}
+                    </button>
+                  </div>
                 </>
               )}
             </div>

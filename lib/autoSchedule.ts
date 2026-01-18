@@ -53,32 +53,6 @@ export async function checkAllStaffSubmitted(
 }
 
 /**
- * Gets the shift requirements from last week (or returns empty if not found)
- */
-async function getLastWeekRequirements(storeId: string, currentWeekStart: string) {
-  try {
-    // Calculate last week's Monday
-    const currentDate = new Date(currentWeekStart);
-    const lastWeekDate = new Date(currentDate);
-    lastWeekDate.setDate(lastWeekDate.getDate() - 7);
-    const lastWeekStr = lastWeekDate.toISOString().split('T')[0];
-
-    // Get last week's requirements
-    const { data, error } = await supabase
-      .from('shift_requirements')
-      .select('*')
-      .eq('store_id', storeId)
-      .eq('week_start_date', lastWeekStr);
-
-    if (error) throw error;
-    return data || [];
-  } catch (error) {
-    console.error('Error loading last week requirements:', error);
-    return [];
-  }
-}
-
-/**
  * Automatically generates and applies schedule when all staff submit availability
  */
 export async function autoGenerateSchedule({ storeId, weekStartDate }: AutoScheduleParams): Promise<{
