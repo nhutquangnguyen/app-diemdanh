@@ -29,10 +29,11 @@ export default function Home() {
   const [stores, setStores] = useState<StoreWithDistance[]>([]);
   const [ownedStores, setOwnedStores] = useState<Store[]>([]);
   const [initialLoading, setInitialLoading] = useState(true); // Only for first load
-  const [gpsError, setGpsError] = useState<string | null>(null);
   const [gpsLoading, setGpsLoading] = useState(false);
   const [showActionDialog, setShowActionDialog] = useState(false);
   const [selectedStore, setSelectedStore] = useState<StoreWithDistance | null>(null);
+  const [showGpsErrorDialog, setShowGpsErrorDialog] = useState(false);
+  const [showCameraErrorDialog, setShowCameraErrorDialog] = useState(false);
 
   // Hydrate user state on mount (client-side only)
   useEffect(() => {
@@ -123,7 +124,6 @@ export default function Home() {
     if (isInitialLoad) {
       setInitialLoading(true);
     }
-    setGpsError(null);
 
     try {
 
@@ -248,11 +248,28 @@ export default function Home() {
       return;
     }
 
+    // Check camera permission first if selfie is required
+    if (store.selfie_required) {
+      try {
+        setGpsLoading(true);
+        // Request camera permission
+        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        // Stop the stream immediately after checking permission
+        stream.getTracks().forEach(track => track.stop());
+      } catch (error: any) {
+        setGpsLoading(false);
+        // Camera permission denied - show error dialog
+        setShowCameraErrorDialog(true);
+        return;
+      }
+    }
+
     // If store requires GPS, request permission NOW (when user clicks)
     if (store.gps_required) {
       try {
-        setGpsLoading(true);
-        setGpsError(null);
+        if (!store.selfie_required) {
+          setGpsLoading(true);
+        }
 
         const position = await getCurrentPosition();
 
@@ -272,38 +289,20 @@ export default function Home() {
           return;
         }
 
-        // GPS verified - proceed to check-in with coordinates
-        const params = new URLSearchParams({
-          store: store.id,
-          lat: String(position.coords.latitude),
-          lon: String(position.coords.longitude),
-        });
-        router.push(`/checkin/submit?${params.toString()}`);
+        // GPS verified - proceed to check-in (GPS will be re-verified on submit page for security)
+        router.push(`/checkin/submit?store=${store.id}`);
         setGpsLoading(false);
 
       } catch (error: any) {
         setGpsLoading(false);
-
-        // Handle GPS errors gracefully
-        let errorMessage = 'Không thể lấy vị trí GPS. ';
-
-        if (error.code === 1) { // PERMISSION_DENIED
-          errorMessage += 'Vui lòng cấp quyền truy cập vị trí cho trình duyệt trong cài đặt.';
-        } else if (error.code === 2) { // POSITION_UNAVAILABLE
-          errorMessage += 'Vị trí không khả dụng. Vui lòng bật GPS trên thiết bị.';
-        } else if (error.code === 3) { // TIMEOUT
-          errorMessage += 'Hết thời gian chờ. Vui lòng thử lại.';
-        } else {
-          errorMessage += 'Vui lòng bật GPS và cấp quyền truy cập vị trí.';
-        }
-
-        setGpsError(errorMessage);
-        console.error('GPS error:', error);
+        // Show GPS error dialog instead of banner
+        setShowGpsErrorDialog(true);
         return;
       }
     } else {
       // No GPS required - proceed directly
       router.push(`/checkin/submit?store=${store.id}`);
+      setGpsLoading(false);
     }
   }
 
@@ -346,12 +345,6 @@ export default function Home() {
               <p className="text-sm text-gray-600 mt-1">{date}</p>
             </div>
 
-            {/* GPS Error */}
-            {gpsError && (
-              <div className="mb-4 bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                <p className="text-sm text-yellow-800">⚠️ {gpsError}</p>
-              </div>
-            )}
 
             {/* Loading */}
             {initialLoading && stores.length === 0 && (
@@ -669,6 +662,118 @@ export default function Home() {
             >
               Hủy
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* GPS Error Dialog */}
+      {showGpsErrorDialog && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl">
+            <div className="text-center">
+              <div className="mb-6">
+                <svg
+                  className="mx-auto h-16 w-16 text-red-500"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                  />
+                </svg>
+              </div>
+              <h2 className="text-2xl font-bold text-gray-800 mb-4">
+                Không thể truy cập Vị trí
+              </h2>
+              <p className="text-gray-600 mb-6">
+                Bạn đã từ chối quyền truy cập vị trí. Vui lòng cho phép truy cập vị trí trong cài đặt trình duyệt để sử dụng chức năng điểm danh.
+              </p>
+              <div className="space-y-3">
+                <a
+                  href="https://www.diemdanh.net/help/cap-quyen"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="block w-full px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors duration-200 text-center"
+                >
+                  Hướng dẫn cấp quyền Vị trí
+                </a>
+                <button
+                  onClick={() => {
+                    setShowGpsErrorDialog(false);
+                    window.location.reload();
+                  }}
+                  className="w-full px-6 py-3 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg transition-colors duration-200"
+                >
+                  Thử lại
+                </button>
+                <button
+                  onClick={() => setShowGpsErrorDialog(false)}
+                  className="w-full px-6 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium rounded-lg transition-colors duration-200"
+                >
+                  Đóng
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Camera Error Dialog */}
+      {showCameraErrorDialog && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl">
+            <div className="text-center">
+              <div className="mb-6">
+                <svg
+                  className="mx-auto h-16 w-16 text-red-500"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                  />
+                </svg>
+              </div>
+              <h2 className="text-2xl font-bold text-gray-800 mb-4">
+                Không thể truy cập Camera
+              </h2>
+              <p className="text-gray-600 mb-6">
+                Bạn đã từ chối quyền truy cập camera. Vui lòng cho phép truy cập camera trong cài đặt trình duyệt để sử dụng chức năng điểm danh.
+              </p>
+              <div className="space-y-3">
+                <a
+                  href="https://www.diemdanh.net/help/cap-quyen"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="block w-full px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors duration-200 text-center"
+                >
+                  Hướng dẫn cấp quyền Camera
+                </a>
+                <button
+                  onClick={() => {
+                    setShowCameraErrorDialog(false);
+                    window.location.reload();
+                  }}
+                  className="w-full px-6 py-3 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg transition-colors duration-200"
+                >
+                  Thử lại
+                </button>
+                <button
+                  onClick={() => setShowCameraErrorDialog(false)}
+                  className="w-full px-6 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium rounded-lg transition-colors duration-200"
+                >
+                  Đóng
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}

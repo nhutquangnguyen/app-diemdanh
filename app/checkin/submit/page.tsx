@@ -179,35 +179,13 @@ function CheckInContent() {
         }
       }
 
-      // Check if GPS coordinates were passed in URL (from home page - saves re-fetching!)
-      const latParam = searchParams.get('lat');
-      const lonParam = searchParams.get('lon');
-
+      // Always get real GPS location (don't trust URL params - prevent fraud)
       let gpsPromise: Promise<any>;
       if (data.gps_required) {
-        if (latParam && lonParam) {
-          // Use coordinates from URL - instant!
-          const lat = parseFloat(latParam);
-          const lon = parseFloat(lonParam);
-          if (!isNaN(lat) && !isNaN(lon)) {
-            console.log('Using GPS from URL params (fast!):', lat, lon);
-            gpsPromise = Promise.resolve({
-              coords: { latitude: lat, longitude: lon }
-            });
-          } else {
-            // Invalid coordinates - fetch fresh
-            gpsPromise = getCurrentLocation().catch(err => {
-              console.error('GPS error:', err);
-              return null;
-            });
-          }
-        } else {
-          // No coordinates in URL - fetch fresh
-          gpsPromise = getCurrentLocation().catch(err => {
-            console.error('GPS error:', err);
-            return null;
-          });
-        }
+        gpsPromise = getCurrentLocation().catch(err => {
+          console.error('GPS error:', err);
+          return null;
+        });
       } else {
         gpsPromise = Promise.resolve(null);
       }
@@ -727,7 +705,7 @@ function CheckInContent() {
         )}
 
         {/* Step 2: Selfie */}
-        {step === 'selfie' && !cameraError && (
+        {step === 'selfie' && (
           <div className="bg-white rounded-lg shadow-lg p-8">
             <h2 className="text-2xl font-bold text-gray-800 mb-6 text-center">
               Chụp Ảnh Selfie
@@ -799,54 +777,56 @@ function CheckInContent() {
           </div>
         )}
 
-        {/* Camera Permission Error */}
-        {step === 'selfie' && cameraError && (
-          <div className="bg-white rounded-lg shadow-lg p-8">
-            <div className="text-center">
-              <div className="mb-6">
-                <svg
-                  className="mx-auto h-16 w-16 text-red-500"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-                  />
-                </svg>
-              </div>
-              <h2 className="text-2xl font-bold text-gray-800 mb-4">
-                Không thể truy cập Camera
-              </h2>
-              <p className="text-gray-600 mb-6">
-                Bạn đã từ chối quyền truy cập camera. Vui lòng cho phép truy cập camera trong cài đặt trình duyệt để sử dụng chức năng quét mã QR.
-              </p>
-              <div className="space-y-3">
-                <a
-                  href="https://www.diemdanh.net/help/cap-quyen"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="block w-full px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors duration-200 text-center"
-                >
-                  Hướng dẫn cấp quyền Camera
-                </a>
-                <button
-                  onClick={() => {
-                    setCameraError(false);
-                    window.location.reload();
-                  }}
-                  className="w-full px-6 py-3 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg transition-colors duration-200"
-                >
-                  Thử lại
-                </button>
-                <Link href="/">
-                  <button className="w-full px-6 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium rounded-lg transition-colors duration-200">
-                    Quay về Trang chủ
+        {/* Camera Permission Error Dialog */}
+        {cameraError && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl">
+              <div className="text-center">
+                <div className="mb-6">
+                  <svg
+                    className="mx-auto h-16 w-16 text-red-500"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                    />
+                  </svg>
+                </div>
+                <h2 className="text-2xl font-bold text-gray-800 mb-4">
+                  Không thể truy cập Camera
+                </h2>
+                <p className="text-gray-600 mb-6">
+                  Bạn đã từ chối quyền truy cập camera. Vui lòng cho phép truy cập camera trong cài đặt trình duyệt để sử dụng chức năng quét mã QR.
+                </p>
+                <div className="space-y-3">
+                  <a
+                    href="https://www.diemdanh.net/help/cap-quyen"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="block w-full px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors duration-200 text-center"
+                  >
+                    Hướng dẫn cấp quyền Camera
+                  </a>
+                  <button
+                    onClick={() => {
+                      setCameraError(false);
+                      window.location.reload();
+                    }}
+                    className="w-full px-6 py-3 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg transition-colors duration-200"
+                  >
+                    Thử lại
                   </button>
-                </Link>
+                  <Link href="/">
+                    <button className="w-full px-6 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium rounded-lg transition-colors duration-200">
+                      Quay về Trang chủ
+                    </button>
+                  </Link>
+                </div>
               </div>
             </div>
           </div>
