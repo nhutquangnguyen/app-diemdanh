@@ -324,7 +324,9 @@ function CheckInContent() {
       if (storeInfo.gps_required) {
         location = await getCurrentLocation();
         if (!location) {
-          throw new Error('Không thể lấy vị trí hiện tại. Vui lòng bật GPS.');
+          setLocationError(true);
+          setStep('error');
+          return;
         }
 
         // Calculate distance
