@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import { ShiftTemplate } from '@/types';
 import { useToast } from '@/components/Toast';
+import { checkAllStaffSubmitted, autoGenerateSchedule } from '@/lib/autoSchedule';
 
 interface StaffAvailabilityProps {
   storeId: string;
@@ -177,8 +178,28 @@ export default function StaffAvailability({ storeId, staffId, staffName, shifts 
       }
 
       toast.success('Đã lưu lịch rảnh thành công');
+
       // Reload to update submission status
       await loadAvailability();
+
+      // Check if all staff have submitted, and if so, trigger auto-generation
+      const { allSubmitted } = await checkAllStaffSubmitted(storeId, weekStartStr);
+
+      if (allSubmitted) {
+        console.log('All staff submitted! Triggering auto-generation...');
+        toast.info('Tất cả nhân viên đã gửi lịch rảnh. Đang tự động tạo lịch...');
+
+        const autoResult = await autoGenerateSchedule({
+          storeId,
+          weekStartDate: weekStartStr,
+        });
+
+        if (autoResult.success) {
+          toast.success(`✨ ${autoResult.message}. Vào tab "Lịch" để xem chi tiết!`);
+        } else {
+          console.log('Auto-generation skipped:', autoResult.message);
+        }
+      }
     } catch (error: any) {
       console.error('Error saving availability:', error);
       console.error('Error details:', JSON.stringify(error, null, 2));

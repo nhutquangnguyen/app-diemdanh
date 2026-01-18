@@ -30,6 +30,7 @@ export default function StoreSettings({
           early_checkout_penalty_rate: parseFloat(formData.get('early_checkout_penalty_rate') as string) || 1.0,
           overtime_multiplier: parseFloat(formData.get('overtime_multiplier') as string) || 1.5,
           overtime_grace_minutes: parseInt(formData.get('overtime_grace_minutes') as string) || 15,
+          auto_schedule_enabled: formData.get('auto_schedule_enabled') === 'on',
         });
       }} className="space-y-6">
         {/* Store Information */}
@@ -242,6 +243,61 @@ export default function StoreSettings({
               <p className="text-xs text-gray-500 mt-1">
                 Số phút làm thêm tối thiểu để được tính tăng ca (mặc định: 15)
               </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Auto Schedule Settings */}
+        <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg p-4 border-2 border-blue-200">
+          <div className="flex items-start justify-between mb-3">
+            <div className="flex-1">
+              <div className="flex items-center gap-2 mb-2">
+                <h3 className="text-lg font-semibold text-gray-800">Tự động xếp lịch AI</h3>
+                <span className="text-xs bg-blue-600 text-white px-2 py-0.5 rounded-full font-semibold">
+                  MỚI
+                </span>
+              </div>
+              <p className="text-sm text-gray-600">
+                Tự động tạo lịch làm việc khi tất cả nhân viên đã gửi lịch rảnh
+              </p>
+            </div>
+            <label className="relative inline-flex items-center cursor-pointer ml-4">
+              <input
+                type="checkbox"
+                name="auto_schedule_enabled"
+                className="sr-only peer"
+                defaultChecked={store.auto_schedule_enabled ?? true}
+              />
+              <div className="w-11 h-6 bg-gray-300 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+            </label>
+          </div>
+
+          <div className="bg-white rounded-lg p-3 mt-3 border border-blue-200">
+            <div className="text-xs text-gray-700 space-y-2">
+              <div className="flex items-start gap-2">
+                <span className="text-blue-600 font-bold mt-0.5">✓</span>
+                <span>
+                  Khi nhân viên cuối cùng gửi lịch rảnh, hệ thống tự động tạo lịch dựa trên yêu cầu tuần trước
+                </span>
+              </div>
+              <div className="flex items-start gap-2">
+                <span className="text-blue-600 font-bold mt-0.5">✓</span>
+                <span>
+                  Lịch được áp dụng ngay lập tức, bạn có thể chỉnh sửa trực tiếp hoặc tạo lại
+                </span>
+              </div>
+              <div className="flex items-start gap-2">
+                <span className="text-blue-600 font-bold mt-0.5">✓</span>
+                <span>
+                  Cảnh báo (nếu có) sẽ hiển thị trong tab "Lịch" với dấu chấm đỏ thông báo
+                </span>
+              </div>
+              <div className="flex items-start gap-2">
+                <span className="text-orange-600 font-bold mt-0.5">!</span>
+                <span className="text-orange-700 font-semibold">
+                  Chỉ tự động tạo 1 lần/tuần, không tạo lại khi nhân viên cập nhật sau đó
+                </span>
+              </div>
             </div>
           </div>
         </div>

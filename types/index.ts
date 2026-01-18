@@ -14,6 +14,7 @@ export interface Store {
   early_checkout_penalty_rate: number; // Multiplier for early checkout penalty
   overtime_multiplier: number; // Multiplier for overtime (1.5 = time and a half)
   overtime_grace_minutes: number; // Grace period before counting overtime
+  auto_schedule_enabled?: boolean; // Auto-generate schedule when all staff submit availability
   created_at: string;
   updated_at: string;
 }

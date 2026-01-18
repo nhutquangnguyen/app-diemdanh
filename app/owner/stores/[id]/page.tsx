@@ -30,6 +30,7 @@ import StaffSalaryDetail from '@/components/salary/StaffSalaryDetail';
 import AdjustmentForm from '@/components/salary/AdjustmentForm';
 import ConfirmDialog from '@/components/ConfirmDialog';
 import { calculateStaffMonthlySalary, getCurrentMonth } from '@/lib/salaryCalculations';
+import { checkScheduleNeedsReview } from '@/lib/scheduleNotifications';
 
 export default function StoreDetail() {
   const params = useParams();
@@ -48,6 +49,7 @@ export default function StoreDetail() {
   const [showMoreMenu, setShowMoreMenu] = useState(false);
   const moreMenuRefDesktop = useRef<HTMLDivElement>(null);
   const moreMenuRefMobile = useRef<HTMLDivElement>(null);
+  const [scheduleNeedsReview, setScheduleNeedsReview] = useState(false);
 
   // Filter state for staff overview
   const [staffFilter, setStaffFilter] = useState<'all' | 'working' | 'late' | 'not_checked'>('all');
@@ -141,6 +143,20 @@ export default function StoreDetail() {
       loadSchedules();
     }
   }, [currentWeekStart, storeId, activeTab]);
+
+  // Check for schedule warnings that need review
+  useEffect(() => {
+    async function checkWarnings() {
+      if (storeId) {
+        const needsReview = await checkScheduleNeedsReview(storeId);
+        setScheduleNeedsReview(needsReview);
+      }
+    }
+    checkWarnings();
+    // Re-check periodically
+    const interval = setInterval(checkWarnings, 60000); // Every minute
+    return () => clearInterval(interval);
+  }, [storeId, activeTab]);
 
   useEffect(() => {
     if (storeId && activeTab === 'salary') {
@@ -1698,13 +1714,16 @@ export default function StoreDetail() {
           </button>
           <button
             onClick={() => setActiveTab('schedule')}
-            className={`flex-1 px-4 py-3 rounded-lg font-semibold transition-all ${
+            className={`flex-1 px-4 py-3 rounded-lg font-semibold transition-all relative ${
               activeTab === 'schedule'
                 ? 'bg-blue-600 text-white'
                 : 'text-gray-700 hover:bg-gray-100'
             }`}
           >
             Lịch
+            {scheduleNeedsReview && (
+              <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-600 rounded-full border-2 border-white"></span>
+            )}
           </button>
           <button
             onClick={() => setActiveTab('smart-schedule')}
@@ -2033,7 +2052,7 @@ export default function StoreDetail() {
             </button>
             <button
               onClick={() => setActiveTab('schedule')}
-              className={`w-full flex flex-col items-center py-2 px-1 rounded-lg transition-all ${
+              className={`w-full flex flex-col items-center py-2 px-1 rounded-lg transition-all relative ${
                 activeTab === 'schedule'
                   ? 'bg-blue-600 text-white'
                   : 'text-gray-600'
@@ -2043,6 +2062,9 @@ export default function StoreDetail() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
               </svg>
               <span className="text-xs font-semibold">Lịch</span>
+              {scheduleNeedsReview && (
+                <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-red-600 rounded-full border border-white"></span>
+              )}
             </button>
             <button
               onClick={() => setActiveTab('smart-schedule')}

@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import { Staff, ShiftTemplate, ScheduleWithDetails } from '@/types';
+import ScheduleWarnings from './ScheduleWarnings';
 
 interface StaffScheduleGridProps {
+  storeId: string;
   staff: Staff[];
   shifts: ShiftTemplate[];
   schedules: ScheduleWithDetails[];
@@ -25,6 +27,7 @@ interface StaffScheduleGridProps {
 }
 
 export default function StaffScheduleGrid({
+  storeId,
   staff,
   shifts,
   schedules,
@@ -454,6 +457,12 @@ export default function StaffScheduleGrid({
           ))}
         </div>
       </div>
+
+      {/* Schedule Warnings */}
+      <ScheduleWarnings
+        storeId={storeId}
+        weekStartDate={currentWeekStart.toISOString().split('T')[0]}
+      />
 
       {/* Shift Selection Modal */}
       {selectedCell && (() => {
