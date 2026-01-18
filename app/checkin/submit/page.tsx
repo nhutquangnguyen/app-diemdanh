@@ -29,6 +29,8 @@ function CheckInContent() {
   const [lastCompletedCheckIn, setLastCompletedCheckIn] = useState<any>(null);
   const [actionType, setActionType] = useState<'check-in' | 'check-out' | 're-checkout'>('check-in');
   const [facingMode, setFacingMode] = useState<'user' | 'environment'>('user');
+  const [cameraError, setCameraError] = useState(false);
+  const [locationError, setLocationError] = useState(false);
 
   useEffect(() => {
     checkAuthAndLoad();
@@ -251,7 +253,7 @@ function CheckInContent() {
       // Check GPS if required
       if (data.gps_required) {
         if (!location) {
-          setErrorMessage('Không thể lấy vị trí hiện tại. Vui lòng bật GPS.');
+          setLocationError(true);
           setStep('error');
           return;
         }
@@ -723,7 +725,7 @@ function CheckInContent() {
         )}
 
         {/* Step 2: Selfie */}
-        {step === 'selfie' && (
+        {step === 'selfie' && !cameraError && (
           <div className="bg-white rounded-lg shadow-lg p-8">
             <h2 className="text-2xl font-bold text-gray-800 mb-6 text-center">
               Chụp Ảnh Selfie
@@ -739,6 +741,10 @@ function CheckInContent() {
                     className="w-full rounded-lg"
                     videoConstraints={{
                       facingMode: facingMode,
+                    }}
+                    onUserMediaError={(error) => {
+                      console.error('Camera error:', error);
+                      setCameraError(true);
                     }}
                   />
                   {/* Camera Switch Button */}
@@ -788,6 +794,59 @@ function CheckInContent() {
                 </div>
               </div>
             )}
+          </div>
+        )}
+
+        {/* Camera Permission Error */}
+        {step === 'selfie' && cameraError && (
+          <div className="bg-white rounded-lg shadow-lg p-8">
+            <div className="text-center">
+              <div className="mb-6">
+                <svg
+                  className="mx-auto h-16 w-16 text-red-500"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                  />
+                </svg>
+              </div>
+              <h2 className="text-2xl font-bold text-gray-800 mb-4">
+                Không thể truy cập Camera
+              </h2>
+              <p className="text-gray-600 mb-6">
+                Bạn đã từ chối quyền truy cập camera. Vui lòng cho phép truy cập camera trong cài đặt trình duyệt để sử dụng chức năng quét mã QR.
+              </p>
+              <div className="space-y-3">
+                <a
+                  href="https://www.diemdanh.net/help/cap-quyen"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="block w-full px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors duration-200 text-center"
+                >
+                  Hướng dẫn cấp quyền Camera
+                </a>
+                <button
+                  onClick={() => {
+                    setCameraError(false);
+                    window.location.reload();
+                  }}
+                  className="w-full px-6 py-3 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg transition-colors duration-200"
+                >
+                  Thử lại
+                </button>
+                <Link href="/">
+                  <button className="w-full px-6 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium rounded-lg transition-colors duration-200">
+                    Quay về Trang chủ
+                  </button>
+                </Link>
+              </div>
+            </div>
           </div>
         )}
 
@@ -872,7 +931,46 @@ function CheckInContent() {
         {/* Error */}
         {step === 'error' && (
           <div className="bg-white rounded-lg shadow-lg p-12 text-center">
-            {errorMessage.includes('chưa được thêm vào danh sách nhân viên') ? (
+            {locationError ? (
+              // Location/GPS permission error - show helpful UI
+              <>
+                <div className="w-24 h-24 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                  <svg className="w-12 h-12 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                  </svg>
+                </div>
+                <h2 className="text-3xl font-bold text-gray-800 mb-4">
+                  Không thể truy cập Vị trí
+                </h2>
+                <p className="text-gray-600 mb-6">
+                  Bạn đã từ chối quyền truy cập vị trí. Vui lòng cho phép truy cập vị trí trong cài đặt trình duyệt để sử dụng chức năng điểm danh.
+                </p>
+                <div className="space-y-3 max-w-md mx-auto">
+                  <a
+                    href="https://www.diemdanh.net/help/cap-quyen"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="block w-full px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors duration-200 text-center"
+                  >
+                    Hướng dẫn cấp quyền Vị trí
+                  </a>
+                  <button
+                    onClick={() => {
+                      setLocationError(false);
+                      window.location.reload();
+                    }}
+                    className="w-full px-6 py-3 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg transition-colors duration-200"
+                  >
+                    Thử lại
+                  </button>
+                  <Link href="/">
+                    <button className="w-full px-6 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium rounded-lg transition-colors duration-200">
+                      Quay về Trang chủ
+                    </button>
+                  </Link>
+                </div>
+              </>
+            ) : errorMessage.includes('chưa được thêm vào danh sách nhân viên') ? (
               // Authorization error - not really an "error", just not authorized
               <>
                 <div className="w-24 h-24 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-6">
@@ -886,6 +984,11 @@ function CheckInContent() {
                 <p className="text-gray-600 mb-8">
                   {errorMessage}
                 </p>
+                <Link href="/">
+                  <button className="bg-gray-600 hover:bg-gray-700 text-white px-8 py-3 rounded-lg font-semibold transition-all">
+                    Quay Lại
+                  </button>
+                </Link>
               </>
             ) : (
               // Actual errors (GPS, network, etc.)
@@ -901,13 +1004,13 @@ function CheckInContent() {
                 <p className="text-gray-600 mb-8">
                   {errorMessage}
                 </p>
+                <Link href="/">
+                  <button className="bg-gray-600 hover:bg-gray-700 text-white px-8 py-3 rounded-lg font-semibold transition-all">
+                    Quay Lại
+                  </button>
+                </Link>
               </>
             )}
-            <Link href="/">
-              <button className="bg-gray-600 hover:bg-gray-700 text-white px-8 py-3 rounded-lg font-semibold transition-all">
-                Quay Lại
-              </button>
-            </Link>
           </div>
         )}
       </main>
