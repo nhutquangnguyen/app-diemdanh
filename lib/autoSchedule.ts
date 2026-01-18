@@ -144,13 +144,19 @@ export async function autoGenerateSchedule({ storeId, weekStartDate }: AutoSched
       return { success: false, message: 'No active staff found' };
     }
 
-    // 3. Load last week's requirements (or use empty if first time)
-    const lastWeekRequirements = await getLastWeekRequirements(storeId, weekStartDate);
+    // 3. Load current week's requirements (set by owner in Settings)
+    const { data: currentWeekRequirements, error: reqError } = await supabase
+      .from('shift_requirements')
+      .select('*')
+      .eq('store_id', storeId)
+      .eq('week_start_date', weekStartDate);
 
-    // If no requirements from last week, skip auto-generation
-    if (lastWeekRequirements.length === 0) {
-      console.log('No requirements from last week, skipping auto-generation');
-      return { success: false, message: 'No requirements from last week' };
+    if (reqError) throw reqError;
+
+    // If no requirements for current week, skip auto-generation
+    if (!currentWeekRequirements || currentWeekRequirements.length === 0) {
+      console.log('No requirements set for current week, skipping auto-generation');
+      return { success: false, message: 'Chưa có yêu cầu nhân viên cho tuần này. Vui lòng vào Cài Đặt để thiết lập.' };
     }
 
     // 4. Get staff availability for this week
@@ -181,9 +187,9 @@ export async function autoGenerateSchedule({ storeId, weekStartDate }: AutoSched
       return (endMinutes - startMinutes) / 60;
     }
 
-    // Build shifts data from last week's requirements
+    // Build shifts data from current week's requirements
     const shiftsData = [];
-    for (const req of lastWeekRequirements) {
+    for (const req of currentWeekRequirements) {
       const shift = shifts.find(s => s.id === req.shift_template_id);
       if (!shift) continue;
 
@@ -295,29 +301,7 @@ export async function autoGenerateSchedule({ storeId, weekStartDate }: AutoSched
       if (schedError) throw schedError;
     }
 
-    // 11. Copy requirements to this week for future reference
-    const newRequirements = lastWeekRequirements.map(req => ({
-      store_id: storeId,
-      week_start_date: weekStartDate,
-      shift_template_id: req.shift_template_id,
-      day_of_week: req.day_of_week,
-      required_staff_count: req.required_staff_count,
-    }));
-
-    if (newRequirements.length > 0) {
-      // Delete existing requirements for this week first
-      await supabase
-        .from('shift_requirements')
-        .delete()
-        .eq('store_id', storeId)
-        .eq('week_start_date', weekStartDate);
-
-      await supabase
-        .from('shift_requirements')
-        .insert(newRequirements);
-    }
-
-    // 12. Record the trigger to prevent re-triggering for this week
+    // 11. Record the trigger to prevent re-triggering for this week
     const { error: triggerInsertError } = await supabase
       .from('auto_schedule_triggers')
       .insert({
