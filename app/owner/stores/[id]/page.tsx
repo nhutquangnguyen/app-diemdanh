@@ -481,6 +481,7 @@ export default function StoreDetail() {
         .from('stores')
         .select('*')
         .eq('id', storeId)
+        .is('deleted_at', null)
         .single();
 
       if (storeError) throw storeError;

@@ -42,6 +42,7 @@ export default function OwnerDashboard() {
         .from('stores')
         .select('*')
         .eq('owner_id', currentUser.id)
+        .is('deleted_at', null)
         .order('created_at', { ascending: false });
 
       if (error) throw error;

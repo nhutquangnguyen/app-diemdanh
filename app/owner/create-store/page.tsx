@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
 import { getCurrentUser } from '@/lib/auth';
-import { getCurrentLocation } from '@/utils/location';
 import Header from '@/components/Header';
 
 export default function CreateStore() {
@@ -25,36 +24,14 @@ export default function CreateStore() {
     setUser(currentUser);
   }
   const [loading, setLoading] = useState(false);
-  const [locationLoading, setLocationLoading] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
     address: '',
     latitude: 0,
     longitude: 0,
     radius_meters: 50,
+    gps_required: false, // Default GPS off
   });
-
-  async function handleGetLocation() {
-    setLocationLoading(true);
-    try {
-      const location = await getCurrentLocation();
-      if (location) {
-        setFormData({
-          ...formData,
-          latitude: location.latitude,
-          longitude: location.longitude,
-        });
-        alert('Đã lấy vị trí hiện tại thành công!');
-      } else {
-        alert('Không thể lấy vị trí. Vui lòng cho phép truy cập vị trí.');
-      }
-    } catch (error) {
-      console.error('Error getting location:', error);
-      alert('Lỗi khi lấy vị trí');
-    } finally {
-      setLocationLoading(false);
-    }
-  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -117,80 +94,17 @@ export default function CreateStore() {
 
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-2">
-                Địa Chỉ *
+                Địa Chỉ
               </label>
               <textarea
-                required
                 value={formData.address}
                 onChange={(e) => setFormData({ ...formData, address: e.target.value })}
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900 placeholder-gray-400"
-                placeholder="VD: 123 Nguyễn Huệ, Quận 1, TP.HCM"
+                placeholder="VD: 123 Nguyễn Huệ, Quận 1, TP.HCM (Tùy chọn)"
                 rows={3}
               />
-            </div>
-
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
-                Vị Trí GPS *
-              </label>
-              <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 mb-4">
-                <input
-                  type="number"
-                  step="any"
-                  required
-                  value={formData.latitude || ''}
-                  onChange={(e) => setFormData({ ...formData, latitude: parseFloat(e.target.value) })}
-                  className="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900 placeholder-gray-400"
-                  placeholder="Vĩ độ"
-                />
-                <input
-                  type="number"
-                  step="any"
-                  required
-                  value={formData.longitude || ''}
-                  onChange={(e) => setFormData({ ...formData, longitude: parseFloat(e.target.value) })}
-                  className="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900 placeholder-gray-400"
-                  placeholder="Kinh độ"
-                />
-              </div>
-              <button
-                type="button"
-                onClick={handleGetLocation}
-                disabled={locationLoading}
-                className="w-full bg-green-600 hover:bg-green-700 text-white px-4 py-3 rounded-lg font-semibold flex items-center justify-center gap-2 transition-all disabled:opacity-50"
-              >
-                {locationLoading ? (
-                  <>
-                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-                    Đang lấy vị trí...
-                  </>
-                ) : (
-                  <>
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                    </svg>
-                    Lấy Vị Trí Hiện Tại
-                  </>
-                )}
-              </button>
-            </div>
-
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
-                Bán Kính Cho Phép (mét) *
-              </label>
-              <input
-                type="number"
-                required
-                min="10"
-                max="500"
-                value={formData.radius_meters}
-                onChange={(e) => setFormData({ ...formData, radius_meters: parseInt(e.target.value) })}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900 placeholder-gray-400"
-              />
               <p className="text-sm text-gray-500 mt-2">
-                Nhân viên chỉ có thể điểm danh trong bán kính này (10-500m)
+                💡 Bạn có thể cấu hình GPS và vị trí chi tiết trong Cài Đặt sau khi tạo cửa hàng
               </p>
             </div>
 

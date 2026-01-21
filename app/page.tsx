@@ -108,6 +108,7 @@ export default function Home() {
         .from('stores')
         .select('*')
         .eq('owner_id', user.id)
+        .is('deleted_at', null)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -158,7 +159,7 @@ export default function Home() {
 
       // Run stores and check-ins queries in parallel
       const [storesResult, checkInsResult] = await Promise.all([
-        supabase.from('stores').select('*').in('id', storeIds),
+        supabase.from('stores').select('*').in('id', storeIds).is('deleted_at', null),
         supabase.from('check_ins')
           .select('*')
           .in('staff_id', staffIds)

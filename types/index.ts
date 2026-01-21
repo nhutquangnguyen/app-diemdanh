@@ -15,6 +15,7 @@ export interface Store {
   overtime_multiplier: number; // Multiplier for overtime (1.5 = time and a half)
   overtime_grace_minutes: number; // Grace period before counting overtime
   auto_schedule_enabled?: boolean; // Auto-generate schedule when all staff submit availability
+  deleted_at?: string | null; // Soft delete timestamp
   created_at: string;
   updated_at: string;
 }

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { Store, ShiftTemplate } from '@/types';
 import { supabase } from '@/lib/supabase';
 
@@ -19,11 +20,13 @@ export default function StoreSettings({
   settingsLoading,
   updateStoreSettings,
 }: StoreSettingsProps) {
+  const router = useRouter();
   const [shifts, setShifts] = useState<ShiftTemplate[]>([]);
   const [requirements, setRequirements] = useState<{ [key: string]: number }>({});
   const [requirementsCount, setRequirementsCount] = useState(1);
   const [loadingShifts, setLoadingShifts] = useState(false);
   const [savingRequirements, setSavingRequirements] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   // Load shifts and current requirements
   useEffect(() => {
@@ -157,6 +160,40 @@ export default function StoreSettings({
       alert(`Lỗi: ${error.message}`);
     } finally {
       setSavingRequirements(false);
+    }
+  }
+
+  async function handleDeleteStore() {
+    const confirmText = `Xóa ${store.name}`;
+    const userInput = prompt(
+      `⚠️ CẢNH BÁO: Hành động này sẽ ẩn cửa hàng!\n\nCửa hàng sẽ được ẩn khỏi danh sách, bao gồm:\n• Nhân viên không thể điểm danh\n• Cửa hàng không hiển thị trong danh sách\n• Dữ liệu được lưu trữ an toàn (có thể khôi phục)\n\nNhập "${confirmText}" để xác nhận:`
+    );
+
+    if (userInput !== confirmText) {
+      if (userInput !== null) {
+        alert('Xác nhận không khớp. Hủy xóa cửa hàng.');
+      }
+      return;
+    }
+
+    try {
+      setDeleting(true);
+
+      // Soft delete: Set deleted_at timestamp
+      const { error } = await supabase
+        .from('stores')
+        .update({ deleted_at: new Date().toISOString() })
+        .eq('id', store.id);
+
+      if (error) throw error;
+
+      alert('✓ Đã xóa cửa hàng thành công');
+      router.push('/owner');
+    } catch (error: any) {
+      console.error('Error deleting store:', error);
+      alert(`Lỗi khi xóa cửa hàng: ${error.message}`);
+    } finally {
+      setDeleting(false);
     }
   }
 
@@ -578,6 +615,31 @@ export default function StoreSettings({
           {settingsLoading ? 'Đang lưu...' : 'Lưu Cài Đặt'}
         </button>
       </form>
+
+      {/* Danger Zone */}
+      <div className="mt-8 bg-red-50 border-2 border-red-300 rounded-lg p-4 sm:p-6">
+        <h3 className="text-lg font-bold text-red-800 mb-2">Vùng Nguy Hiểm</h3>
+        <p className="text-sm text-red-700 mb-4">
+          Xóa cửa hàng sẽ xóa vĩnh viễn tất cả dữ liệu liên quan. Hành động này không thể hoàn tác.
+        </p>
+        <button
+          type="button"
+          onClick={handleDeleteStore}
+          disabled={deleting}
+          className="w-full sm:w-auto bg-red-600 hover:bg-red-700 disabled:bg-gray-400 text-white px-6 py-3 rounded-lg font-semibold transition-all flex items-center justify-center gap-2"
+        >
+          {deleting ? (
+            <>
+              <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+              Đang xóa...
+            </>
+          ) : (
+            <>
+              🗑️ Xóa Cửa Hàng Vĩnh Viễn
+            </>
+          )}
+        </button>
+      </div>
     </div>
   );
 }

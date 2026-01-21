@@ -36,6 +36,7 @@ export async function POST(request: Request) {
       .from('stores')
       .select('owner_id')
       .eq('id', storeId)
+      .is('deleted_at', null)
       .single();
 
     if (storeError || !store) {
