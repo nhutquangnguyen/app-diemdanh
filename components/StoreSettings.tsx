@@ -27,6 +27,15 @@ export default function StoreSettings({
   const [loadingShifts, setLoadingShifts] = useState(false);
   const [savingRequirements, setSavingRequirements] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [gettingLocation, setGettingLocation] = useState(false);
+  const [latitude, setLatitude] = useState(store.latitude);
+  const [longitude, setLongitude] = useState(store.longitude);
+
+  // Update latitude/longitude when store changes
+  useEffect(() => {
+    setLatitude(store.latitude);
+    setLongitude(store.longitude);
+  }, [store.latitude, store.longitude]);
 
   // Load shifts and current requirements
   useEffect(() => {
@@ -34,6 +43,47 @@ export default function StoreSettings({
       loadShiftsAndRequirements();
     }
   }, [store?.id]);
+
+  async function getCurrentLocation() {
+    if (!navigator.geolocation) {
+      alert('Trình duyệt của bạn không hỗ trợ định vị GPS');
+      return;
+    }
+
+    setGettingLocation(true);
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        setLatitude(position.coords.latitude);
+        setLongitude(position.coords.longitude);
+        setGettingLocation(false);
+      },
+      (error) => {
+        console.error('Error getting location:', error);
+        let errorMessage = 'Không thể lấy vị trí hiện tại';
+
+        switch (error.code) {
+          case error.PERMISSION_DENIED:
+            errorMessage = 'Bạn đã từ chối quyền truy cập vị trí';
+            break;
+          case error.POSITION_UNAVAILABLE:
+            errorMessage = 'Thông tin vị trí không khả dụng';
+            break;
+          case error.TIMEOUT:
+            errorMessage = 'Yêu cầu lấy vị trí đã hết thời gian';
+            break;
+        }
+
+        alert(errorMessage);
+        setGettingLocation(false);
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 0
+      }
+    );
+  }
 
   async function loadShiftsAndRequirements() {
     try {
@@ -243,28 +293,58 @@ export default function StoreSettings({
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               />
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Vĩ độ</label>
-                <input
-                  type="number"
-                  name="latitude"
-                  required
-                  step="any"
-                  defaultValue={store.latitude}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                />
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <label className="block text-sm font-medium text-gray-700">Tọa độ GPS</label>
+                <button
+                  type="button"
+                  onClick={getCurrentLocation}
+                  disabled={gettingLocation}
+                  className="flex items-center gap-2 text-sm text-blue-600 hover:text-blue-700 font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {gettingLocation ? (
+                    <>
+                      <svg className="w-4 h-4 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                      </svg>
+                      Đang lấy...
+                    </>
+                  ) : (
+                    <>
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                      </svg>
+                      Lấy vị trí hiện tại
+                    </>
+                  )}
+                </button>
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Kinh độ</label>
-                <input
-                  type="number"
-                  name="longitude"
-                  required
-                  step="any"
-                  defaultValue={store.longitude}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                />
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs text-gray-600 mb-1">Vĩ độ (Latitude)</label>
+                  <input
+                    type="number"
+                    name="latitude"
+                    required
+                    step="any"
+                    value={latitude}
+                    onChange={(e) => setLatitude(parseFloat(e.target.value))}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-600 mb-1">Kinh độ (Longitude)</label>
+                  <input
+                    type="number"
+                    name="longitude"
+                    required
+                    step="any"
+                    value={longitude}
+                    onChange={(e) => setLongitude(parseFloat(e.target.value))}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
               </div>
             </div>
           </div>
