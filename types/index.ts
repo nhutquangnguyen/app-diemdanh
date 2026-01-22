@@ -10,8 +10,11 @@ export interface Store {
   gps_required: boolean; // Yêu cầu xác thực GPS
   selfie_required: boolean; // Yêu cầu chụp selfie
   access_mode: 'staff_only' | 'anyone'; // Chế độ truy cập
+  late_penalty_enabled: boolean; // Enable/disable late penalty
   late_penalty_rate: number; // Multiplier for late penalty (1.0 = same as hourly rate)
+  early_checkout_penalty_enabled: boolean; // Enable/disable early checkout penalty
   early_checkout_penalty_rate: number; // Multiplier for early checkout penalty
+  overtime_enabled: boolean; // Enable/disable overtime pay
   overtime_multiplier: number; // Multiplier for overtime (1.5 = time and a half)
   overtime_grace_minutes: number; // Grace period before counting overtime
   auto_schedule_enabled?: boolean; // Auto-generate schedule when all staff submit availability
@@ -29,7 +32,10 @@ export interface Staff {
   display_name: string; // Auto-computed: name > full_name > email (always non-null)
   phone: string | null;
   store_id: string;
-  hour_rate: number; // Hourly rate in VND
+  salary_type: 'hourly' | 'monthly' | 'daily'; // Salary type
+  hour_rate: number; // Hourly rate in VND (for hourly type)
+  monthly_rate?: number; // Monthly salary in VND (for monthly type)
+  daily_rate?: number; // Daily rate in VND (for daily type)
   status?: 'active' | 'invited' | 'expired' | 'inactive'; // Staff status
   invited_at?: string;
   invitation_token?: string | null;

@@ -123,20 +123,204 @@ export function calculateStaffMonthlySalary(
   let totalEarlyDeductions = 0;
   let totalOvertime = 0;
 
-  // Process each scheduled shift
-  schedules.forEach(schedule => {
-    const shift = shifts.find(s => s.id === schedule.shift_template_id);
-    if (!shift) return;
+  // For monthly salary type, calculate base differently
+  if (staff.salary_type === 'monthly' && staff.monthly_rate) {
+    // Monthly salary: base is the monthly rate divided across scheduled shifts
+    const totalScheduledShifts = schedules.length;
+    const basePerShift = totalScheduledShifts > 0 ? staff.monthly_rate / totalScheduledShifts : 0;
 
-    // Find check-in for this date
-    const checkIn = checkIns.find(c => {
-      const checkInDate = new Date(c.check_in_time).toISOString().split('T')[0];
-      return checkInDate === schedule.scheduled_date;
+    // Process each scheduled shift
+    schedules.forEach(schedule => {
+      const shift = shifts.find(s => s.id === schedule.shift_template_id);
+      if (!shift) return;
+
+      // Find check-in for this date
+      const checkIn = checkIns.find(c => {
+        const checkInDate = new Date(c.check_in_time).toISOString().split('T')[0];
+        return checkInDate === schedule.scheduled_date;
+      });
+
+      if (!checkIn) {
+        // Absent - deduct the shift portion
+        dailyBreakdown.push({
+          date: schedule.scheduled_date,
+          shift_name: shift.name,
+          shift_time: `${shift.start_time.substring(0, 5)} - ${shift.end_time.substring(0, 5)}`,
+          status: 'absent',
+          base_pay: 0,
+          late_penalty: 0,
+          early_penalty: 0,
+          overtime_pay: 0,
+          subtotal: 0,
+        });
+        return;
+      }
+
+      // For monthly salary, we still track penalties as deductions from base
+      const shiftDurationHours = calculateShiftDurationInHours(shift.start_time, shift.end_time);
+      const hourlyEquivalent = basePerShift / shiftDurationHours;
+
+      const lateMinutes = calculateLateMinutes(
+        checkIn.check_in_time,
+        shift.start_time,
+        shift.grace_period_minutes
+      );
+      const latePenalty = (lateMinutes > 0 && (store.late_penalty_enabled ?? true))
+        ? (lateMinutes / 60) * hourlyEquivalent * store.late_penalty_rate
+        : 0;
+
+      let earlyMinutes = 0;
+      let earlyPenalty = 0;
+      let overtimeMinutes = 0;
+      let overtimePay = 0;
+
+      if (checkIn.check_out_time) {
+        earlyMinutes = calculateEarlyCheckoutMinutes(checkIn.check_out_time, shift.end_time);
+        earlyPenalty = (earlyMinutes > 0 && (store.early_checkout_penalty_enabled ?? true))
+          ? (earlyMinutes / 60) * hourlyEquivalent * store.early_checkout_penalty_rate
+          : 0;
+
+        overtimeMinutes = calculateOvertimeMinutes(
+          checkIn.check_out_time,
+          shift.end_time,
+          store.overtime_grace_minutes
+        );
+        overtimePay = (overtimeMinutes > 0 && (store.overtime_enabled ?? true))
+          ? (overtimeMinutes / 60) * hourlyEquivalent * store.overtime_multiplier
+          : 0;
+      }
+
+      let status: DailyWorkBreakdown['status'] = 'on_time';
+      if (overtimeMinutes > 0) status = 'overtime';
+      else if (earlyMinutes > 0) status = 'early_checkout';
+      else if (lateMinutes > 0) status = 'late';
+
+      const subtotal = basePerShift - latePenalty - earlyPenalty + overtimePay;
+
+      dailyBreakdown.push({
+        date: schedule.scheduled_date,
+        shift_name: shift.name,
+        shift_time: `${shift.start_time.substring(0, 5)} - ${shift.end_time.substring(0, 5)}`,
+        check_in_time: checkIn.check_in_time,
+        check_out_time: checkIn.check_out_time,
+        status,
+        base_pay: basePerShift,
+        late_penalty: -latePenalty,
+        early_penalty: -earlyPenalty,
+        overtime_pay: overtimePay,
+        subtotal,
+      });
+
+      totalBase += basePerShift;
+      totalLateDeductions += latePenalty;
+      totalEarlyDeductions += earlyPenalty;
+      totalOvertime += overtimePay;
     });
+  } else if (staff.salary_type === 'daily' && staff.daily_rate) {
+    // Daily salary type: pay per scheduled day
+    schedules.forEach(schedule => {
+      const shift = shifts.find(s => s.id === schedule.shift_template_id);
+      if (!shift) return;
 
-    // Calculate shift base pay
-    const shiftDurationHours = calculateShiftDurationInHours(shift.start_time, shift.end_time);
-    const basePay = shiftDurationHours * staff.hour_rate;
+      // Find check-in for this date
+      const checkIn = checkIns.find(c => {
+        const checkInDate = new Date(c.check_in_time).toISOString().split('T')[0];
+        return checkInDate === schedule.scheduled_date;
+      });
+
+      if (!checkIn) {
+        // Absent - no pay
+        dailyBreakdown.push({
+          date: schedule.scheduled_date,
+          shift_name: shift.name,
+          shift_time: `${shift.start_time.substring(0, 5)} - ${shift.end_time.substring(0, 5)}`,
+          status: 'absent',
+          base_pay: 0,
+          late_penalty: 0,
+          early_penalty: 0,
+          overtime_pay: 0,
+          subtotal: 0,
+        });
+        return;
+      }
+
+      // Daily rate - same pay regardless of shift duration
+      const basePay = staff.daily_rate || 0;
+      const shiftDurationHours = calculateShiftDurationInHours(shift.start_time, shift.end_time);
+      const hourlyEquivalent = basePay / shiftDurationHours;
+
+      const lateMinutes = calculateLateMinutes(
+        checkIn.check_in_time,
+        shift.start_time,
+        shift.grace_period_minutes
+      );
+      const latePenalty = (lateMinutes > 0 && (store.late_penalty_enabled ?? true))
+        ? (lateMinutes / 60) * hourlyEquivalent * store.late_penalty_rate
+        : 0;
+
+      let earlyMinutes = 0;
+      let earlyPenalty = 0;
+      let overtimeMinutes = 0;
+      let overtimePay = 0;
+
+      if (checkIn.check_out_time) {
+        earlyMinutes = calculateEarlyCheckoutMinutes(checkIn.check_out_time, shift.end_time);
+        earlyPenalty = (earlyMinutes > 0 && (store.early_checkout_penalty_enabled ?? true))
+          ? (earlyMinutes / 60) * hourlyEquivalent * store.early_checkout_penalty_rate
+          : 0;
+
+        overtimeMinutes = calculateOvertimeMinutes(
+          checkIn.check_out_time,
+          shift.end_time,
+          store.overtime_grace_minutes
+        );
+        overtimePay = (overtimeMinutes > 0 && (store.overtime_enabled ?? true))
+          ? (overtimeMinutes / 60) * hourlyEquivalent * store.overtime_multiplier
+          : 0;
+      }
+
+      let status: DailyWorkBreakdown['status'] = 'on_time';
+      if (overtimeMinutes > 0) status = 'overtime';
+      else if (earlyMinutes > 0) status = 'early_checkout';
+      else if (lateMinutes > 0) status = 'late';
+
+      const subtotal = basePay - latePenalty - earlyPenalty + overtimePay;
+
+      dailyBreakdown.push({
+        date: schedule.scheduled_date,
+        shift_name: shift.name,
+        shift_time: `${shift.start_time.substring(0, 5)} - ${shift.end_time.substring(0, 5)}`,
+        check_in_time: checkIn.check_in_time,
+        check_out_time: checkIn.check_out_time,
+        status,
+        base_pay: basePay,
+        late_penalty: -latePenalty,
+        early_penalty: -earlyPenalty,
+        overtime_pay: overtimePay,
+        subtotal,
+      });
+
+      totalBase += basePay;
+      totalLateDeductions += latePenalty;
+      totalEarlyDeductions += earlyPenalty;
+      totalOvertime += overtimePay;
+    });
+  } else {
+    // Hourly salary type (default)
+    // Process each scheduled shift
+    schedules.forEach(schedule => {
+      const shift = shifts.find(s => s.id === schedule.shift_template_id);
+      if (!shift) return;
+
+      // Find check-in for this date
+      const checkIn = checkIns.find(c => {
+        const checkInDate = new Date(c.check_in_time).toISOString().split('T')[0];
+        return checkInDate === schedule.scheduled_date;
+      });
+
+      // Calculate shift base pay
+      const shiftDurationHours = calculateShiftDurationInHours(shift.start_time, shift.end_time);
+      const basePay = shiftDurationHours * staff.hour_rate;
 
     if (!checkIn) {
       // Absent - no pay
@@ -160,7 +344,7 @@ export function calculateStaffMonthlySalary(
       shift.start_time,
       shift.grace_period_minutes
     );
-    const latePenalty = lateMinutes > 0
+    const latePenalty = (lateMinutes > 0 && (store.late_penalty_enabled ?? true))
       ? (lateMinutes / 60) * staff.hour_rate * store.late_penalty_rate
       : 0;
 
@@ -171,7 +355,7 @@ export function calculateStaffMonthlySalary(
 
     if (checkIn.check_out_time) {
       earlyMinutes = calculateEarlyCheckoutMinutes(checkIn.check_out_time, shift.end_time);
-      earlyPenalty = earlyMinutes > 0
+      earlyPenalty = (earlyMinutes > 0 && (store.early_checkout_penalty_enabled ?? true))
         ? (earlyMinutes / 60) * staff.hour_rate * store.early_checkout_penalty_rate
         : 0;
 
@@ -180,7 +364,7 @@ export function calculateStaffMonthlySalary(
         shift.end_time,
         store.overtime_grace_minutes
       );
-      overtimePay = overtimeMinutes > 0
+      overtimePay = (overtimeMinutes > 0 && (store.overtime_enabled ?? true))
         ? (overtimeMinutes / 60) * staff.hour_rate * store.overtime_multiplier
         : 0;
     }
@@ -207,11 +391,12 @@ export function calculateStaffMonthlySalary(
       subtotal,
     });
 
-    totalBase += basePay;
-    totalLateDeductions += latePenalty;
-    totalEarlyDeductions += earlyPenalty;
-    totalOvertime += overtimePay;
-  });
+      totalBase += basePay;
+      totalLateDeductions += latePenalty;
+      totalEarlyDeductions += earlyPenalty;
+      totalOvertime += overtimePay;
+    });
+  }
 
   // Sort daily breakdown by date
   dailyBreakdown.sort((a, b) => a.date.localeCompare(b.date));

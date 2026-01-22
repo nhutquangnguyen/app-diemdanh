@@ -6,7 +6,10 @@ export const runtime = 'edge';
 interface AddStaffRequest {
   storeId: string;
   emails: string[]; // Array of emails for bulk invite
+  salaryType: 'hourly' | 'monthly' | 'daily';
   hourlyRate: number;
+  monthlyRate?: number;
+  dailyRate?: number;
   storeName: string;
 }
 
@@ -19,9 +22,9 @@ interface AddStaffResult {
 export async function POST(request: Request) {
   try {
     const body: AddStaffRequest = await request.json();
-    const { storeId, emails, hourlyRate, storeName } = body;
+    const { storeId, emails, salaryType, hourlyRate, monthlyRate, dailyRate, storeName } = body;
 
-    if (!storeId || !emails || emails.length === 0 || !hourlyRate) {
+    if (!storeId || !emails || emails.length === 0 || !salaryType) {
       return NextResponse.json(
         { error: 'Missing required fields' },
         { status: 400 }
@@ -78,7 +81,10 @@ export async function POST(request: Request) {
             email: trimmedEmail,
             full_name: registeredUser.full_name || trimmedEmail.split('@')[0],
             phone: registeredUser.phone || null,
+            salary_type: salaryType,
             hour_rate: hourlyRate,
+            monthly_rate: monthlyRate,
+            daily_rate: dailyRate,
             status: 'active'
           });
 
@@ -109,7 +115,10 @@ export async function POST(request: Request) {
             user_id: null,
             full_name: null,
             phone: null,
+            salary_type: salaryType,
             hour_rate: hourlyRate,
+            monthly_rate: monthlyRate,
+            daily_rate: dailyRate,
             status: 'invited',
             invited_at: new Date().toISOString(),
             invitation_token: invitationToken,

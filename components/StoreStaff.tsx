@@ -7,11 +7,17 @@ interface StoreStaffProps {
   swipeState: Record<string, number>;
   swipeStart: { staffId: string; x: number } | null;
   editingStaffId: string | null;
+  editSalaryType: 'hourly' | 'monthly' | 'daily';
   editHourRate: string;
+  editMonthlyRate: string;
+  editDailyRate: string;
   editName: string;
   setSwipeState: (state: Record<string, number> | ((prev: Record<string, number>) => Record<string, number>)) => void;
   setEditingStaffId: (id: string | null) => void;
+  setEditSalaryType: (type: 'hourly' | 'monthly' | 'daily') => void;
   setEditHourRate: (rate: string) => void;
+  setEditMonthlyRate: (rate: string) => void;
+  setEditDailyRate: (rate: string) => void;
   setEditName: (name: string) => void;
   handleStaffTouchStart: (e: React.TouchEvent, staffId: string) => void;
   handleStaffTouchMove: (e: React.TouchEvent, staffId: string) => void;
@@ -26,11 +32,17 @@ export default function StoreStaff({
   swipeState,
   swipeStart,
   editingStaffId,
+  editSalaryType,
   editHourRate,
+  editMonthlyRate,
+  editDailyRate,
   editName,
   setSwipeState,
   setEditingStaffId,
+  setEditSalaryType,
   setEditHourRate,
+  setEditMonthlyRate,
+  setEditDailyRate,
   setEditName,
   handleStaffTouchStart,
   handleStaffTouchMove,
@@ -106,19 +118,115 @@ export default function StoreStaff({
                         />
                       </div>
                       <div>
-                        <label className="block text-xs font-medium text-gray-600 mb-1">Lương giờ</label>
-                        <div className="relative">
+                        <label className="block text-xs font-medium text-gray-600 mb-2">Loại lương</label>
+                        <div className="flex gap-2 mb-3">
+                          <label className="flex-1 cursor-pointer">
+                            <input
+                              type="radio"
+                              name="editSalaryType"
+                              value="hourly"
+                              checked={editSalaryType === 'hourly'}
+                              onChange={(e) => setEditSalaryType(e.target.value as 'hourly')}
+                              className="sr-only"
+                            />
+                            <div className={`px-2 py-1.5 rounded text-xs text-center font-medium transition-all ${
+                              editSalaryType === 'hourly'
+                                ? 'bg-blue-600 text-white'
+                                : 'bg-gray-100 text-gray-700'
+                            }`}>
+                              Giờ
+                            </div>
+                          </label>
+                          <label className="flex-1 cursor-pointer">
+                            <input
+                              type="radio"
+                              name="editSalaryType"
+                              value="monthly"
+                              checked={editSalaryType === 'monthly'}
+                              onChange={(e) => setEditSalaryType(e.target.value as 'monthly')}
+                              className="sr-only"
+                            />
+                            <div className={`px-2 py-1.5 rounded text-xs text-center font-medium transition-all ${
+                              editSalaryType === 'monthly'
+                                ? 'bg-blue-600 text-white'
+                                : 'bg-gray-100 text-gray-700'
+                            }`}>
+                              Tháng
+                            </div>
+                          </label>
+                          <label className="flex-1 cursor-pointer">
+                            <input
+                              type="radio"
+                              name="editSalaryType"
+                              value="daily"
+                              checked={editSalaryType === 'daily'}
+                              onChange={(e) => setEditSalaryType(e.target.value as 'daily')}
+                              className="sr-only"
+                            />
+                            <div className={`px-2 py-1.5 rounded text-xs text-center font-medium transition-all ${
+                              editSalaryType === 'daily'
+                                ? 'bg-blue-600 text-white'
+                                : 'bg-gray-100 text-gray-700'
+                            }`}>
+                              Ngày
+                            </div>
+                          </label>
+                        </div>
+                      </div>
+                      {editSalaryType === 'hourly' && (
+                        <div>
+                          <label className="block text-xs font-medium text-gray-600 mb-1">Lương giờ</label>
                           <input
-                            type="number"
-                            min="0"
-                            step="1000"
-                            value={editHourRate}
-                            onChange={(e) => setEditHourRate(e.target.value)}
+                            type="text"
+                            inputMode="numeric"
+                            value={editHourRate ? new Intl.NumberFormat('vi-VN').format(parseFloat(editHourRate.replace(/\./g, ''))) : ''}
+                            onChange={(e) => {
+                              const value = e.target.value.replace(/\./g, '');
+                              if (value === '' || /^\d+$/.test(value)) {
+                                setEditHourRate(value);
+                              }
+                            }}
                             className="w-full px-3 py-2 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                             placeholder="VNĐ/giờ"
                           />
                         </div>
-                      </div>
+                      )}
+                      {editSalaryType === 'monthly' && (
+                        <div>
+                          <label className="block text-xs font-medium text-gray-600 mb-1">Lương tháng</label>
+                          <input
+                            type="text"
+                            inputMode="numeric"
+                            value={editMonthlyRate ? new Intl.NumberFormat('vi-VN').format(parseFloat(editMonthlyRate.replace(/\./g, ''))) : ''}
+                            onChange={(e) => {
+                              const value = e.target.value.replace(/\./g, '');
+                              if (value === '' || /^\d+$/.test(value)) {
+                                setEditMonthlyRate(value);
+                              }
+                            }}
+                            className="w-full px-3 py-2 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            placeholder="VNĐ/tháng"
+                          />
+                        </div>
+                      )}
+                      {editSalaryType === 'daily' && (
+                        <div>
+                          <label className="block text-xs font-medium text-gray-600 mb-1">Lương ngày</label>
+                          <input
+                            type="text"
+                            inputMode="numeric"
+                            value={editDailyRate ? new Intl.NumberFormat('vi-VN').format(parseFloat(editDailyRate.replace(/\./g, ''))) : ''}
+                            onChange={(e) => {
+                              const value = e.target.value.replace(/\./g, '');
+                              if (value === '' || /^\d+$/.test(value)) {
+                                setEditDailyRate(value);
+                              }
+                            }}
+                            className="w-full px-3 py-2 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            placeholder="VNĐ/ngày"
+                          />
+                        </div>
+                      )}
                       <div className="flex gap-2">
                         <button
                           onClick={() => updateStaffInfo(member.id)}
@@ -129,7 +237,10 @@ export default function StoreStaff({
                         <button
                           onClick={() => {
                             setEditingStaffId(null);
+                            setEditSalaryType('hourly');
                             setEditHourRate('');
+                            setEditMonthlyRate('');
+                            setEditDailyRate('');
                             setEditName('');
                           }}
                           className="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-700 px-4 py-2 rounded text-sm font-semibold transition-all"
@@ -150,7 +261,9 @@ export default function StoreStaff({
                       )}
                       <div className="flex items-center gap-2 mt-1 flex-wrap">
                         <p className="text-sm font-medium text-green-600">
-                          {new Intl.NumberFormat('vi-VN').format(member.hour_rate || 0)} VNĐ/giờ
+                          {member.salary_type === 'hourly' && `${new Intl.NumberFormat('vi-VN').format(member.hour_rate || 0)} VNĐ/giờ`}
+                          {member.salary_type === 'monthly' && `${new Intl.NumberFormat('vi-VN').format(member.monthly_rate || 0)} VNĐ/tháng`}
+                          {member.salary_type === 'daily' && `${new Intl.NumberFormat('vi-VN').format(member.daily_rate || 0)} VNĐ/ngày`}
                         </p>
                         {/* Status Badge */}
                         {member.status === 'invited' && (
@@ -190,7 +303,10 @@ export default function StoreStaff({
                       e.stopPropagation();
                       console.log('🔧 [STAFF] Edit button clicked for:', member.id);
                       setEditingStaffId(member.id);
+                      setEditSalaryType(member.salary_type || 'hourly');
                       setEditHourRate(String(member.hour_rate || 0));
+                      setEditMonthlyRate(String(member.monthly_rate || 0));
+                      setEditDailyRate(String(member.daily_rate || 0));
                       setEditName(member.name || '');
                     }}
                     className="flex-1 sm:flex-none text-blue-600 hover:text-blue-800 font-semibold px-4 py-2 rounded-lg hover:bg-blue-50 transition-all text-sm"

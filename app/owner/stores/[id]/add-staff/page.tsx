@@ -18,7 +18,10 @@ export default function AddStaff() {
   const [store, setStore] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [emails, setEmails] = useState('');
+  const [salaryType, setSalaryType] = useState<'hourly' | 'monthly' | 'daily'>('hourly');
   const [hourRate, setHourRate] = useState('25000'); // Default hourly rate
+  const [monthlyRate, setMonthlyRate] = useState('5000000'); // Default monthly rate
+  const [dailyRate, setDailyRate] = useState('200000'); // Default daily rate
   const [results, setResults] = useState<any[]>([]);
 
   useEffect(() => {
@@ -79,7 +82,10 @@ export default function AddStaff() {
         body: JSON.stringify({
           storeId,
           emails: emailList,
-          hourlyRate: parseFloat(hourRate) || 0,
+          salaryType,
+          hourlyRate: salaryType === 'hourly' ? parseFloat(hourRate) || 0 : 0,
+          monthlyRate: salaryType === 'monthly' ? parseFloat(monthlyRate) || 0 : undefined,
+          dailyRate: salaryType === 'daily' ? parseFloat(dailyRate) || 0 : undefined,
           storeName: store?.name || 'Cửa hàng'
         }),
       });
@@ -161,21 +167,136 @@ nhanvien4@example.com"
 
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-2">
-                Lương Theo Giờ (VNĐ) *
+                Loại Lương *
               </label>
-              <input
-                type="number"
-                required
-                min="0"
-                step="1000"
-                value={hourRate}
-                onChange={(e) => setHourRate(e.target.value)}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                placeholder="25000"
-              />
-              <p className="text-sm text-gray-500 mt-1">
-                Mức lương theo giờ để tính tổng lương (VD: 25,000 VNĐ/giờ)
-              </p>
+              <div className="flex gap-3 mb-4">
+                <label className="flex-1 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="salaryType"
+                    value="hourly"
+                    checked={salaryType === 'hourly'}
+                    onChange={(e) => setSalaryType(e.target.value as 'hourly')}
+                    className="sr-only"
+                  />
+                  <div className={`px-4 py-3 rounded-lg border-2 text-center font-medium transition-all ${
+                    salaryType === 'hourly'
+                      ? 'border-blue-600 bg-blue-50 text-blue-700'
+                      : 'border-gray-300 bg-white text-gray-700 hover:border-gray-400'
+                  }`}>
+                    Theo Giờ
+                  </div>
+                </label>
+                <label className="flex-1 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="salaryType"
+                    value="monthly"
+                    checked={salaryType === 'monthly'}
+                    onChange={(e) => setSalaryType(e.target.value as 'monthly')}
+                    className="sr-only"
+                  />
+                  <div className={`px-4 py-3 rounded-lg border-2 text-center font-medium transition-all ${
+                    salaryType === 'monthly'
+                      ? 'border-blue-600 bg-blue-50 text-blue-700'
+                      : 'border-gray-300 bg-white text-gray-700 hover:border-gray-400'
+                  }`}>
+                    Theo Tháng
+                  </div>
+                </label>
+                <label className="flex-1 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="salaryType"
+                    value="daily"
+                    checked={salaryType === 'daily'}
+                    onChange={(e) => setSalaryType(e.target.value as 'daily')}
+                    className="sr-only"
+                  />
+                  <div className={`px-4 py-3 rounded-lg border-2 text-center font-medium transition-all ${
+                    salaryType === 'daily'
+                      ? 'border-blue-600 bg-blue-50 text-blue-700'
+                      : 'border-gray-300 bg-white text-gray-700 hover:border-gray-400'
+                  }`}>
+                    Theo Ngày
+                  </div>
+                </label>
+              </div>
+
+              {salaryType === 'hourly' && (
+                <>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Lương Theo Giờ (VNĐ) *
+                  </label>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    required
+                    value={hourRate ? new Intl.NumberFormat('vi-VN').format(parseFloat(hourRate.replace(/\./g, ''))) : ''}
+                    onChange={(e) => {
+                      const value = e.target.value.replace(/\./g, '');
+                      if (value === '' || /^\d+$/.test(value)) {
+                        setHourRate(value);
+                      }
+                    }}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="25.000"
+                  />
+                  <p className="text-sm text-gray-500 mt-1">
+                    Mức lương theo giờ để tính tổng lương (VD: 25.000 VNĐ/giờ)
+                  </p>
+                </>
+              )}
+
+              {salaryType === 'monthly' && (
+                <>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Lương Theo Tháng (VNĐ) *
+                  </label>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    required
+                    value={monthlyRate ? new Intl.NumberFormat('vi-VN').format(parseFloat(monthlyRate.replace(/\./g, ''))) : ''}
+                    onChange={(e) => {
+                      const value = e.target.value.replace(/\./g, '');
+                      if (value === '' || /^\d+$/.test(value)) {
+                        setMonthlyRate(value);
+                      }
+                    }}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="5.000.000"
+                  />
+                  <p className="text-sm text-gray-500 mt-1">
+                    Mức lương cố định mỗi tháng (VD: 5.000.000 VNĐ/tháng)
+                  </p>
+                </>
+              )}
+
+              {salaryType === 'daily' && (
+                <>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Lương Theo Ngày (VNĐ) *
+                  </label>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    required
+                    value={dailyRate ? new Intl.NumberFormat('vi-VN').format(parseFloat(dailyRate.replace(/\./g, ''))) : ''}
+                    onChange={(e) => {
+                      const value = e.target.value.replace(/\./g, '');
+                      if (value === '' || /^\d+$/.test(value)) {
+                        setDailyRate(value);
+                      }
+                    }}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="200.000"
+                  />
+                  <p className="text-sm text-gray-500 mt-1">
+                    Mức lương theo ngày làm việc (VD: 200.000 VNĐ/ngày)
+                  </p>
+                </>
+              )}
             </div>
 
             <div className="flex gap-4">

@@ -58,7 +58,10 @@ export default function StoreDetail() {
 
   // Edit staff info state
   const [editingStaffId, setEditingStaffId] = useState<string | null>(null);
+  const [editSalaryType, setEditSalaryType] = useState<'hourly' | 'monthly' | 'daily'>('hourly');
   const [editHourRate, setEditHourRate] = useState<string>('');
+  const [editMonthlyRate, setEditMonthlyRate] = useState<string>('');
+  const [editDailyRate, setEditDailyRate] = useState<string>('');
   const [editName, setEditName] = useState<string>('');
 
   // Swipe-to-delete state
@@ -253,10 +256,32 @@ export default function StoreDetail() {
 
   async function updateStaffInfo(staffId: string) {
     try {
-      const rate = parseFloat(editHourRate);
-      if (isNaN(rate) || rate < 0) {
-        toast.warning('Vui lòng nhập số hợp lệ cho lương giờ');
-        return;
+      // Validate based on salary type
+      let hourRate = 0;
+      let monthlyRate: number | undefined = undefined;
+      let dailyRate: number | undefined = undefined;
+
+      if (editSalaryType === 'hourly') {
+        const rate = parseFloat(editHourRate);
+        if (isNaN(rate) || rate < 0) {
+          toast.warning('Vui lòng nhập số hợp lệ cho lương giờ');
+          return;
+        }
+        hourRate = rate;
+      } else if (editSalaryType === 'monthly') {
+        const rate = parseFloat(editMonthlyRate);
+        if (isNaN(rate) || rate < 0) {
+          toast.warning('Vui lòng nhập số hợp lệ cho lương tháng');
+          return;
+        }
+        monthlyRate = rate;
+      } else if (editSalaryType === 'daily') {
+        const rate = parseFloat(editDailyRate);
+        if (isNaN(rate) || rate < 0) {
+          toast.warning('Vui lòng nhập số hợp lệ cho lương ngày');
+          return;
+        }
+        dailyRate = rate;
       }
 
       // Get current user
@@ -273,7 +298,10 @@ export default function StoreDetail() {
         body: JSON.stringify({
           userId: user.id,
           staffId,
-          hourRate: rate,
+          salaryType: editSalaryType,
+          hourRate,
+          monthlyRate,
+          dailyRate,
           name: editName.trim() || null,
         }),
       });
@@ -285,7 +313,10 @@ export default function StoreDetail() {
 
       // Reset state first
       setEditingStaffId(null);
+      setEditSalaryType('hourly');
       setEditHourRate('');
+      setEditMonthlyRate('');
+      setEditDailyRate('');
       setEditName('');
 
       // Reload data
@@ -1851,11 +1882,17 @@ export default function StoreDetail() {
               swipeState={swipeState}
               swipeStart={swipeStart}
               editingStaffId={editingStaffId}
+              editSalaryType={editSalaryType}
               editHourRate={editHourRate}
+              editMonthlyRate={editMonthlyRate}
+              editDailyRate={editDailyRate}
               editName={editName}
               setSwipeState={setSwipeState}
               setEditingStaffId={setEditingStaffId}
+              setEditSalaryType={setEditSalaryType}
               setEditHourRate={setEditHourRate}
+              setEditMonthlyRate={setEditMonthlyRate}
+              setEditDailyRate={setEditDailyRate}
               setEditName={setEditName}
               handleStaffTouchStart={handleStaffTouchStart}
               handleStaffTouchMove={handleStaffTouchMove}

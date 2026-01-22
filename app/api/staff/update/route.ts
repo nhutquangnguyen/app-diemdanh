@@ -20,9 +20,9 @@ export async function POST(request: Request) {
 
   try {
     const body = await request.json();
-    const { userId, staffId, hourRate, name } = body;
+    const { userId, staffId, salaryType, hourRate, monthlyRate, dailyRate, name } = body;
 
-    console.log('✏️ [UPDATE-STAFF API] Request:', { userId, staffId, hourRate, name });
+    console.log('✏️ [UPDATE-STAFF API] Request:', { userId, staffId, salaryType, hourRate, monthlyRate, dailyRate, name });
 
     if (!userId || !staffId) {
       return NextResponse.json(
@@ -58,7 +58,10 @@ export async function POST(request: Request) {
 
     // Update staff info
     const updateData: any = {};
+    if (salaryType !== undefined) updateData.salary_type = salaryType;
     if (hourRate !== undefined) updateData.hour_rate = hourRate;
+    if (monthlyRate !== undefined) updateData.monthly_rate = monthlyRate;
+    if (dailyRate !== undefined) updateData.daily_rate = dailyRate;
     if (name !== undefined) updateData.name = name;
 
     const { data, error } = await supabaseAdmin
