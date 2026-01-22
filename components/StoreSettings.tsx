@@ -280,7 +280,7 @@ export default function StoreSettings({
                 name="name"
                 required
                 defaultValue={store.name}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white text-gray-900"
               />
             </div>
             <div>
@@ -290,7 +290,7 @@ export default function StoreSettings({
                 name="address"
                 required
                 defaultValue={store.address}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white text-gray-900"
               />
             </div>
             <div>
@@ -330,7 +330,7 @@ export default function StoreSettings({
                     step="any"
                     value={latitude}
                     onChange={(e) => setLatitude(parseFloat(e.target.value))}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white text-gray-900"
                   />
                 </div>
                 <div>
@@ -342,7 +342,7 @@ export default function StoreSettings({
                     step="any"
                     value={longitude}
                     onChange={(e) => setLongitude(parseFloat(e.target.value))}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white text-gray-900"
                   />
                 </div>
               </div>
@@ -453,7 +453,7 @@ export default function StoreSettings({
                 max="5"
                 step="0.1"
                 defaultValue={store.late_penalty_rate || 1.0}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white text-gray-900"
               />
               <p className="text-xs text-gray-500 mt-1">
                 1.0 = phạt theo lương giờ, 2.0 = phạt gấp đôi (mặc định: 1.0)
@@ -470,7 +470,7 @@ export default function StoreSettings({
                 max="5"
                 step="0.1"
                 defaultValue={store.early_checkout_penalty_rate || 1.0}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white text-gray-900"
               />
               <p className="text-xs text-gray-500 mt-1">
                 1.0 = phạt theo lương giờ, 2.0 = phạt gấp đôi (mặc định: 1.0)
@@ -487,7 +487,7 @@ export default function StoreSettings({
                 max="5"
                 step="0.1"
                 defaultValue={store.overtime_multiplier || 1.5}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white text-gray-900"
               />
               <p className="text-xs text-gray-500 mt-1">
                 1.5 = trả 150% lương giờ, 2.0 = trả gấp đôi (mặc định: 1.5)
@@ -504,7 +504,7 @@ export default function StoreSettings({
                 max="60"
                 step="5"
                 defaultValue={store.overtime_grace_minutes || 15}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white text-gray-900"
               />
               <p className="text-xs text-gray-500 mt-1">
                 Số phút làm thêm tối thiểu để được tính tăng ca (mặc định: 15)
