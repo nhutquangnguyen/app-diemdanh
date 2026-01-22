@@ -1969,7 +1969,7 @@ export default function StoreDetail() {
                     <div className="bg-white p-4 sm:p-8 rounded-xl inline-block border-2 sm:border-4 border-blue-500 shadow-xl max-w-full">
                       <QRCode
                         id="qr-code"
-                        value={`https://www.diemdanh.net/checkin/submit?store=${store.id}`}
+                        value={`https://app.diemdanh.net/checkin/submit?store=${store.id}`}
                         size={200}
                         level="H"
                         className="w-full h-auto max-w-[200px] sm:max-w-[256px]"
@@ -2001,7 +2001,7 @@ export default function StoreDetail() {
                       <button
                         type="button"
                         onClick={() => {
-                          navigator.clipboard.writeText(`https://www.diemdanh.net/checkin/submit?store=${store.id}`);
+                          navigator.clipboard.writeText(`https://app.diemdanh.net/checkin/submit?store=${store.id}`);
                           toast.success('Đã copy link điểm danh!');
                         }}
                         className="bg-white hover:bg-gray-50 text-gray-700 border-2 border-gray-300 px-4 sm:px-6 py-2.5 sm:py-3 rounded-lg font-semibold flex items-center justify-center gap-2 transition-all shadow-md text-sm sm:text-base"
@@ -2016,7 +2016,7 @@ export default function StoreDetail() {
                     {/* Link Display */}
                     <div className="mt-4 sm:mt-6">
                       <div className="bg-gray-100 rounded-lg p-2.5 sm:p-3 text-xs sm:text-sm text-gray-700 font-mono break-all">
-                        https://www.diemdanh.net/checkin/submit?store={store.id}
+                        https://app.diemdanh.net/checkin/submit?store={store.id}
                       </div>
                     </div>
                   </div>

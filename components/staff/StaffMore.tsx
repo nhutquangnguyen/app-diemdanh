@@ -86,7 +86,7 @@ export default function StaffMore({ storeId, staffId, staffMember }: StaffMorePr
 
         {/* Help */}
         <a
-          href="https://www.diemdanh.net/help"
+          href="https://app.diemdanh.net/help"
           target="_blank"
           rel="noopener noreferrer"
           className="w-full flex items-center justify-between p-4 hover:bg-gray-50 transition-all"

@@ -141,7 +141,7 @@ export default function CheckInPage() {
               </p>
               <div className="space-y-3">
                 <a
-                  href="https://www.diemdanh.net/help/cap-quyen"
+                  href="https://app.diemdanh.net/help/cap-quyen"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="block w-full px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors duration-200 text-center"

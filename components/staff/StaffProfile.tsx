@@ -98,7 +98,7 @@ export default function StaffProfile({ storeId, staffId, staffMember }: StaffPro
       {/* Help Link */}
       <div className="bg-white rounded-2xl shadow-md overflow-hidden">
         <a
-          href="https://www.diemdanh.net/help"
+          href="https://app.diemdanh.net/help"
           target="_blank"
           rel="noopener noreferrer"
           className="w-full flex items-center justify-between p-4 hover:bg-gray-50 transition-all"
