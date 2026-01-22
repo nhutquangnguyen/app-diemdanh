@@ -65,8 +65,21 @@ export default function StoreSchedule({
 }: StoreScheduleProps) {
   const [viewMode, setViewMode] = useState<'staff-based' | 'date-rows'>('staff-based');
   const [selectedCell, setSelectedCell] = useState<{ staffId: string; date: Date } | null>(null);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [pendingShiftIds, setPendingShiftIds] = useState<string[]>([]);
   const today = formatDateSchedule(new Date());
   const weekDays = getWeekDays();
+
+  // Initialize pendingShiftIds when modal opens in date-rows view
+  useEffect(() => {
+    if (selectedCell) {
+      const staffSchedules = getStaffSchedulesForDate(selectedCell.staffId, selectedCell.date);
+      const originalShiftIds = staffSchedules.map(s => s.shift_template_id);
+      setPendingShiftIds(originalShiftIds);
+    } else {
+      setPendingShiftIds([]);
+    }
+  }, [selectedCell]);
 
   // Clear clipboard and selection when view mode changes
   const handleViewModeChange = (newViewMode: 'staff-based' | 'date-rows') => {
@@ -415,31 +428,70 @@ export default function StoreSchedule({
         {selectedCell && (() => {
           const staffMember = staff.find(s => s.id === selectedCell.staffId);
           const staffSchedules = getStaffSchedulesForDate(selectedCell.staffId, selectedCell.date);
-          const selectedShiftIds = staffSchedules.map(s => s.shift_template_id);
+          const originalShiftIds = staffSchedules.map(s => s.shift_template_id);
 
-          const handleShiftToggle = async (shiftId: string) => {
-            if (!staffMember) return;
+          const handleShiftToggle = (shiftId: string) => {
+            if (isProcessing) return;
 
-            const isSelected = selectedShiftIds.includes(shiftId);
-
-            if (isSelected) {
-              // Remove this shift
-              const scheduleToRemove = staffSchedules.find(s => s.shift_template_id === shiftId);
-              if (scheduleToRemove && handleRemoveStaffFromShift) {
-                handleRemoveStaffFromShift(scheduleToRemove.id, staffMember.display_name);
+            setPendingShiftIds(prev => {
+              if (prev.includes(shiftId)) {
+                return prev.filter(id => id !== shiftId);
+              } else {
+                return [...prev, shiftId];
               }
-            } else {
-              // Add this shift
-              if (handleAssignShift) {
-                await handleAssignShift(staffMember.id, shiftId, formatDateSchedule(selectedCell.date));
+            });
+          };
+
+          const handleSave = async () => {
+            if (!staffMember || isProcessing) return;
+
+            try {
+              setIsProcessing(true);
+
+              // Calculate what needs to be added and removed
+              const shiftsToAdd = pendingShiftIds.filter(id => !originalShiftIds.includes(id));
+              const shiftsToRemove = originalShiftIds.filter(id => !pendingShiftIds.includes(id));
+
+              // Remove shifts
+              for (const shiftId of shiftsToRemove) {
+                const scheduleToRemove = staffSchedules.find(s => s.shift_template_id === shiftId);
+                if (scheduleToRemove && handleRemoveStaffFromShift) {
+                  handleRemoveStaffFromShift(scheduleToRemove.id, staffMember.display_name);
+                }
               }
+
+              // Add shifts
+              for (const shiftId of shiftsToAdd) {
+                if (handleAssignShift) {
+                  await handleAssignShift(staffMember.id, shiftId, formatDateSchedule(selectedCell.date));
+                }
+              }
+
+              // Close modal after successful save
+              setSelectedCell(null);
+              setPendingShiftIds([]);
+            } catch (error) {
+              console.error('Error saving shifts:', error);
+            } finally {
+              setIsProcessing(false);
             }
           };
+
+          const handleCancel = () => {
+            setSelectedCell(null);
+            setPendingShiftIds([]);
+          };
+
+          // Calculate changes
+          const shiftsToAdd = pendingShiftIds.filter(id => !originalShiftIds.includes(id));
+          const shiftsToRemove = originalShiftIds.filter(id => !pendingShiftIds.includes(id));
+          const hasChanges = shiftsToAdd.length > 0 || shiftsToRemove.length > 0;
+          const changeCount = shiftsToAdd.length + shiftsToRemove.length;
 
           return staffMember && (
             <div
               className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
-              onClick={() => setSelectedCell(null)}
+              onClick={handleCancel}
             >
               <div
                 className="bg-white rounded-lg shadow-xl max-w-md w-full p-6"
@@ -448,7 +500,7 @@ export default function StoreSchedule({
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="text-lg font-bold text-gray-800">Chọn Ca Làm Việc</h3>
                   <button
-                    onClick={() => setSelectedCell(null)}
+                    onClick={handleCancel}
                     className="text-gray-400 hover:text-gray-600"
                   >
                     <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -471,11 +523,15 @@ export default function StoreSchedule({
                 <div className="space-y-2">
                   <div className="text-sm font-semibold text-gray-700 mb-3">Chọn ca:</div>
                   {shifts.map((shift) => {
-                    const isSelected = selectedShiftIds.includes(shift.id);
+                    const isSelected = pendingShiftIds.includes(shift.id);
                     return (
                       <label
                         key={shift.id}
-                        className={`flex items-center gap-3 p-3 rounded-lg border-2 cursor-pointer transition-all hover:bg-gray-50 ${
+                        className={`flex items-center gap-3 p-3 rounded-lg border-2 transition-all ${
+                          isProcessing
+                            ? 'cursor-not-allowed opacity-60'
+                            : 'cursor-pointer hover:bg-gray-50'
+                        } ${
                           isSelected ? 'border-blue-500 bg-blue-50' : 'border-gray-200'
                         }`}
                       >
@@ -483,7 +539,8 @@ export default function StoreSchedule({
                           type="checkbox"
                           checked={isSelected}
                           onChange={() => handleShiftToggle(shift.id)}
-                          className="w-5 h-5 text-blue-600 rounded"
+                          disabled={isProcessing}
+                          className="w-5 h-5 text-blue-600 rounded disabled:opacity-50 disabled:cursor-not-allowed"
                         />
                         <div
                           className="w-4 h-4 rounded flex-shrink-0"
@@ -502,12 +559,23 @@ export default function StoreSchedule({
                   })}
                 </div>
 
-                <button
-                  onClick={() => setSelectedCell(null)}
-                  className="w-full mt-6 bg-gray-200 hover:bg-gray-300 text-gray-700 px-4 py-3 rounded-lg font-semibold transition-all"
-                >
-                  Đóng
-                </button>
+                {/* Action Buttons */}
+                <div className="flex gap-3 mt-6">
+                  <button
+                    onClick={handleCancel}
+                    disabled={isProcessing}
+                    className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-700 px-4 py-3 rounded-lg font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Hủy
+                  </button>
+                  <button
+                    onClick={handleSave}
+                    disabled={!hasChanges || isProcessing}
+                    className="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-4 py-3 rounded-lg font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {isProcessing ? 'Đang lưu...' : hasChanges ? `Lưu (${changeCount})` : 'Lưu'}
+                  </button>
+                </div>
               </div>
             </div>
           );

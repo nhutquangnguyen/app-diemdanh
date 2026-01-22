@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Staff, ShiftTemplate, ScheduleWithDetails } from '@/types';
 import ScheduleWarnings from './ScheduleWarnings';
 
@@ -51,9 +51,22 @@ export default function StaffScheduleGrid({
 }: StaffScheduleGridProps) {
   const [selectedCell, setSelectedCell] = useState<{ staffId: string; date: string } | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [pendingShiftIds, setPendingShiftIds] = useState<string[]>([]);
 
   const today = formatDateSchedule(new Date());
   const weekDays = getWeekDays();
+
+  // Initialize pendingShiftIds when modal opens
+  useEffect(() => {
+    if (selectedCell) {
+      const date = weekDays.find(d => formatDateSchedule(d) === selectedCell.date);
+      const staffShifts = date ? getStaffShiftsForDate(selectedCell.staffId, date) : [];
+      const originalShiftIds = staffShifts.map(s => s.shift_template_id);
+      setPendingShiftIds(originalShiftIds);
+    } else {
+      setPendingShiftIds([]);
+    }
+  }, [selectedCell]);
 
   // Format week range as dd/mm - dd/mm
   const formatDayMonth = (date: Date) => {
@@ -470,37 +483,70 @@ export default function StaffScheduleGrid({
         const staffMember = staff.find(s => s.id === selectedCell.staffId);
         const date = weekDays.find(d => formatDateSchedule(d) === selectedCell.date);
         const staffShifts = date ? getStaffShiftsForDate(selectedCell.staffId, date) : [];
-        const selectedShiftIds = staffShifts.map(s => s.shift_template_id);
+        const originalShiftIds = staffShifts.map(s => s.shift_template_id);
 
-        const handleShiftToggle = async (shiftId: string) => {
+        const handleShiftToggle = (shiftId: string) => {
+          if (isProcessing) return;
+
+          setPendingShiftIds(prev => {
+            if (prev.includes(shiftId)) {
+              return prev.filter(id => id !== shiftId);
+            } else {
+              return [...prev, shiftId];
+            }
+          });
+        };
+
+        const handleSave = async () => {
           if (!date || !staffMember || isProcessing) return;
-
-          const isSelected = selectedShiftIds.includes(shiftId);
 
           try {
             setIsProcessing(true);
 
-            if (isSelected) {
-              // Remove this shift
+            // Calculate what needs to be added and removed
+            const shiftsToAdd = pendingShiftIds.filter(id => !originalShiftIds.includes(id));
+            const shiftsToRemove = originalShiftIds.filter(id => !pendingShiftIds.includes(id));
+
+            // Remove shifts
+            for (const shiftId of shiftsToRemove) {
               const scheduleToRemove = staffShifts.find(s => s.shift_template_id === shiftId);
               if (scheduleToRemove && handleRemoveStaffFromShift) {
                 handleRemoveStaffFromShift(scheduleToRemove.id, staffMember.display_name);
               }
-            } else {
-              // Add this shift directly
+            }
+
+            // Add shifts
+            for (const shiftId of shiftsToAdd) {
               if (handleAssignShift) {
                 await handleAssignShift(staffMember.id, shiftId, selectedCell.date);
               }
             }
+
+            // Close modal after successful save
+            setSelectedCell(null);
+            setPendingShiftIds([]);
+          } catch (error) {
+            console.error('Error saving shifts:', error);
           } finally {
             setIsProcessing(false);
           }
         };
 
+        const handleCancel = () => {
+          setSelectedCell(null);
+          setPendingShiftIds([]);
+        };
+
+        // Calculate changes
+        const shiftsToAdd = pendingShiftIds.filter(id => !originalShiftIds.includes(id));
+        const shiftsToRemove = originalShiftIds.filter(id => !pendingShiftIds.includes(id));
+        const hasChanges = shiftsToAdd.length > 0 || shiftsToRemove.length > 0;
+        const changeCount = shiftsToAdd.length + shiftsToRemove.length;
+
         return staffMember && date && (
           <div
             className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
-            onClick={() => setSelectedCell(null)}
+            onClick={handleCancel}
           >
             <div
               className="bg-white rounded-lg shadow-xl max-w-md w-full p-6"
@@ -509,7 +555,7 @@ export default function StaffScheduleGrid({
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-bold text-gray-800">Chọn Ca Làm Việc</h3>
                 <button
-                  onClick={() => setSelectedCell(null)}
+                  onClick={handleCancel}
                   className="text-gray-400 hover:text-gray-600"
                 >
                   <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -531,10 +577,10 @@ export default function StaffScheduleGrid({
 
               <div className="space-y-2">
                 <div className="text-sm font-semibold text-gray-700 mb-3">
-                  {isProcessing ? 'Đang xử lý...' : 'Chọn ca:'}
+                  Chọn ca:
                 </div>
                 {shifts.map((shift) => {
-                  const isSelected = selectedShiftIds.includes(shift.id);
+                  const isSelected = pendingShiftIds.includes(shift.id);
                   return (
                     <label
                       key={shift.id}
@@ -570,12 +616,23 @@ export default function StaffScheduleGrid({
                 })}
               </div>
 
-              <button
-                onClick={() => setSelectedCell(null)}
-                className="w-full mt-6 bg-gray-200 hover:bg-gray-300 text-gray-700 px-4 py-3 rounded-lg font-semibold transition-all"
-              >
-                Đóng
-              </button>
+              {/* Action Buttons */}
+              <div className="flex gap-3 mt-6">
+                <button
+                  onClick={handleCancel}
+                  disabled={isProcessing}
+                  className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-700 px-4 py-3 rounded-lg font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Hủy
+                </button>
+                <button
+                  onClick={handleSave}
+                  disabled={!hasChanges || isProcessing}
+                  className="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-4 py-3 rounded-lg font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isProcessing ? 'Đang lưu...' : hasChanges ? `Lưu (${changeCount})` : 'Lưu'}
+                </button>
+              </div>
             </div>
           </div>
         );
