@@ -50,6 +50,7 @@ export default function StaffScheduleGrid({
   handleViewModeChange,
 }: StaffScheduleGridProps) {
   const [selectedCell, setSelectedCell] = useState<{ staffId: string; date: string } | null>(null);
+  const [isProcessing, setIsProcessing] = useState(false);
 
   const today = formatDateSchedule(new Date());
   const weekDays = getWeekDays();
@@ -472,21 +473,27 @@ export default function StaffScheduleGrid({
         const selectedShiftIds = staffShifts.map(s => s.shift_template_id);
 
         const handleShiftToggle = async (shiftId: string) => {
-          if (!date || !staffMember) return;
+          if (!date || !staffMember || isProcessing) return;
 
           const isSelected = selectedShiftIds.includes(shiftId);
 
-          if (isSelected) {
-            // Remove this shift
-            const scheduleToRemove = staffShifts.find(s => s.shift_template_id === shiftId);
-            if (scheduleToRemove && handleRemoveStaffFromShift) {
-              handleRemoveStaffFromShift(scheduleToRemove.id, staffMember.display_name);
+          try {
+            setIsProcessing(true);
+
+            if (isSelected) {
+              // Remove this shift
+              const scheduleToRemove = staffShifts.find(s => s.shift_template_id === shiftId);
+              if (scheduleToRemove && handleRemoveStaffFromShift) {
+                handleRemoveStaffFromShift(scheduleToRemove.id, staffMember.display_name);
+              }
+            } else {
+              // Add this shift directly
+              if (handleAssignShift) {
+                await handleAssignShift(staffMember.id, shiftId, selectedCell.date);
+              }
             }
-          } else {
-            // Add this shift directly
-            if (handleAssignShift) {
-              await handleAssignShift(staffMember.id, shiftId, selectedCell.date);
-            }
+          } finally {
+            setIsProcessing(false);
           }
         };
 
@@ -523,13 +530,19 @@ export default function StaffScheduleGrid({
               </div>
 
               <div className="space-y-2">
-                <div className="text-sm font-semibold text-gray-700 mb-3">Chọn ca:</div>
+                <div className="text-sm font-semibold text-gray-700 mb-3">
+                  {isProcessing ? 'Đang xử lý...' : 'Chọn ca:'}
+                </div>
                 {shifts.map((shift) => {
                   const isSelected = selectedShiftIds.includes(shift.id);
                   return (
                     <label
                       key={shift.id}
-                      className={`flex items-center gap-3 p-3 rounded-lg border-2 cursor-pointer transition-all hover:bg-gray-50 ${
+                      className={`flex items-center gap-3 p-3 rounded-lg border-2 transition-all ${
+                        isProcessing
+                          ? 'cursor-not-allowed opacity-60'
+                          : 'cursor-pointer hover:bg-gray-50'
+                      } ${
                         isSelected ? 'border-blue-500 bg-blue-50' : 'border-gray-200'
                       }`}
                     >
@@ -537,7 +550,8 @@ export default function StaffScheduleGrid({
                         type="checkbox"
                         checked={isSelected}
                         onChange={() => handleShiftToggle(shift.id)}
-                        className="w-5 h-5 text-blue-600 rounded"
+                        disabled={isProcessing}
+                        className="w-5 h-5 text-blue-600 rounded disabled:opacity-50 disabled:cursor-not-allowed"
                       />
                       <div
                         className="w-4 h-4 rounded flex-shrink-0"
