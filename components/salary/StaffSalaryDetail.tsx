@@ -1,6 +1,6 @@
 import { StaffSalaryCalculation, SalaryAdjustment } from '@/types';
 import { formatAmount } from '@/lib/salaryCalculations';
-import { shareSalaryPDF } from '@/lib/salaryPDF';
+import { shareSalaryPDF, downloadSalaryPDF } from '@/lib/salaryPDF';
 
 interface StaffSalaryDetailProps {
   calculation: StaffSalaryCalculation;
@@ -35,6 +35,10 @@ export default function StaffSalaryDetail({
     await shareSalaryPDF(calculation, storeName);
   };
 
+  const handleDownloadPDF = async () => {
+    await downloadSalaryPDF(calculation, storeName);
+  };
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-end sm:items-center justify-center z-50">
       <div className="bg-white w-full sm:max-w-2xl sm:rounded-lg max-h-[90vh] overflow-y-auto">
@@ -64,7 +68,17 @@ export default function StaffSalaryDetail({
         <div className="bg-gradient-to-br from-blue-500 to-blue-600 text-white p-6">
           <div className="text-sm opacity-90 mb-1">Tổng lương</div>
           <div className="text-3xl font-bold mb-4">{formatAmount(calculation.final_amount)}đ</div>
-          <div className="flex gap-2">
+          <div className="flex flex-col sm:flex-row gap-2">
+            <button
+              type="button"
+              onClick={handleDownloadPDF}
+              className="flex-1 bg-white bg-opacity-20 hover:bg-opacity-30 text-white px-4 py-3 rounded-lg font-semibold transition-all flex items-center justify-center gap-2"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+              </svg>
+              Tải PDF
+            </button>
             <button
               type="button"
               onClick={handleSharePDF}
