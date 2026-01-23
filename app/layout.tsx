@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import { Providers } from "@/components/Providers";
 import { VersionChecker } from "@/components/VersionChecker";
+import { NetworkErrorHandler } from "@/components/NetworkErrorHandler";
 
 export const metadata: Metadata = {
   title: "Diemdanh.net - Hệ Thống Điểm Danh Thông Minh",
@@ -31,6 +32,7 @@ export default function RootLayout({
       </head>
       <body className="antialiased">
         <Providers>
+          <NetworkErrorHandler />
           <VersionChecker />
           {children}
         </Providers>
