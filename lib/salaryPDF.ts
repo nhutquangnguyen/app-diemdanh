@@ -65,10 +65,12 @@ function createSalaryHTML(calculation: StaffSalaryCalculation, storeName: string
           max-width: 100%;
           margin: 0;
           background: white;
+          color: #000 !important;
         }
         h1, h2, h3 {
           margin: 0;
           padding: 0;
+          color: #000 !important;
         }
         .header {
           text-align: center;
@@ -78,6 +80,7 @@ function createSalaryHTML(calculation: StaffSalaryCalculation, storeName: string
           font-size: 28px;
           font-weight: bold;
           margin-bottom: 10px;
+          color: #000 !important;
         }
         .header h2 {
           font-size: 20px;
@@ -86,6 +89,7 @@ function createSalaryHTML(calculation: StaffSalaryCalculation, storeName: string
         .info {
           margin-bottom: 25px;
           line-height: 1.8;
+          color: #000 !important;
         }
         .section {
           margin-bottom: 25px;
@@ -96,6 +100,7 @@ function createSalaryHTML(calculation: StaffSalaryCalculation, storeName: string
           margin-bottom: 12px;
           padding-bottom: 5px;
           border-bottom: 2px solid #428bca;
+          color: #000 !important;
         }
         .summary-table {
           width: 100%;
@@ -126,16 +131,20 @@ function createSalaryHTML(calculation: StaffSalaryCalculation, storeName: string
         }
         table thead {
           background-color: #428bca;
-          color: white;
+          color: white !important;
         }
         table thead th {
           padding: 10px 8px;
           text-align: left;
           font-weight: bold;
+          color: white !important;
+        }
+        table tbody td {
+          color: #000 !important;
         }
         .total-box {
           background: linear-gradient(135deg, #428bca 0%, #357ebd 100%);
-          color: white;
+          color: white !important;
           padding: 20px;
           text-align: center;
           border-radius: 8px;
@@ -145,10 +154,12 @@ function createSalaryHTML(calculation: StaffSalaryCalculation, storeName: string
           font-size: 14px;
           opacity: 0.9;
           margin-bottom: 5px;
+          color: white !important;
         }
         .total-box .amount {
           font-size: 32px;
           font-weight: bold;
+          color: white !important;
         }
         .signatures {
           display: flex;
@@ -158,19 +169,21 @@ function createSalaryHTML(calculation: StaffSalaryCalculation, storeName: string
         }
         .signature-box {
           text-align: center;
+          color: #000 !important;
         }
         .signature-box .title {
           font-weight: bold;
           margin-bottom: 5px;
+          color: #000 !important;
         }
         .signature-box .subtitle {
           font-size: 11px;
-          color: #999;
+          color: #999 !important;
         }
         .footer {
           text-align: center;
           font-size: 11px;
-          color: #999;
+          color: #999 !important;
           margin-top: 30px;
         }
       </style>

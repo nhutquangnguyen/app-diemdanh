@@ -1,4 +1,7 @@
+import { useMemo } from 'react';
 import { Staff, CheckIn, StaffFilter } from '@/types';
+import { usePagination } from '@/hooks/usePagination';
+import { Pagination } from '@/components/Pagination';
 
 interface StaffAttendanceTableProps {
   staff: Staff[];
@@ -17,15 +20,35 @@ export default function StaffAttendanceTable({
   expandedStaff,
   toggleStaffExpand,
 }: StaffAttendanceTableProps) {
+  // Memoize filtered staff to avoid recalculating on every render
+  const filteredStaff = useMemo(() => {
+    return staff.filter((s: Staff) => {
+      // Filter by search first
+      if (!staffSearch) return true;
+      return s.full_name?.toLowerCase().includes(staffSearch.toLowerCase()) || false;
+    });
+  }, [staff, staffSearch]);
+
+  // Use pagination hook
+  const {
+    currentPage,
+    totalPages,
+    totalItems,
+    itemsPerPage,
+    paginatedItems,
+    goToPage,
+    resetPage,
+  } = usePagination(filteredStaff, 20);
+
+  // Reset to page 1 when filters change
+  useMemo(() => {
+    resetPage();
+  }, [staffSearch, staffFilter, resetPage]);
+
   return (
-    <div className="space-y-3">
-      {staff
-        .filter((s: Staff) => {
-          // Filter by search first
-          if (!staffSearch) return true;
-          return s.full_name?.toLowerCase().includes(staffSearch.toLowerCase()) || false;
-        })
-        .map((s: Staff) => {
+    <>
+      <div className="space-y-3">
+        {paginatedItems.map((s: Staff) => {
           // Get ALL check-ins for this staff today and sort by check_in_time ascending (earliest first)
           const staffCheckIns = todayCheckIns
             .filter((c: CheckIn) => c.staff_id === s.id)
@@ -290,6 +313,16 @@ export default function StaffAttendanceTable({
             </div>
           );
         })}
-    </div>
+      </div>
+
+      {/* Pagination */}
+      <Pagination
+        currentPage={currentPage}
+        totalPages={totalPages}
+        totalItems={totalItems}
+        itemsPerPage={itemsPerPage}
+        onPageChange={goToPage}
+      />
+    </>
   );
 }

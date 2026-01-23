@@ -228,8 +228,8 @@ export default function StaffSalaryDetail({
         <div className="p-4">
           <h3 className="text-md font-bold text-gray-800 mb-3">📅 Chi tiết từng ngày</h3>
           <div className="space-y-2">
-            {calculation.daily_breakdown.map(day => (
-              <div key={day.date} className="bg-gray-50 rounded-lg p-3">
+            {calculation.daily_breakdown.map((day, index) => (
+              <div key={`${day.date}-${day.shift_name || 'shift'}-${index}`} className="bg-gray-50 rounded-lg p-3">
                 <div className="flex justify-between items-start mb-2">
                   <div>
                     <div className="font-semibold text-gray-800">

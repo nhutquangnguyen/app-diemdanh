@@ -1,5 +1,8 @@
 import Link from 'next/link';
+import { useMemo } from 'react';
 import { Staff } from '@/types';
+import { usePagination } from '@/hooks/usePagination';
+import { Pagination } from '@/components/Pagination';
 
 interface StoreStaffProps {
   storeId: string;
@@ -50,6 +53,16 @@ export default function StoreStaff({
   deleteStaff,
   updateStaffInfo,
 }: StoreStaffProps) {
+  // Use pagination hook
+  const {
+    currentPage,
+    totalPages,
+    totalItems,
+    itemsPerPage,
+    paginatedItems,
+    goToPage,
+  } = usePagination(staff, 15);
+
   return (
     <div className="px-4 sm:px-6 py-6">
       <div className="mb-6">
@@ -68,8 +81,9 @@ export default function StoreStaff({
           Chưa có nhân viên nào
         </div>
       ) : (
-        <div className="space-y-4">
-          {staff.map((member) => {
+        <>
+          <div className="space-y-4">
+            {paginatedItems.map((member) => {
             const swipeOffset = swipeState[member.id] || 0;
             return (
             <div key={member.id} className="relative overflow-hidden rounded-lg shadow-sm">
@@ -330,8 +344,20 @@ export default function StoreStaff({
               {/* End of swipeable card */}
             </div>
             );
-          })}
-        </div>
+            })}
+          </div>
+
+          {/* Pagination */}
+          <div className="mt-6">
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              totalItems={totalItems}
+              itemsPerPage={itemsPerPage}
+              onPageChange={goToPage}
+            />
+          </div>
+        </>
       )}
     </div>
   );

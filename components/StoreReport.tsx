@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
 import { Store, CheckIn, Staff, StaffSchedule, ShiftTemplate } from '@/types';
@@ -300,34 +300,36 @@ export default function StoreReport({ storeId }: StoreReportProps) {
     }
   }
 
-  // Filter and sort report data
-  const filteredAndSortedData = reportData
-    .filter((report) => {
-      if (!searchTerm) return true;
-      const search = searchTerm.toLowerCase();
-      return (
-        (report.staff.name && report.staff.name.toLowerCase().includes(search)) ||
-        (report.staff.full_name && report.staff.full_name.toLowerCase().includes(search)) ||
-        report.staff.email.toLowerCase().includes(search)
-      );
-    })
-    .sort((a, b) => {
-      if (!sortColumn) return 0;
+  // Filter and sort report data with useMemo for performance
+  const filteredAndSortedData = useMemo(() => {
+    return reportData
+      .filter((report) => {
+        if (!searchTerm) return true;
+        const search = searchTerm.toLowerCase();
+        return (
+          (report.staff.name && report.staff.name.toLowerCase().includes(search)) ||
+          (report.staff.full_name && report.staff.full_name.toLowerCase().includes(search)) ||
+          report.staff.email.toLowerCase().includes(search)
+        );
+      })
+      .sort((a, b) => {
+        if (!sortColumn) return 0;
 
-      let aValue = a[sortColumn];
-      let bValue = b[sortColumn];
+        let aValue = a[sortColumn];
+        let bValue = b[sortColumn];
 
-      // Handle nested staff object
-      if (sortColumn === 'staff') {
-        aValue = a.staff.name || a.staff.full_name || a.staff.email;
-        bValue = b.staff.name || b.staff.full_name || b.staff.email;
-      }
+        // Handle nested staff object
+        if (sortColumn === 'staff') {
+          aValue = a.staff.name || a.staff.full_name || a.staff.email;
+          bValue = b.staff.name || b.staff.full_name || b.staff.email;
+        }
 
-      // Compare values
-      if (aValue < bValue) return sortDirection === 'asc' ? -1 : 1;
-      if (aValue > bValue) return sortDirection === 'asc' ? 1 : -1;
-      return 0;
-    });
+        // Compare values
+        if (aValue < bValue) return sortDirection === 'asc' ? -1 : 1;
+        if (aValue > bValue) return sortDirection === 'asc' ? 1 : -1;
+        return 0;
+      });
+  }, [reportData, searchTerm, sortColumn, sortDirection]);
 
   function exportToCSV() {
     if (!store) return;

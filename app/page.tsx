@@ -83,11 +83,11 @@ export default function Home() {
     };
   }, [router]);
 
-  // Update time every second
+  // Update time every minute instead of every second to reduce re-renders
   useEffect(() => {
     const timer = setInterval(() => {
       setCurrentTime(new Date());
-    }, 1000);
+    }, 60000); // 60 seconds
 
     return () => clearInterval(timer);
   }, []);
