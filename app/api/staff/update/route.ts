@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 
-export const runtime = 'edge';
+// Use Node.js runtime to reduce Vercel Edge Request costs
+// export const runtime = 'edge';
 
 // Create admin client with service role (bypasses RLS)
 const supabaseAdmin = createClient(

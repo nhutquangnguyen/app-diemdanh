@@ -2,7 +2,9 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { calculateStaffMonthlySalary } from '@/lib/salaryCalculations';
 
-export const runtime = 'edge';
+// Use Node.js runtime instead of edge to reduce Vercel Edge Request costs
+// Salary calculations are not latency-critical and can tolerate 100-200ms extra
+// export const runtime = 'edge';
 
 // Create admin client with service role (bypasses RLS)
 const supabaseAdmin = createClient(

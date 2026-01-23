@@ -17,7 +17,7 @@ export const queryKeys = {
     ['salaryAdjustments', storeId, month] as const,
 };
 
-// Stores queries
+// Stores queries (rarely change - cache for 30 minutes)
 export function useStores(ownerId?: string) {
   return useQuery({
     queryKey: queryKeys.stores(ownerId),
@@ -33,6 +33,8 @@ export function useStores(ownerId?: string) {
       return data as Store[];
     },
     enabled: !!ownerId,
+    staleTime: 1000 * 60 * 30, // 30 minutes
+    gcTime: 1000 * 60 * 60, // 1 hour
   });
 }
 
@@ -50,10 +52,12 @@ export function useStore(storeId: string) {
       return data as Store;
     },
     enabled: !!storeId,
+    staleTime: 1000 * 60 * 30, // 30 minutes (store settings rarely change)
+    gcTime: 1000 * 60 * 60, // 1 hour
   });
 }
 
-// Staff queries
+// Staff queries (changes occasionally - cache for 15 minutes)
 export function useStaff(storeId: string) {
   return useQuery({
     queryKey: queryKeys.staff(storeId),
@@ -68,6 +72,8 @@ export function useStaff(storeId: string) {
       return data as Staff[];
     },
     enabled: !!storeId,
+    staleTime: 1000 * 60 * 15, // 15 minutes (staff list changes occasionally)
+    gcTime: 1000 * 60 * 30, // 30 minutes
   });
 }
 
@@ -87,7 +93,7 @@ export function useStaffByEmail(email: string) {
   });
 }
 
-// Check-ins queries
+// Check-ins queries (changes frequently - cache for 2 minutes)
 export function useCheckIns(params: {
   storeId?: string;
   staffId?: string;
@@ -130,10 +136,12 @@ export function useCheckIns(params: {
       return data as CheckIn[];
     },
     enabled: !!(params.storeId || params.staffId),
+    staleTime: 1000 * 60 * 2, // 2 minutes (current data, but not real-time)
+    gcTime: 1000 * 60 * 10, // 10 minutes
   });
 }
 
-// Shifts queries
+// Shifts queries (rarely change - cache for 1 hour)
 export function useShifts(storeId: string) {
   return useQuery({
     queryKey: queryKeys.shifts(storeId),
@@ -148,10 +156,12 @@ export function useShifts(storeId: string) {
       return data as ShiftTemplate[];
     },
     enabled: !!storeId,
+    staleTime: 1000 * 60 * 60, // 1 hour (shift templates rarely change)
+    gcTime: 1000 * 60 * 120, // 2 hours
   });
 }
 
-// Schedules queries
+// Schedules queries (changes moderately - cache for 5 minutes)
 export function useSchedules(storeId: string, startDate?: string, endDate?: string) {
   return useQuery({
     queryKey: queryKeys.schedules(storeId, startDate, endDate),
@@ -175,6 +185,8 @@ export function useSchedules(storeId: string, startDate?: string, endDate?: stri
       return data as StaffSchedule[];
     },
     enabled: !!storeId,
+    staleTime: 1000 * 60 * 5, // 5 minutes (schedules change moderately)
+    gcTime: 1000 * 60 * 15, // 15 minutes
   });
 }
 

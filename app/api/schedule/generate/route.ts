@@ -6,7 +6,9 @@ import type {
   SmartScheduleAvailability,
 } from '@/types';
 
-export const runtime = 'edge';
+// Use Node.js runtime instead of edge to reduce Vercel Edge Request costs
+// Schedule generation is already slow (complex algorithm), won't notice 100ms difference
+// export const runtime = 'edge';
 
 // Create admin client with service role (bypasses RLS)
 const supabaseAdmin = createClient(

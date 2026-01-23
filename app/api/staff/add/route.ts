@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
 
-export const runtime = 'edge';
+// Use Node.js runtime to reduce Vercel Edge Request costs
+// export const runtime = 'edge';
 
 interface AddStaffRequest {
   storeId: string;
