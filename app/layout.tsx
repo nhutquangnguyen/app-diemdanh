@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { Providers } from "@/components/Providers";
+import { VersionChecker } from "@/components/VersionChecker";
 
 export const metadata: Metadata = {
   title: "Diemdanh.net - Hệ Thống Điểm Danh Thông Minh",
@@ -24,9 +25,13 @@ export default function RootLayout({
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
         <meta name="apple-mobile-web-app-title" content="DiemDanh" />
         <link rel="apple-touch-icon" href="/icon-192.png" />
+        <meta httpEquiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+        <meta httpEquiv="Pragma" content="no-cache" />
+        <meta httpEquiv="Expires" content="0" />
       </head>
       <body className="antialiased">
         <Providers>
+          <VersionChecker />
           {children}
         </Providers>
       </body>
