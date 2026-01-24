@@ -1,6 +1,9 @@
+import { useState } from 'react';
 import { StaffSalaryCalculation, SalaryAdjustment } from '@/types';
 import { formatAmount } from '@/lib/salaryCalculations';
 import { shareSalaryPDF, downloadSalaryPDF } from '@/lib/salaryPDF';
+import CheckInEditModal from './CheckInEditModal';
+import { supabase } from '@/lib/supabase';
 
 interface StaffSalaryDetailProps {
   calculation: StaffSalaryCalculation;
@@ -11,6 +14,7 @@ interface StaffSalaryDetailProps {
   onDeleteAdjustment: (adjustmentId: string) => void;
   onTogglePaymentStatus: () => void;
   isPaid: boolean;
+  onRefresh: () => void;
 }
 
 export default function StaffSalaryDetail({
@@ -22,7 +26,20 @@ export default function StaffSalaryDetail({
   onDeleteAdjustment,
   onTogglePaymentStatus,
   isPaid,
+  onRefresh,
 }: StaffSalaryDetailProps) {
+  const [editingCheckIn, setEditingCheckIn] = useState<{
+    checkInId: string | null;
+    scheduleId?: string;
+    shiftTemplateId?: string;
+    currentCheckInTime: string | null;
+    currentCheckOutTime: string | null;
+    expectedCheckInTime?: string;
+    expectedCheckOutTime?: string;
+    date: string;
+    isAbsent?: boolean;
+  } | null>(null);
+
   const displayName = calculation.staff.name || calculation.staff.full_name;
   const initials = displayName
     ?.split(' ')
@@ -37,6 +54,63 @@ export default function StaffSalaryDetail({
 
   const handleDownloadPDF = async () => {
     await downloadSalaryPDF(calculation, storeName);
+  };
+
+  const handleSaveCheckInEdit = async (data: {
+    checkInTime: string | null;
+    checkOutTime: string | null;
+    reason: string;
+  }) => {
+    try {
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+
+      if (userError || !user) {
+        alert('Phiên đăng nhập đã hết hạn');
+        return;
+      }
+
+      const requestBody: any = {
+        checkInId: editingCheckIn?.checkInId,
+        checkInTime: data.checkInTime,
+        checkOutTime: data.checkOutTime,
+        reason: data.reason,
+        userId: user.id,
+      };
+
+      // For absent days, include additional fields needed to create check-in
+      if (!editingCheckIn?.checkInId && editingCheckIn?.scheduleId) {
+        requestBody.scheduleId = editingCheckIn.scheduleId;
+        requestBody.shiftTemplateId = editingCheckIn.shiftTemplateId;
+        requestBody.staffId = calculation.staff.id;
+        requestBody.storeId = calculation.staff.store_id;
+      }
+
+      const response = await fetch('/api/check-ins/edit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(requestBody),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to save edit');
+      }
+
+      // Close the edit modal
+      setEditingCheckIn(null);
+
+      // Refresh salary calculations - this will update the parent state
+      // and trigger a re-render with fresh calculation data
+      await onRefresh();
+
+      // Small delay to ensure React state has propagated
+      // before the component re-renders with new calculation
+      await new Promise(resolve => setTimeout(resolve, 300));
+
+      console.log('✅ Check-in time updated successfully');
+    } catch (error) {
+      console.error('Error saving check-in edit:', error);
+      throw error;
+    }
   };
 
   // Helper function to parse time string to minutes
@@ -75,7 +149,7 @@ export default function StaffSalaryDetail({
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-end sm:items-center justify-center z-50">
       <div className="bg-white w-full sm:max-w-2xl sm:rounded-lg max-h-[90vh] overflow-y-auto">
         {/* Header */}
-        <div className="sticky top-0 bg-white border-b border-gray-200 p-4 flex items-center justify-between">
+        <div className="sticky top-0 bg-white border-b border-gray-200 p-4 flex items-center justify-between z-10">
           <div className="flex items-center gap-3">
             <div className="w-12 h-12 rounded-full flex items-center justify-center text-white font-bold text-sm bg-gradient-to-br from-blue-500 to-blue-600">
               {initials}
@@ -94,6 +168,72 @@ export default function StaffSalaryDetail({
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
             </svg>
           </button>
+        </div>
+
+        {/* Statistics */}
+        <div className="bg-gray-50 p-3 sm:p-4 border-b border-gray-200">
+          <h3 className="text-xs sm:text-sm font-bold text-gray-700 mb-2">📊 Thống kê chấm công</h3>
+          <div className="grid grid-cols-3 sm:grid-cols-6 gap-1.5 sm:gap-2">
+            {/* On Time */}
+            <div className="bg-white rounded-lg p-2 sm:p-3 border border-green-200">
+              <div className="text-center">
+                <div className="text-lg sm:text-2xl font-bold text-green-600">
+                  {calculation.daily_breakdown.filter(d => d.status === 'on_time').length}
+                </div>
+                <div className="text-[10px] sm:text-xs text-gray-600 mt-0.5 sm:mt-1">Đúng giờ</div>
+              </div>
+            </div>
+
+            {/* Overtime */}
+            <div className="bg-white rounded-lg p-2 sm:p-3 border border-purple-200">
+              <div className="text-center">
+                <div className="text-lg sm:text-2xl font-bold text-purple-600">
+                  {calculation.daily_breakdown.filter(d => d.status === 'overtime').length}
+                </div>
+                <div className="text-[10px] sm:text-xs text-gray-600 mt-0.5 sm:mt-1">Tăng ca</div>
+              </div>
+            </div>
+
+            {/* Late */}
+            <div className="bg-white rounded-lg p-2 sm:p-3 border border-yellow-200">
+              <div className="text-center">
+                <div className="text-lg sm:text-2xl font-bold text-yellow-600">
+                  {calculation.daily_breakdown.filter(d => d.status === 'late').length}
+                </div>
+                <div className="text-[10px] sm:text-xs text-gray-600 mt-0.5 sm:mt-1">Muộn</div>
+              </div>
+            </div>
+
+            {/* Early Checkout */}
+            <div className="bg-white rounded-lg p-2 sm:p-3 border border-orange-200">
+              <div className="text-center">
+                <div className="text-lg sm:text-2xl font-bold text-orange-600">
+                  {calculation.daily_breakdown.filter(d => d.status === 'early_checkout').length}
+                </div>
+                <div className="text-[10px] sm:text-xs text-gray-600 mt-0.5 sm:mt-1">Về sớm</div>
+              </div>
+            </div>
+
+            {/* Absent */}
+            <div className="bg-white rounded-lg p-2 sm:p-3 border border-gray-200">
+              <div className="text-center">
+                <div className="text-lg sm:text-2xl font-bold text-gray-600">
+                  {calculation.daily_breakdown.filter(d => d.status === 'absent').length}
+                </div>
+                <div className="text-[10px] sm:text-xs text-gray-600 mt-0.5 sm:mt-1">Vắng mặt</div>
+              </div>
+            </div>
+
+            {/* Upcoming */}
+            <div className="bg-white rounded-lg p-2 sm:p-3 border border-blue-200">
+              <div className="text-center">
+                <div className="text-lg sm:text-2xl font-bold text-blue-600">
+                  {calculation.daily_breakdown.filter(d => d.status === 'upcoming').length}
+                </div>
+                <div className="text-[10px] sm:text-xs text-gray-600 mt-0.5 sm:mt-1">Chưa đến</div>
+              </div>
+            </div>
+          </div>
         </div>
 
         {/* Total Amount */}
@@ -276,28 +416,28 @@ export default function StaffSalaryDetail({
                     )}
                   </div>
                   <div className="text-right">
-                    {day.status === 'absent' ? (
+                    {day.status === 'absent' && (
                       <span className="text-xs px-2 py-1 rounded-full bg-gray-200 text-gray-600">Vắng mặt</span>
-                    ) : (
-                      <>
-                        {day.status === 'late' && (
-                          <span className="text-xs px-2 py-1 rounded-full bg-yellow-100 text-yellow-700 mr-1">Muộn</span>
-                        )}
-                        {day.status === 'early_checkout' && (
-                          <span className="text-xs px-2 py-1 rounded-full bg-orange-100 text-orange-700 mr-1">Về sớm</span>
-                        )}
-                        {day.status === 'overtime' && (
-                          <span className="text-xs px-2 py-1 rounded-full bg-purple-100 text-purple-700 mr-1">Tăng ca</span>
-                        )}
-                        {day.status === 'on_time' && (
-                          <span className="text-xs px-2 py-1 rounded-full bg-green-100 text-green-700 mr-1">Đúng giờ</span>
-                        )}
-                      </>
+                    )}
+                    {day.status === 'upcoming' && (
+                      <span className="text-xs px-2 py-1 rounded-full bg-blue-100 text-blue-700">Chưa đến</span>
+                    )}
+                    {day.status === 'late' && (
+                      <span className="text-xs px-2 py-1 rounded-full bg-yellow-100 text-yellow-700 mr-1">Muộn</span>
+                    )}
+                    {day.status === 'early_checkout' && (
+                      <span className="text-xs px-2 py-1 rounded-full bg-orange-100 text-orange-700 mr-1">Về sớm</span>
+                    )}
+                    {day.status === 'overtime' && (
+                      <span className="text-xs px-2 py-1 rounded-full bg-purple-100 text-purple-700 mr-1">Tăng ca</span>
+                    )}
+                    {day.status === 'on_time' && (
+                      <span className="text-xs px-2 py-1 rounded-full bg-green-100 text-green-700 mr-1">Đúng giờ</span>
                     )}
                   </div>
                 </div>
 
-                {day.status !== 'absent' && (() => {
+                {(() => {
                   const shiftInfo = day.shift_time ? parseShiftTime(day.shift_time) : null;
                   const actualHours = day.check_in_time && day.check_out_time
                     ? calculateHours(day.check_in_time, day.check_out_time)
@@ -307,7 +447,31 @@ export default function StaffSalaryDetail({
                   return (
                     <>
                       {/* Time Comparison Section */}
-                      <div className="bg-white rounded-lg p-3 mb-2 border border-gray-200">
+                      <div className="bg-white rounded-lg p-3 mb-2 border border-gray-200 relative">
+                        {/* Edit Button - Top Right */}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setEditingCheckIn({
+                              checkInId: day.check_in_id || null,
+                              scheduleId: day.schedule_id,
+                              shiftTemplateId: day.shift_template_id,
+                              currentCheckInTime: day.check_in_time || null,
+                              currentCheckOutTime: day.check_out_time || null,
+                              expectedCheckInTime: shiftInfo?.start,
+                              expectedCheckOutTime: shiftInfo?.end,
+                              date: day.date,
+                              isAbsent: !day.check_in_id,
+                            });
+                          }}
+                          className="absolute top-2 right-2 p-1.5 hover:bg-gray-100 rounded-lg transition-colors group"
+                          title="Chỉnh sửa giờ vào/ra"
+                        >
+                          <svg className="w-4 h-4 text-gray-400 group-hover:text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                          </svg>
+                        </button>
+
                         {/* Header Row */}
                         <div className="grid grid-cols-3 gap-2 mb-2 pb-2 border-b border-gray-200">
                           <div className="text-xs font-semibold text-gray-700"></div>
@@ -336,6 +500,11 @@ export default function StaffSalaryDetail({
                             }`}>
                               {day.check_in_time ? new Date(day.check_in_time).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }) : '--:--'}
                             </span>
+                            {day.is_edited && (
+                              <span className="ml-1 text-xs px-1.5 py-0.5 rounded-full bg-orange-100 text-orange-700 font-semibold">
+                                Đã sửa
+                              </span>
+                            )}
                             {day.status === 'late' && (
                               <svg className="w-3 h-3 text-yellow-600 inline-block ml-1" fill="currentColor" viewBox="0 0 20 20">
                                 <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
@@ -365,6 +534,11 @@ export default function StaffSalaryDetail({
                             }`}>
                               {day.check_out_time ? new Date(day.check_out_time).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }) : '--:--'}
                             </span>
+                            {day.is_edited && (
+                              <span className="ml-1 text-xs px-1.5 py-0.5 rounded-full bg-orange-100 text-orange-700 font-semibold">
+                                Đã sửa
+                              </span>
+                            )}
                             {day.status === 'early_checkout' && (
                               <svg className="w-3 h-3 text-orange-600 inline-block ml-1" fill="currentColor" viewBox="0 0 20 20">
                                 <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
@@ -445,6 +619,21 @@ export default function StaffSalaryDetail({
           </div>
         </div>
       </div>
+
+      {/* Edit Check-in Modal */}
+      {editingCheckIn && (
+        <CheckInEditModal
+          checkInId={editingCheckIn.checkInId}
+          currentCheckInTime={editingCheckIn.currentCheckInTime}
+          currentCheckOutTime={editingCheckIn.currentCheckOutTime}
+          expectedCheckInTime={editingCheckIn.expectedCheckInTime}
+          expectedCheckOutTime={editingCheckIn.expectedCheckOutTime}
+          date={editingCheckIn.date}
+          onClose={() => setEditingCheckIn(null)}
+          onSave={handleSaveCheckInEdit}
+          isAbsent={editingCheckIn.isAbsent}
+        />
+      )}
     </div>
   );
 }

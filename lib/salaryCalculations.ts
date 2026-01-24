@@ -142,12 +142,22 @@ export function calculateStaffMonthlySalary(
       });
 
       if (!checkIn) {
-        // Absent - deduct the shift portion
+        // Check if shift start time is in the future
+        const now = new Date();
+        const [shiftHour, shiftMin] = shift.start_time.split(':').map(Number);
+        const shiftStartTime = new Date(schedule.scheduled_date + 'T00:00:00');
+        shiftStartTime.setHours(shiftHour, shiftMin, 0, 0);
+        const isFuture = shiftStartTime > now;
+
+        // Future shifts are 'upcoming', past shifts are 'absent'
         dailyBreakdown.push({
           date: schedule.scheduled_date,
+          check_in_id: undefined,
+          schedule_id: schedule.id,
+          shift_template_id: schedule.shift_template_id,
           shift_name: shift.name,
           shift_time: `${shift.start_time.substring(0, 5)} - ${shift.end_time.substring(0, 5)}`,
-          status: 'absent',
+          status: isFuture ? 'upcoming' : 'absent',
           base_pay: 0,
           late_penalty: 0,
           early_penalty: 0,
@@ -200,10 +210,14 @@ export function calculateStaffMonthlySalary(
 
       dailyBreakdown.push({
         date: schedule.scheduled_date,
+        check_in_id: checkIn.id,
+        schedule_id: schedule.id,
+        shift_template_id: schedule.shift_template_id,
         shift_name: shift.name,
         shift_time: `${shift.start_time.substring(0, 5)} - ${shift.end_time.substring(0, 5)}`,
         check_in_time: checkIn.check_in_time,
         check_out_time: checkIn.check_out_time,
+        is_edited: checkIn.is_edited || false,
         status,
         base_pay: basePerShift,
         late_penalty: -latePenalty,
@@ -231,12 +245,22 @@ export function calculateStaffMonthlySalary(
       });
 
       if (!checkIn) {
-        // Absent - no pay
+        // Check if shift start time is in the future
+        const now = new Date();
+        const [shiftHour, shiftMin] = shift.start_time.split(':').map(Number);
+        const shiftStartTime = new Date(schedule.scheduled_date + 'T00:00:00');
+        shiftStartTime.setHours(shiftHour, shiftMin, 0, 0);
+        const isFuture = shiftStartTime > now;
+
+        // Future shifts are 'upcoming', past shifts are 'absent'
         dailyBreakdown.push({
           date: schedule.scheduled_date,
+          check_in_id: undefined,
+          schedule_id: schedule.id,
+          shift_template_id: schedule.shift_template_id,
           shift_name: shift.name,
           shift_time: `${shift.start_time.substring(0, 5)} - ${shift.end_time.substring(0, 5)}`,
-          status: 'absent',
+          status: isFuture ? 'upcoming' : 'absent',
           base_pay: 0,
           late_penalty: 0,
           early_penalty: 0,
@@ -290,10 +314,14 @@ export function calculateStaffMonthlySalary(
 
       dailyBreakdown.push({
         date: schedule.scheduled_date,
+        check_in_id: checkIn.id,
+        schedule_id: schedule.id,
+        shift_template_id: schedule.shift_template_id,
         shift_name: shift.name,
         shift_time: `${shift.start_time.substring(0, 5)} - ${shift.end_time.substring(0, 5)}`,
         check_in_time: checkIn.check_in_time,
         check_out_time: checkIn.check_out_time,
+        is_edited: checkIn.is_edited || false,
         status,
         base_pay: basePay,
         late_penalty: -latePenalty,
@@ -326,12 +354,22 @@ export function calculateStaffMonthlySalary(
       const basePay = shiftDurationHours * staff.hour_rate;
 
     if (!checkIn) {
-      // Absent - no pay
+      // Check if shift start time is in the future
+      const now = new Date();
+      const [shiftHour, shiftMin] = shift.start_time.split(':').map(Number);
+      const shiftStartTime = new Date(schedule.scheduled_date + 'T00:00:00');
+      shiftStartTime.setHours(shiftHour, shiftMin, 0, 0);
+      const isFuture = shiftStartTime > now;
+
+      // Future shifts are 'upcoming', past shifts are 'absent'
       dailyBreakdown.push({
         date: schedule.scheduled_date,
+        check_in_id: undefined,
+        schedule_id: schedule.id,
+        shift_template_id: schedule.shift_template_id,
         shift_name: shift.name,
         shift_time: `${shift.start_time.substring(0, 5)} - ${shift.end_time.substring(0, 5)}`,
-        status: 'absent',
+        status: isFuture ? 'upcoming' : 'absent',
         base_pay: 0,
         late_penalty: 0,
         early_penalty: 0,
@@ -382,10 +420,14 @@ export function calculateStaffMonthlySalary(
 
     dailyBreakdown.push({
       date: schedule.scheduled_date,
+      check_in_id: checkIn.id,
+      schedule_id: schedule.id,
+      shift_template_id: schedule.shift_template_id,
       shift_name: shift.name,
       shift_time: `${shift.start_time.substring(0, 5)} - ${shift.end_time.substring(0, 5)}`,
       check_in_time: checkIn.check_in_time,
       check_out_time: checkIn.check_out_time,
+      is_edited: checkIn.is_edited || false,
       status,
       base_pay: basePay,
       late_penalty: -latePenalty,

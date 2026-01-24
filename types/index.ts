@@ -69,6 +69,10 @@ export interface CheckIn {
   checkout_selfie_url?: string;
   status: 'success' | 'late' | 'wrong_location';
   notes?: string;
+  is_edited?: boolean;
+  edit_reason?: string;
+  edited_by?: string;
+  edited_at?: string;
   created_at: string;
 }
 
@@ -155,11 +159,15 @@ export interface SalaryConfirmation {
 
 export interface DailyWorkBreakdown {
   date: string;
+  check_in_id?: string; // Check-in record ID (null for absent days)
+  schedule_id?: string; // Schedule ID (needed to create check-in for absent days)
+  shift_template_id?: string; // Shift template ID (needed to create check-in for absent days)
   shift_name?: string;
   shift_time?: string;
   check_in_time?: string;
   check_out_time?: string;
-  status: 'on_time' | 'late' | 'early_checkout' | 'absent' | 'overtime';
+  is_edited?: boolean; // Indicates if check-in/out times were edited
+  status: 'on_time' | 'late' | 'early_checkout' | 'absent' | 'overtime' | 'upcoming';
   base_pay: number;
   late_penalty: number;
   early_penalty: number;

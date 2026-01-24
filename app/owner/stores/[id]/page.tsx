@@ -39,8 +39,27 @@ export default function StoreDetail() {
   const storeId = params.id as string;
   const toast = useToast();
 
+  // Session monitoring - detect silent logout
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      console.log('🔐 [AUTH] State changed:', event, session?.user?.email);
+
+      if (event === 'SIGNED_OUT' || event === 'TOKEN_REFRESHED' && !session) {
+        console.warn('⚠️ [AUTH] User logged out or session expired');
+        toast.error('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.');
+        router.push('/auth/login');
+      }
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const [store, setStore] = useState<Store | null>(null);
-  const [checkIns, setCheckIns] = useState<CheckIn[]>([]);
+  const [checkIns, setCheckIns] = useState<CheckIn[]>([]); // For "today" tab
+  const [salaryCheckIns, setSalaryCheckIns] = useState<CheckIn[]>([]); // For salary tab (month-specific)
   const [staff, setStaff] = useState<Staff[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
@@ -152,10 +171,35 @@ export default function StoreDetail() {
   };
 
   useEffect(() => {
-    loadStoreData();
-    // Auto-refresh every 30 seconds
-    const interval = setInterval(loadStoreData, 30000);
+    const verifySessionAndLoad = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+
+      if (!user) {
+        console.warn('⚠️ [AUTH] No active session found on page load');
+        toast.error('Bạn cần đăng nhập để xem trang này');
+        router.push('/auth/login');
+        return;
+      }
+
+      console.log('✅ [AUTH] Session verified, loading data');
+      loadStoreData();
+    };
+
+    verifySessionAndLoad();
+
+    // Auto-refresh every 30 seconds (with session check)
+    const interval = setInterval(async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        loadStoreData(); // Safe to always refresh - uses separate state from salary
+      } else {
+        console.warn('⚠️ [AUTH] Session expired during auto-refresh');
+        clearInterval(interval);
+      }
+    }, 30000);
+
     return () => clearInterval(interval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [storeId]);
 
   useEffect(() => {
@@ -513,7 +557,17 @@ export default function StoreDetail() {
         throw new Error(result.error || 'Failed to update settings');
       }
 
-      loadStoreData();
+      // Only reload the store settings, not everything
+      const { data: updatedStore, error: storeError } = await supabase
+        .from('stores')
+        .select('*')
+        .eq('id', storeId)
+        .single();
+
+      if (!storeError && updatedStore) {
+        setStore(updatedStore);
+        toast.success('Đã cập nhật cài đặt thành công');
+      }
     } catch (error: any) {
       console.error('Error updating settings:', error);
       toast.error('Lỗi khi cập nhật cài đặt: ' + error.message);
@@ -535,6 +589,15 @@ export default function StoreDetail() {
       if (storeError) throw storeError;
       setStore(storeData);
 
+      // Check authentication
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+      console.log('🔐 [AUTH] Current user:', {
+        id: authUser?.id,
+        email: authUser?.email,
+        storeId,
+        storeOwnerId: storeData?.owner_id
+      });
+
       // Load check-ins
       const { data: checkInsData, error: checkInsError } = await supabase
         .from('check_ins')
@@ -543,7 +606,23 @@ export default function StoreDetail() {
         .order('check_in_time', { ascending: false })
         .limit(50);
 
-      if (!checkInsError) {
+      console.log('📋 [DATA] Check-ins query result:', {
+        success: !checkInsError,
+        error: checkInsError?.message,
+        total: checkInsData?.length || 0,
+        dates: checkInsData?.slice(0, 5).map(c => c.check_in_time) || []
+      });
+
+      if (checkInsError) {
+        console.error('❌ [DATA] Error loading check-ins:', checkInsError);
+
+        // Check if it's an auth/permission error
+        if (checkInsError.code === 'PGRST301' || checkInsError.message?.includes('JWT') || !authUser) {
+          toast.error('Phiên đăng nhập không hợp lệ. Đang chuyển đến trang đăng nhập...');
+          setTimeout(() => router.push('/auth/login'), 2000);
+          return;
+        }
+      } else {
         setCheckIns(checkInsData || []);
       }
 
@@ -1420,7 +1499,33 @@ export default function StoreDetail() {
         .lte('scheduled_date', lastDayStr);
 
       if (schedError) throw schedError;
+
+      console.log('📋 [DATA] Loaded schedules for salary:', {
+        month: `${firstDay} to ${lastDayStr}`,
+        total: schedulesData?.length || 0,
+        dates: schedulesData?.slice(0, 5).map(s => s.scheduled_date) || []
+      });
+
       setSchedules(schedulesData || []);
+
+      // Also reload check-ins for the selected month (needed for accurate salary calculations after edits)
+      const { data: checkInsData, error: checkInsError } = await supabase
+        .from('check_ins')
+        .select('*, staff(*)')
+        .eq('store_id', storeId)
+        .gte('check_in_time', firstDay)
+        .lte('check_in_time', `${lastDayStr}T23:59:59`)
+        .order('check_in_time', { ascending: false });
+
+      if (!checkInsError) {
+        console.log('📋 [DATA] Reloaded check-ins for salary:', {
+          month: `${firstDay} to ${lastDayStr}`,
+          total: checkInsData?.length || 0
+        });
+        setSalaryCheckIns(checkInsData || []); // Use separate state for salary
+      } else {
+        console.error('❌ [DATA] Error reloading check-ins:', checkInsError);
+      }
     } catch (error) {
       console.error('Error loading salary data:', error);
       toast.error('Lỗi khi tải dữ liệu lương');
@@ -1671,8 +1776,8 @@ export default function StoreDetail() {
       return s.staff_id === staffMember.id && scheduleMonth === selectedMonth;
     });
 
-    // Get check-ins for this staff in the selected month
-    const monthCheckIns = checkIns.filter(c => {
+    // Get check-ins for this staff in the selected month (use salary-specific state)
+    const monthCheckIns = salaryCheckIns.filter(c => {
       if (c.staff_id !== staffMember.id) return false;
       const checkInDate = new Date(c.check_in_time);
       const checkInMonth = `${checkInDate.getFullYear()}-${String(checkInDate.getMonth() + 1).padStart(2, '0')}`;
@@ -1681,6 +1786,18 @@ export default function StoreDetail() {
 
     // Get adjustments for this staff in the selected month
     const staffAdjustments = salaryAdjustments.filter(a => a.staff_id === staffMember.id);
+
+    // Debug logging
+    console.log(`💰 [SALARY] Staff: ${staffMember.name || staffMember.full_name}`, {
+      selectedMonth,
+      schedules: monthSchedules.length,
+      checkIns: monthCheckIns.length,
+      adjustments: staffAdjustments.length,
+      salaryType: staffMember.salary_type,
+      hourRate: staffMember.hour_rate,
+      monthlyRate: staffMember.monthly_rate,
+      dailyRate: staffMember.daily_rate,
+    });
 
     return calculateStaffMonthlySalary(
       staffMember,
@@ -2361,6 +2478,7 @@ export default function StoreDetail() {
             onDeleteAdjustment={handleDeleteAdjustment}
             onTogglePaymentStatus={() => handleTogglePaymentStatus(selectedStaffForSalary, confirmation?.status === 'paid' ? 'paid' : 'unpaid')}
             isPaid={confirmation?.status === 'paid'}
+            onRefresh={loadSalaryData}
           />
         );
       })()}
