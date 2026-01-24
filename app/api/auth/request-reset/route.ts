@@ -167,7 +167,7 @@ async function sendResetCodeEmail(email: string, code: string) {
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      from: 'Điểm danh thông minh - diemdanh.net <help@thongbao.diemdanh.net>',
+      from: 'Điểm danh thông minh - diemdanh.net <onboarding@resend.dev>',
       to: [email],
       subject: 'Mã đặt lại mật khẩu - diemdanh.net',
       html: htmlContent,

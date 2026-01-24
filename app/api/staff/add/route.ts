@@ -290,7 +290,7 @@ async function sendInvitationEmail(email: string, token: string, storeName: stri
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      from: 'Điểm danh thông minh - diemdanh.net <help@thongbao.diemdanh.net>',
+      from: 'Điểm danh thông minh - diemdanh.net <onboarding@resend.dev>',
       to: [email],
       subject: 'Lời mời tham gia diemdanh.net',
       html: htmlContent,
