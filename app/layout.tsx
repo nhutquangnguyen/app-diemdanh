@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { Providers } from "@/components/Providers";
-import { VersionChecker } from "@/components/VersionChecker";
 import { NetworkErrorHandler } from "@/components/NetworkErrorHandler";
 
 export const metadata: Metadata = {
@@ -33,7 +32,6 @@ export default function RootLayout({
       <body className="antialiased">
         <Providers>
           <NetworkErrorHandler />
-          <VersionChecker />
           {children}
         </Providers>
       </body>

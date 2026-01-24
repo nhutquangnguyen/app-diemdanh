@@ -9,6 +9,7 @@ import { useEffect, useState } from 'react';
 export function NetworkErrorHandler() {
   const [showError, setShowError] = useState(false);
   const [isOnline, setIsOnline] = useState(true);
+  const [autoReloadCountdown, setAutoReloadCountdown] = useState<number | null>(null);
 
   useEffect(() => {
     // Check if we're online
@@ -20,6 +21,8 @@ export function NetworkErrorHandler() {
 
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
+
+    let countdownInterval: NodeJS.Timeout | null = null;
 
     // Test connectivity to API
     const testConnectivity = async () => {
@@ -36,11 +39,39 @@ export function NetworkErrorHandler() {
 
         if (!response.ok) {
           setShowError(true);
+          startAutoReloadCountdown();
+        } else {
+          // Connection successful, hide error if showing
+          setShowError(false);
+          if (countdownInterval) {
+            clearInterval(countdownInterval);
+            setAutoReloadCountdown(null);
+          }
         }
       } catch (error) {
         console.error('Connectivity test failed:', error);
         setShowError(true);
+        startAutoReloadCountdown();
       }
+    };
+
+    const startAutoReloadCountdown = () => {
+      // Don't start another countdown if one is already running
+      if (countdownInterval) return;
+
+      // Auto-reload after 30 seconds if user doesn't take action
+      let countdown = 30;
+      setAutoReloadCountdown(countdown);
+
+      countdownInterval = setInterval(() => {
+        countdown--;
+        setAutoReloadCountdown(countdown);
+
+        if (countdown <= 0) {
+          if (countdownInterval) clearInterval(countdownInterval);
+          handleClearAndReload();
+        }
+      }, 1000);
     };
 
     // Test on mount and every 30 seconds
@@ -51,6 +82,7 @@ export function NetworkErrorHandler() {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
       clearInterval(interval);
+      if (countdownInterval) clearInterval(countdownInterval);
     };
   }, []);
 
@@ -130,6 +162,17 @@ export function NetworkErrorHandler() {
             <p className="text-gray-600 mb-4">
               Có vẻ như bạn đang sử dụng phiên bản cũ hoặc DNS cache đang gây lỗi.
             </p>
+
+            {autoReloadCountdown !== null && autoReloadCountdown > 0 && (
+              <div className="mb-2 p-4 bg-blue-50 border-2 border-blue-200 rounded-lg">
+                <p className="text-sm text-blue-900 font-medium text-center">
+                  ⏰ Tự động tải lại sau: <span className="text-3xl font-bold text-blue-600">{autoReloadCountdown}s</span>
+                </p>
+                <p className="text-xs text-blue-700 mt-1 text-center">
+                  Hoặc nhấn nút bên dưới để tải lại ngay
+                </p>
+              </div>
+            )}
           </div>
 
           <div className="space-y-3">
