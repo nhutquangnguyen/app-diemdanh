@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { StaffSalaryCalculation, SalaryAdjustment } from '@/types';
 import { formatAmount } from '@/lib/salaryCalculations';
 import { shareSalaryPDF, downloadSalaryPDF } from '@/lib/salaryPDF';
@@ -28,6 +29,7 @@ export default function StaffSalaryDetail({
   isPaid,
   onRefresh,
 }: StaffSalaryDetailProps) {
+  const router = useRouter();
   const [editingCheckIn, setEditingCheckIn] = useState<{
     checkInId: string | null;
     scheduleId?: string;
@@ -89,7 +91,9 @@ export default function StaffSalaryDetail({
       const { data: { user }, error: userError } = await supabase.auth.getUser();
 
       if (userError || !user) {
-        alert('Phiên đăng nhập đã hết hạn');
+        alert('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.');
+        await supabase.auth.signOut();
+        router.push('/auth/login');
         return;
       }
 
