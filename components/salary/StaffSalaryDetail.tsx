@@ -40,6 +40,9 @@ export default function StaffSalaryDetail({
     isAbsent?: boolean;
   } | null>(null);
 
+  // Filter state for daily breakdown
+  const [statusFilter, setStatusFilter] = useState<'all' | 'on_time' | 'late' | 'early_checkout' | 'overtime' | 'absent' | 'upcoming' | 'edited'>('all');
+
   const displayName = calculation.staff.name || calculation.staff.full_name;
   const initials = displayName
     ?.split(' ')
@@ -399,8 +402,33 @@ export default function StaffSalaryDetail({
         {/* Daily Breakdown */}
         <div className="p-4">
           <h3 className="text-md font-bold text-gray-800 mb-3">📅 Chi tiết từng ngày</h3>
+
+          {/* Status Filter Dropdown */}
+          <div className="mb-3">
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value as typeof statusFilter)}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            >
+              <option value="all">Tất cả ({calculation.daily_breakdown.length})</option>
+              <option value="edited">Đã sửa ({calculation.daily_breakdown.filter(d => d.is_edited).length})</option>
+              <option value="on_time">Đúng giờ ({calculation.daily_breakdown.filter(d => d.status === 'on_time').length})</option>
+              <option value="late">Muộn ({calculation.daily_breakdown.filter(d => d.status === 'late').length})</option>
+              <option value="early_checkout">Về sớm ({calculation.daily_breakdown.filter(d => d.status === 'early_checkout').length})</option>
+              <option value="overtime">Tăng ca ({calculation.daily_breakdown.filter(d => d.status === 'overtime').length})</option>
+              <option value="absent">Vắng mặt ({calculation.daily_breakdown.filter(d => d.status === 'absent').length})</option>
+              <option value="upcoming">Chưa đến ({calculation.daily_breakdown.filter(d => d.status === 'upcoming').length})</option>
+            </select>
+          </div>
+
           <div className="space-y-2">
-            {calculation.daily_breakdown.map((day, index) => (
+            {calculation.daily_breakdown
+              .filter(day => {
+                if (statusFilter === 'all') return true;
+                if (statusFilter === 'edited') return day.is_edited;
+                return day.status === statusFilter;
+              })
+              .map((day, index) => (
               <div key={`${day.date}-${day.shift_name || 'shift'}-${index}`} className="bg-gray-50 rounded-lg p-3">
                 <div className="flex justify-between items-start mb-2">
                   <div>
@@ -495,20 +523,22 @@ export default function StaffSalaryDetail({
                           <div className={`text-center ${
                             day.status === 'late' ? 'bg-yellow-50 rounded px-1' : ''
                           }`}>
-                            <span className={`text-sm font-bold ${
-                              day.status === 'late' ? 'text-yellow-700' : 'text-gray-900'
-                            }`}>
-                              {day.check_in_time ? new Date(day.check_in_time).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }) : '--:--'}
-                            </span>
+                            <div>
+                              <span className={`text-sm font-bold ${
+                                day.status === 'late' ? 'text-yellow-700' : 'text-gray-900'
+                              }`}>
+                                {day.check_in_time ? new Date(day.check_in_time).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }) : '--:--'}
+                              </span>
+                              {day.status === 'late' && (
+                                <svg className="w-3 h-3 text-yellow-600 inline-block ml-1" fill="currentColor" viewBox="0 0 20 20">
+                                  <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                                </svg>
+                              )}
+                            </div>
                             {day.is_edited && (
-                              <span className="ml-1 text-xs px-1.5 py-0.5 rounded-full bg-orange-100 text-orange-700 font-semibold">
+                              <span className="inline-block mt-0.5 text-[10px] px-1.5 py-0.5 rounded-full bg-orange-100 text-orange-700 font-semibold">
                                 Đã sửa
                               </span>
-                            )}
-                            {day.status === 'late' && (
-                              <svg className="w-3 h-3 text-yellow-600 inline-block ml-1" fill="currentColor" viewBox="0 0 20 20">
-                                <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                              </svg>
                             )}
                           </div>
                         </div>
@@ -529,20 +559,22 @@ export default function StaffSalaryDetail({
                           <div className={`text-center ${
                             day.status === 'early_checkout' ? 'bg-orange-50 rounded px-1' : ''
                           }`}>
-                            <span className={`text-sm font-bold ${
-                              day.status === 'early_checkout' ? 'text-orange-700' : 'text-gray-900'
-                            }`}>
-                              {day.check_out_time ? new Date(day.check_out_time).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }) : '--:--'}
-                            </span>
+                            <div>
+                              <span className={`text-sm font-bold ${
+                                day.status === 'early_checkout' ? 'text-orange-700' : 'text-gray-900'
+                              }`}>
+                                {day.check_out_time ? new Date(day.check_out_time).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }) : '--:--'}
+                              </span>
+                              {day.status === 'early_checkout' && (
+                                <svg className="w-3 h-3 text-orange-600 inline-block ml-1" fill="currentColor" viewBox="0 0 20 20">
+                                  <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                                </svg>
+                              )}
+                            </div>
                             {day.is_edited && (
-                              <span className="ml-1 text-xs px-1.5 py-0.5 rounded-full bg-orange-100 text-orange-700 font-semibold">
+                              <span className="inline-block mt-0.5 text-[10px] px-1.5 py-0.5 rounded-full bg-orange-100 text-orange-700 font-semibold">
                                 Đã sửa
                               </span>
-                            )}
-                            {day.status === 'early_checkout' && (
-                              <svg className="w-3 h-3 text-orange-600 inline-block ml-1" fill="currentColor" viewBox="0 0 20 20">
-                                <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                              </svg>
                             )}
                           </div>
                         </div>
