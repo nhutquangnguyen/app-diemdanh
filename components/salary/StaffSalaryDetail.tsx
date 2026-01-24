@@ -41,7 +41,8 @@ export default function StaffSalaryDetail({
   } | null>(null);
 
   // Filter state for daily breakdown
-  const [statusFilter, setStatusFilter] = useState<'all' | 'on_time' | 'late' | 'early_checkout' | 'overtime' | 'absent' | 'upcoming' | 'edited'>('all');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'on_time' | 'late' | 'early_checkout' | 'overtime' | 'absent' | 'upcoming'>('all');
+  const [editedFilter, setEditedFilter] = useState<'all' | 'edited' | 'not_edited'>('all');
 
   const displayName = calculation.staff.name || calculation.staff.full_name;
   const initials = displayName
@@ -403,15 +404,15 @@ export default function StaffSalaryDetail({
         <div className="p-4">
           <h3 className="text-md font-bold text-gray-800 mb-3">📅 Chi tiết từng ngày</h3>
 
-          {/* Status Filter Dropdown */}
-          <div className="mb-3">
+          {/* Filters */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-3">
+            {/* Status Filter */}
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value as typeof statusFilter)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             >
-              <option value="all">Tất cả ({calculation.daily_breakdown.length})</option>
-              <option value="edited">Đã sửa ({calculation.daily_breakdown.filter(d => d.is_edited).length})</option>
+              <option value="all">Tất cả trạng thái ({calculation.daily_breakdown.length})</option>
               <option value="on_time">Đúng giờ ({calculation.daily_breakdown.filter(d => d.status === 'on_time').length})</option>
               <option value="late">Muộn ({calculation.daily_breakdown.filter(d => d.status === 'late').length})</option>
               <option value="early_checkout">Về sớm ({calculation.daily_breakdown.filter(d => d.status === 'early_checkout').length})</option>
@@ -419,14 +420,31 @@ export default function StaffSalaryDetail({
               <option value="absent">Vắng mặt ({calculation.daily_breakdown.filter(d => d.status === 'absent').length})</option>
               <option value="upcoming">Chưa đến ({calculation.daily_breakdown.filter(d => d.status === 'upcoming').length})</option>
             </select>
+
+            {/* Edited Filter */}
+            <select
+              value={editedFilter}
+              onChange={(e) => setEditedFilter(e.target.value as typeof editedFilter)}
+              className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            >
+              <option value="all">Tất cả ca ({calculation.daily_breakdown.length})</option>
+              <option value="edited">Đã sửa ({calculation.daily_breakdown.filter(d => d.is_edited).length})</option>
+              <option value="not_edited">Chưa sửa ({calculation.daily_breakdown.filter(d => !d.is_edited).length})</option>
+            </select>
           </div>
 
           <div className="space-y-2">
             {calculation.daily_breakdown
               .filter(day => {
-                if (statusFilter === 'all') return true;
-                if (statusFilter === 'edited') return day.is_edited;
-                return day.status === statusFilter;
+                // Apply status filter
+                const statusMatch = statusFilter === 'all' || day.status === statusFilter;
+
+                // Apply edited filter
+                let editedMatch = true;
+                if (editedFilter === 'edited') editedMatch = day.is_edited === true;
+                else if (editedFilter === 'not_edited') editedMatch = !day.is_edited;
+
+                return statusMatch && editedMatch;
               })
               .map((day, index) => (
               <div key={`${day.date}-${day.shift_name || 'shift'}-${index}`} className="bg-gray-50 rounded-lg p-3">
