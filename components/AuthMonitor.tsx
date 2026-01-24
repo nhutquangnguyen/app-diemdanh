@@ -32,9 +32,11 @@ export function AuthMonitor() {
       console.log('🔐 [AUTH MONITOR] State changed:', event, session?.user?.email);
 
       // Only handle actual sign out, not token refresh
+      // Note: We redirect silently without alert because SIGNED_OUT can be:
+      // 1. Manual logout (user clicked logout button) - no alert needed
+      // 2. Session expiry - user will see the error when they try to do something
       if (event === 'SIGNED_OUT') {
         console.warn('⚠️ [AUTH MONITOR] User signed out or session expired');
-        alert('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.');
         router.push('/auth/login');
       }
     });

@@ -92,13 +92,13 @@ export default function Header() {
       await signOut();
       setUser(null);
       setDropdownOpen(false);
-      // Force a full page reload to clear all state
-      window.location.href = '/';
+      // Redirect to login page after logout
+      window.location.href = '/auth/login';
     } catch (error) {
       console.error('Logout error:', error);
       // Even if logout fails, clear local state and redirect
       setUser(null);
-      window.location.href = '/';
+      window.location.href = '/auth/login';
     }
   }
 

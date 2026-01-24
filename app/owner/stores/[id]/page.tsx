@@ -39,24 +39,6 @@ export default function StoreDetail() {
   const storeId = params.id as string;
   const toast = useToast();
 
-  // Session monitoring - detect silent logout
-  useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      console.log('🔐 [AUTH] State changed:', event, session?.user?.email);
-
-      if (event === 'SIGNED_OUT' || event === 'TOKEN_REFRESHED' && !session) {
-        console.warn('⚠️ [AUTH] User logged out or session expired');
-        toast.error('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.');
-        router.push('/auth/login');
-      }
-    });
-
-    return () => {
-      subscription.unsubscribe();
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
   const [store, setStore] = useState<Store | null>(null);
   const [checkIns, setCheckIns] = useState<CheckIn[]>([]); // For "today" tab
   const [salaryCheckIns, setSalaryCheckIns] = useState<CheckIn[]>([]); // For salary tab (month-specific)
