@@ -455,18 +455,6 @@ export default function StoreToday({
                                     </div>
                                   )}
                                 </div>
-
-                                {/* Quick Actions - only for active shifts with absent staff */}
-                                {shiftStatus === 'active' && status === 'absent' && (
-                                  <div className="flex-shrink-0">
-                                    <button
-                                      type="button"
-                                      className="px-3 py-1 bg-blue-100 hover:bg-blue-200 text-blue-700 text-xs font-semibold rounded transition-colors"
-                                    >
-                                      Nhắc nhở
-                                    </button>
-                                  </div>
-                                )}
                               </div>
                             </div>
                           );
