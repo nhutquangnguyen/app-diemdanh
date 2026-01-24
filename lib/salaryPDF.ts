@@ -301,6 +301,10 @@ export async function generateSalaryPDF(calculation: StaffSalaryCalculation, sto
   container.style.position = 'absolute';
   container.style.left = '-9999px';
   container.style.width = '1000px';
+  // Force light mode for PDF generation
+  container.style.colorScheme = 'light';
+  container.style.backgroundColor = 'white';
+  container.style.color = 'black';
   container.innerHTML = createSalaryHTML(calculation, storeName);
   document.body.appendChild(container);
 
@@ -312,6 +316,7 @@ export async function generateSalaryPDF(calculation: StaffSalaryCalculation, sto
     scale: 2,
     useCORS: true,
     logging: false,
+    backgroundColor: '#ffffff',
   });
 
   // Remove temporary container
