@@ -42,13 +42,6 @@ function createSalaryHTML(calculation: StaffSalaryCalculation, storeName: string
     }
     const hoursDisplay = shiftHours > 0 ? shiftHours.toFixed(1) : '-';
 
-    let statusText = '';
-    if (day.status === 'absent') statusText = 'Vắng';
-    else if (day.status === 'late') statusText = 'Muộn';
-    else if (day.status === 'early_checkout') statusText = 'Về sớm';
-    else if (day.status === 'overtime') statusText = 'Tăng ca';
-    else statusText = 'Đúng giờ';
-
     const total = day.status === 'absent' ? '0' : formatAmount(day.subtotal);
     if (day.status !== 'absent') {
       totalMoney += day.subtotal;
@@ -56,13 +49,12 @@ function createSalaryHTML(calculation: StaffSalaryCalculation, storeName: string
 
     return `
       <tr>
-        <td style="padding: 6px; border: 1px solid #ddd; font-size: 11px;">${date}</td>
-        <td style="padding: 6px; border: 1px solid #ddd; font-size: 11px;">${shift}</td>
-        <td style="padding: 6px; border: 1px solid #ddd; font-size: 11px;">${checkIn}</td>
-        <td style="padding: 6px; border: 1px solid #ddd; font-size: 11px;">${checkOut}</td>
-        <td style="padding: 6px; border: 1px solid #ddd; font-size: 11px; text-align: center;">${hoursDisplay}</td>
-        <td style="padding: 6px; border: 1px solid #ddd; font-size: 11px;">${statusText}</td>
-        <td style="padding: 6px; border: 1px solid #ddd; font-size: 11px; text-align: right;">${total} ₫</td>
+        <td style="padding: 3px; border: 1px solid #ddd; font-size: 10px;">${date}</td>
+        <td style="padding: 3px; border: 1px solid #ddd; font-size: 10px;">${shift}</td>
+        <td style="padding: 3px; border: 1px solid #ddd; font-size: 10px;">${checkIn}</td>
+        <td style="padding: 3px; border: 1px solid #ddd; font-size: 10px;">${checkOut}</td>
+        <td style="padding: 3px; border: 1px solid #ddd; font-size: 10px; text-align: center;">${hoursDisplay}</td>
+        <td style="padding: 3px; border: 1px solid #ddd; font-size: 10px; text-align: right;">${total} ₫</td>
       </tr>
     `;
   }).join('');
@@ -70,10 +62,9 @@ function createSalaryHTML(calculation: StaffSalaryCalculation, storeName: string
   // Add total row
   const totalRow = `
     <tr style="background-color: #f5f5f5; font-weight: bold;">
-      <td colspan="4" style="padding: 8px; border: 1px solid #ddd; text-align: right;">Tổng cộng:</td>
-      <td style="padding: 8px; border: 1px solid #ddd; text-align: center;">${totalHours.toFixed(1)}</td>
-      <td style="padding: 8px; border: 1px solid #ddd;"></td>
-      <td style="padding: 8px; border: 1px solid #ddd; text-align: right;">${formatAmount(totalMoney)} ₫</td>
+      <td colspan="4" style="padding: 5px; border: 1px solid #ddd; text-align: right; font-size: 11px;">Tổng cộng:</td>
+      <td style="padding: 5px; border: 1px solid #ddd; text-align: center; font-size: 11px;">${totalHours.toFixed(1)}</td>
+      <td style="padding: 5px; border: 1px solid #ddd; text-align: right; font-size: 11px;">${formatAmount(totalMoney)} ₫</td>
     </tr>
   `;
 
@@ -90,7 +81,7 @@ function createSalaryHTML(calculation: StaffSalaryCalculation, storeName: string
         }
         body {
           font-family: 'Roboto', sans-serif;
-          padding: 60px 100px;
+          padding: 30px 50px 60px 50px;
           max-width: 100%;
           margin: 0;
           background: white;
@@ -103,40 +94,42 @@ function createSalaryHTML(calculation: StaffSalaryCalculation, storeName: string
         }
         .header {
           text-align: center;
-          margin-bottom: 30px;
+          margin-bottom: 20px;
         }
         .header h1 {
-          font-size: 28px;
+          font-size: 24px;
           font-weight: bold;
-          margin-bottom: 10px;
+          margin-bottom: 8px;
           color: #000 !important;
         }
         .header h2 {
-          font-size: 20px;
+          font-size: 18px;
           color: #666;
         }
         .info {
-          margin-bottom: 25px;
-          line-height: 1.8;
+          margin-bottom: 12px;
+          line-height: 1.5;
+          font-size: 14px;
           color: #000 !important;
         }
         .section {
-          margin-bottom: 25px;
+          margin-bottom: 12px;
         }
         .section-title {
-          font-size: 16px;
+          font-size: 15px;
           font-weight: bold;
-          margin-bottom: 12px;
-          padding-bottom: 5px;
+          margin-bottom: 6px;
+          padding-bottom: 3px;
           border-bottom: 2px solid #428bca;
           color: #000 !important;
         }
         .summary-table {
           width: 100%;
-          margin-bottom: 15px;
+          margin-bottom: 10px;
         }
         .summary-table tr td {
-          padding: 8px 0;
+          padding: 6px 0;
+          font-size: 14px;
         }
         .summary-table tr td:first-child {
           color: #666;
@@ -156,16 +149,17 @@ function createSalaryHTML(calculation: StaffSalaryCalculation, storeName: string
         table {
           width: 100%;
           border-collapse: collapse;
-          margin-bottom: 15px;
+          margin-bottom: 10px;
         }
         table thead {
           background-color: #428bca;
           color: white !important;
         }
         table thead th {
-          padding: 10px 8px;
+          padding: 6px 4px;
           text-align: left;
           font-weight: bold;
+          font-size: 12px;
           color: white !important;
         }
         table tbody td {
@@ -174,19 +168,19 @@ function createSalaryHTML(calculation: StaffSalaryCalculation, storeName: string
         .total-box {
           background: linear-gradient(135deg, #428bca 0%, #357ebd 100%);
           color: white !important;
-          padding: 20px;
+          padding: 12px;
           text-align: center;
-          border-radius: 8px;
-          margin: 25px 0;
+          border-radius: 6px;
+          margin: 12px 0;
         }
         .total-box .label {
-          font-size: 14px;
+          font-size: 13px;
           opacity: 0.9;
-          margin-bottom: 5px;
+          margin-bottom: 4px;
           color: white !important;
         }
         .total-box .amount {
-          font-size: 32px;
+          font-size: 28px;
           font-weight: bold;
           color: white !important;
         }
@@ -214,6 +208,8 @@ function createSalaryHTML(calculation: StaffSalaryCalculation, storeName: string
           font-size: 11px;
           color: #999 !important;
           margin-top: 30px;
+          margin-bottom: 40px;
+          padding-bottom: 20px;
         }
       </style>
     </head>
@@ -307,7 +303,6 @@ function createSalaryHTML(calculation: StaffSalaryCalculation, storeName: string
               <th>Vào</th>
               <th>Ra</th>
               <th style="text-align: center;">Tổng giờ</th>
-              <th>Trạng thái</th>
               <th style="text-align: right;">Thực nhận</th>
             </tr>
           </thead>
@@ -342,9 +337,9 @@ export async function generateSalaryPDF(calculation: StaffSalaryCalculation, sto
   // Wait for fonts to load
   await document.fonts.ready;
 
-  // Convert to canvas
+  // Convert to canvas with lower scale for smaller file size
   const canvas = await html2canvas(container, {
-    scale: 2,
+    scale: 1.5,
     useCORS: true,
     logging: false,
     backgroundColor: '#ffffff',
@@ -353,8 +348,8 @@ export async function generateSalaryPDF(calculation: StaffSalaryCalculation, sto
   // Remove temporary container
   document.body.removeChild(container);
 
-  // Create PDF
-  const imgData = canvas.toDataURL('image/png');
+  // Create PDF with JPEG compression for smaller file size
+  const imgData = canvas.toDataURL('image/jpeg', 0.85);
   const pdf = new jsPDF({
     orientation: 'portrait',
     unit: 'mm',
@@ -374,14 +369,14 @@ export async function generateSalaryPDF(calculation: StaffSalaryCalculation, sto
   let position = marginTop;
 
   // Add first page
-  pdf.addImage(imgData, 'PNG', marginLeft, position, imgWidth, imgHeight);
+  pdf.addImage(imgData, 'JPEG', marginLeft, position, imgWidth, imgHeight);
   heightLeft -= 297; // A4 height
 
   // Add additional pages if needed
   while (heightLeft > 0) {
     position = heightLeft - imgHeight + marginTop;
     pdf.addPage();
-    pdf.addImage(imgData, 'PNG', marginLeft, position, imgWidth, imgHeight);
+    pdf.addImage(imgData, 'JPEG', marginLeft, position, imgWidth, imgHeight);
     heightLeft -= 297;
   }
 
