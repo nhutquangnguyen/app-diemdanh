@@ -40,9 +40,29 @@ export default function StaffSalaryDetail({
     isAbsent?: boolean;
   } | null>(null);
 
-  // Filter state for daily breakdown
-  const [statusFilter, setStatusFilter] = useState<'all' | 'on_time' | 'late' | 'early_checkout' | 'overtime' | 'absent' | 'upcoming'>('all');
-  const [editedFilter, setEditedFilter] = useState<'all' | 'edited' | 'not_edited'>('all');
+  // Filter state for daily breakdown - allow multiple selections
+  const [statusFilters, setStatusFilters] = useState<Array<'on_time' | 'late' | 'early_checkout' | 'overtime' | 'absent' | 'upcoming'>>([]);
+  const [editedFilters, setEditedFilters] = useState<Array<'edited' | 'not_edited'>>([]);
+  const [showFilters, setShowFilters] = useState(false);
+
+  // Helper functions for multi-select
+  const toggleStatusFilter = (status: typeof statusFilters[number]) => {
+    if (statusFilters.includes(status)) {
+      setStatusFilters(statusFilters.filter(s => s !== status));
+    } else {
+      setStatusFilters([...statusFilters, status]);
+    }
+  };
+
+  const toggleEditedFilter = (edited: typeof editedFilters[number]) => {
+    if (editedFilters.includes(edited)) {
+      setEditedFilters(editedFilters.filter(e => e !== edited));
+    } else {
+      setEditedFilters([...editedFilters, edited]);
+    }
+  };
+
+  const hasActiveFilters = statusFilters.length > 0 || editedFilters.length > 0;
 
   const displayName = calculation.staff.name || calculation.staff.full_name;
   const initials = displayName
@@ -402,47 +422,66 @@ export default function StaffSalaryDetail({
 
         {/* Daily Breakdown */}
         <div className="p-4">
-          <h3 className="text-md font-bold text-gray-800 mb-3">📅 Chi tiết từng ngày</h3>
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-md font-bold text-gray-800">📅 Chi tiết từng ngày</h3>
 
-          {/* Filters */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-3">
-            {/* Status Filter */}
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value as typeof statusFilter)}
-              className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            >
-              <option value="all">Tất cả trạng thái ({calculation.daily_breakdown.length})</option>
-              <option value="on_time">Đúng giờ ({calculation.daily_breakdown.filter(d => d.status === 'on_time').length})</option>
-              <option value="late">Muộn ({calculation.daily_breakdown.filter(d => d.status === 'late').length})</option>
-              <option value="early_checkout">Về sớm ({calculation.daily_breakdown.filter(d => d.status === 'early_checkout').length})</option>
-              <option value="overtime">Tăng ca ({calculation.daily_breakdown.filter(d => d.status === 'overtime').length})</option>
-              <option value="absent">Vắng mặt ({calculation.daily_breakdown.filter(d => d.status === 'absent').length})</option>
-              <option value="upcoming">Chưa đến ({calculation.daily_breakdown.filter(d => d.status === 'upcoming').length})</option>
-            </select>
+            {/* Filter Buttons */}
+            <div className="flex items-center gap-2">
+              {/* Clear Filter Button (X) - shows when filters are active */}
+              {hasActiveFilters && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setStatusFilters([]);
+                    setEditedFilters([]);
+                  }}
+                  className="p-2 rounded-lg text-gray-600 hover:bg-gray-100 transition-colors"
+                  title="Xóa bộ lọc"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              )}
 
-            {/* Edited Filter */}
-            <select
-              value={editedFilter}
-              onChange={(e) => setEditedFilter(e.target.value as typeof editedFilter)}
-              className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            >
-              <option value="all">Tất cả ca ({calculation.daily_breakdown.length})</option>
-              <option value="edited">Đã sửa ({calculation.daily_breakdown.filter(d => d.is_edited).length})</option>
-              <option value="not_edited">Chưa sửa ({calculation.daily_breakdown.filter(d => !d.is_edited).length})</option>
-            </select>
+              {/* Filter Toggle Button */}
+              <button
+                type="button"
+                onClick={() => setShowFilters(true)}
+                className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-semibold transition-all ${
+                  hasActiveFilters
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+                </svg>
+                <span>Lọc</span>
+                {hasActiveFilters && (
+                  <span className="flex items-center justify-center w-5 h-5 text-xs bg-white text-blue-600 rounded-full font-bold">
+                    {statusFilters.length + editedFilters.length}
+                  </span>
+                )}
+              </button>
+            </div>
           </div>
 
           <div className="space-y-2">
             {calculation.daily_breakdown
               .filter(day => {
-                // Apply status filter
-                const statusMatch = statusFilter === 'all' || day.status === statusFilter;
+                // Apply status filters (if any selected, match ANY of them)
+                const statusMatch = statusFilters.length === 0 || statusFilters.includes(day.status as any);
 
-                // Apply edited filter
+                // Apply edited filters (if any selected, match ANY of them)
                 let editedMatch = true;
-                if (editedFilter === 'edited') editedMatch = day.is_edited === true;
-                else if (editedFilter === 'not_edited') editedMatch = !day.is_edited;
+                if (editedFilters.length > 0) {
+                  editedMatch = editedFilters.some(filter => {
+                    if (filter === 'edited') return day.is_edited === true;
+                    if (filter === 'not_edited') return !day.is_edited;
+                    return false;
+                  });
+                }
 
                 return statusMatch && editedMatch;
               })
@@ -669,6 +708,114 @@ export default function StaffSalaryDetail({
           </div>
         </div>
       </div>
+
+      {/* Filter Modal */}
+      {showFilters && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-end sm:items-center justify-center z-[70] p-4">
+          <div className="bg-white w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl shadow-xl max-h-[80vh] overflow-y-auto">
+            {/* Header */}
+            <div className="sticky top-0 bg-white border-b border-gray-200 p-4 flex items-center justify-between rounded-t-2xl">
+              <h3 className="text-lg font-bold text-gray-800">Bộ lọc</h3>
+              <button
+                type="button"
+                onClick={() => setShowFilters(false)}
+                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            {/* Filter Content */}
+            <div className="p-4 space-y-4">
+              {/* Status Filter */}
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-2">Trạng thái</label>
+                <div className="grid grid-cols-3 gap-1.5">
+                  {[
+                    { value: 'on_time' as const, label: 'Đúng giờ', color: 'green', icon: '✓' },
+                    { value: 'late' as const, label: 'Muộn', color: 'yellow', icon: '⚠' },
+                    { value: 'early_checkout' as const, label: 'Về sớm', color: 'orange', icon: '→' },
+                    { value: 'overtime' as const, label: 'Tăng ca', color: 'purple', icon: '↑' },
+                    { value: 'absent' as const, label: 'Vắng', color: 'gray', icon: '✕' },
+                    { value: 'upcoming' as const, label: 'Chưa đến', color: 'blue', icon: '⏱' },
+                  ].map(({ value, label, color, icon }) => (
+                    <button
+                      key={value}
+                      type="button"
+                      onClick={() => toggleStatusFilter(value)}
+                      className={`relative flex items-center gap-1.5 px-2 py-2 rounded-lg border transition-all text-left ${
+                        statusFilters.includes(value)
+                          ? 'border-blue-500 bg-blue-50'
+                          : 'border-gray-200 bg-white hover:border-gray-300'
+                      }`}
+                    >
+                      <span className="text-sm">{icon}</span>
+                      <span className={`text-xs font-semibold flex-1 ${
+                        statusFilters.includes(value) ? 'text-blue-700' : 'text-gray-700'
+                      }`}>
+                        {label}
+                      </span>
+                      <span className="text-xs text-gray-500">
+                        ({calculation.daily_breakdown.filter(d => d.status === value).length})
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Edited Filter */}
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-2">Chỉnh sửa</label>
+                <div className="grid grid-cols-2 gap-1.5">
+                  {[
+                    { value: 'edited' as const, label: 'Đã sửa', color: 'orange', icon: '✎', count: calculation.daily_breakdown.filter(d => d.is_edited).length },
+                    { value: 'not_edited' as const, label: 'Chưa sửa', color: 'gray', icon: '○', count: calculation.daily_breakdown.filter(d => !d.is_edited).length },
+                  ].map(({ value, label, color, icon, count }) => (
+                    <button
+                      key={value}
+                      type="button"
+                      onClick={() => toggleEditedFilter(value)}
+                      className={`relative flex items-center gap-1.5 px-2 py-2 rounded-lg border transition-all text-left ${
+                        editedFilters.includes(value)
+                          ? 'border-blue-500 bg-blue-50'
+                          : 'border-gray-200 bg-white hover:border-gray-300'
+                      }`}
+                    >
+                      <span className="text-sm">{icon}</span>
+                      <span className={`text-xs font-semibold flex-1 ${
+                        editedFilters.includes(value) ? 'text-blue-700' : 'text-gray-700'
+                      }`}>
+                        {label}
+                      </span>
+                      <span className="text-xs text-gray-500">({count})</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Footer Buttons */}
+            <div className="sticky bottom-0 bg-white border-t border-gray-200 p-4 flex gap-2">
+              <button
+                type="button"
+                onClick={() => setShowFilters(false)}
+                className="flex-1 px-4 py-3 border border-gray-300 rounded-lg font-semibold text-gray-700 hover:bg-gray-50 transition-colors"
+              >
+                Đóng
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowFilters(false)}
+                className="flex-1 px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold transition-colors"
+              >
+                Xem kết quả
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Edit Check-in Modal */}
       {editingCheckIn && (
