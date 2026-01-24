@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo, useRef } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
 import {
@@ -34,6 +34,8 @@ import { checkScheduleNeedsReview } from '@/lib/scheduleNotifications';
 
 export default function StoreDetail() {
   const params = useParams();
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const storeId = params.id as string;
   const toast = useToast();
 
@@ -44,8 +46,12 @@ export default function StoreDetail() {
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [settingsLoading, setSettingsLoading] = useState(false);
 
-  // Tab navigation state
-  const [activeTab, setActiveTab] = useState<'today' | 'overview' | 'shifts' | 'staff' | 'settings' | 'schedule' | 'smart-schedule' | 'report' | 'salary' | 'qr'>('today');
+  // Tab navigation state - Initialize from URL query params
+  const [activeTab, setActiveTab] = useState<'today' | 'overview' | 'shifts' | 'staff' | 'settings' | 'schedule' | 'smart-schedule' | 'report' | 'salary' | 'qr'>(() => {
+    const tabFromUrl = searchParams.get('tab');
+    const validTabs = ['today', 'overview', 'shifts', 'staff', 'settings', 'schedule', 'smart-schedule', 'report', 'salary', 'qr'];
+    return (tabFromUrl && validTabs.includes(tabFromUrl)) ? tabFromUrl as any : 'today';
+  });
   const [showMoreMenu, setShowMoreMenu] = useState(false);
   const moreMenuRefDesktop = useRef<HTMLDivElement>(null);
   const moreMenuRefMobile = useRef<HTMLDivElement>(null);
@@ -133,6 +139,15 @@ export default function StoreDetail() {
   const [selectedStaffForSalary, setSelectedStaffForSalary] = useState<string | null>(null);
   const [showAdjustmentForm, setShowAdjustmentForm] = useState(false);
   const [editingAdjustment, setEditingAdjustment] = useState<SalaryAdjustment | null>(null);
+
+  // Wrapper function to update both state and URL when tab changes
+  const updateActiveTab = (tab: typeof activeTab) => {
+    setActiveTab(tab);
+    // Update URL with tab query param to persist across reloads
+    const currentUrl = new URL(window.location.href);
+    currentUrl.searchParams.set('tab', tab);
+    router.replace(currentUrl.pathname + currentUrl.search, { scroll: false });
+  };
 
   useEffect(() => {
     loadStoreData();
@@ -1735,7 +1750,7 @@ export default function StoreDetail() {
         {/* Desktop Tab Navigation */}
         <div className="hidden sm:flex bg-white rounded-lg shadow-lg mb-4 p-2 gap-2 relative">
           <button
-            onClick={() => setActiveTab('today')}
+            onClick={() => updateActiveTab('today')}
             className={`flex-1 px-4 py-3 rounded-lg font-semibold transition-all ${
               activeTab === 'today'
                 ? 'bg-blue-600 text-white'
@@ -1745,7 +1760,7 @@ export default function StoreDetail() {
             Hôm Nay
           </button>
           <button
-            onClick={() => setActiveTab('schedule')}
+            onClick={() => updateActiveTab('schedule')}
             className={`flex-1 px-4 py-3 rounded-lg font-semibold transition-all relative ${
               activeTab === 'schedule'
                 ? 'bg-blue-600 text-white'
@@ -1758,7 +1773,7 @@ export default function StoreDetail() {
             )}
           </button>
           <button
-            onClick={() => setActiveTab('smart-schedule')}
+            onClick={() => updateActiveTab('smart-schedule')}
             className={`flex-1 px-4 py-3 rounded-lg font-semibold transition-all ${
               activeTab === 'smart-schedule'
                 ? 'bg-blue-600 text-white'
@@ -1787,7 +1802,7 @@ export default function StoreDetail() {
                 <button
                   type="button"
                   onClick={() => {
-                    setActiveTab('staff');
+                    updateActiveTab('staff');
                     setShowMoreMenu(false);
                   }}
                   className="w-full text-left px-4 py-3 hover:bg-gray-100 transition-all flex items-center gap-3"
@@ -1800,7 +1815,7 @@ export default function StoreDetail() {
                 <button
                   type="button"
                   onClick={() => {
-                    setActiveTab('shifts');
+                    updateActiveTab('shifts');
                     setShowMoreMenu(false);
                   }}
                   className="w-full text-left px-4 py-3 hover:bg-gray-100 transition-all flex items-center gap-3"
@@ -1813,7 +1828,7 @@ export default function StoreDetail() {
                 <button
                   type="button"
                   onClick={() => {
-                    setActiveTab('salary');
+                    updateActiveTab('salary');
                     setShowMoreMenu(false);
                   }}
                   className="w-full text-left px-4 py-3 hover:bg-gray-100 transition-all flex items-center gap-3"
@@ -1826,7 +1841,7 @@ export default function StoreDetail() {
                 <button
                   type="button"
                   onClick={() => {
-                    setActiveTab('qr');
+                    updateActiveTab('qr');
                     setShowMoreMenu(false);
                   }}
                   className="w-full text-left px-4 py-3 hover:bg-gray-100 transition-all flex items-center gap-3"
@@ -1839,7 +1854,7 @@ export default function StoreDetail() {
                 <button
                   type="button"
                   onClick={() => {
-                    setActiveTab('settings');
+                    updateActiveTab('settings');
                     setShowMoreMenu(false);
                   }}
                   className="w-full text-left px-4 py-3 hover:bg-gray-100 transition-all flex items-center gap-3"
@@ -1947,7 +1962,7 @@ export default function StoreDetail() {
               goToToday={goToToday}
               onScheduleApplied={() => {
                 loadSchedules();
-                setActiveTab('schedule');
+                updateActiveTab('schedule');
               }}
             />
           )}
@@ -2076,7 +2091,7 @@ export default function StoreDetail() {
         <div className="sm:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-lg z-40">
           <div className="grid grid-cols-4 gap-1 p-2">
             <button
-              onClick={() => setActiveTab('today')}
+              onClick={() => updateActiveTab('today')}
               className={`w-full flex flex-col items-center py-2 px-1 rounded-lg transition-all ${
                 activeTab === 'today'
                   ? 'bg-blue-600 text-white'
@@ -2089,7 +2104,7 @@ export default function StoreDetail() {
               <span className="text-xs font-semibold">Hôm Nay</span>
             </button>
             <button
-              onClick={() => setActiveTab('schedule')}
+              onClick={() => updateActiveTab('schedule')}
               className={`w-full flex flex-col items-center py-2 px-1 rounded-lg transition-all relative ${
                 activeTab === 'schedule'
                   ? 'bg-blue-600 text-white'
@@ -2105,7 +2120,7 @@ export default function StoreDetail() {
               )}
             </button>
             <button
-              onClick={() => setActiveTab('smart-schedule')}
+              onClick={() => updateActiveTab('smart-schedule')}
               className={`w-full flex flex-col items-center py-2 px-1 rounded-lg transition-all ${
                 activeTab === 'smart-schedule'
                   ? 'bg-blue-600 text-white'
@@ -2137,7 +2152,7 @@ export default function StoreDetail() {
                   <button
                     type="button"
                     onClick={() => {
-                      setActiveTab('staff');
+                      updateActiveTab('staff');
                       setShowMoreMenu(false);
                     }}
                     className="w-full text-left px-4 py-3 hover:bg-gray-100 transition-all flex items-center gap-3"
@@ -2150,7 +2165,7 @@ export default function StoreDetail() {
                   <button
                     type="button"
                     onClick={() => {
-                      setActiveTab('shifts');
+                      updateActiveTab('shifts');
                       setShowMoreMenu(false);
                     }}
                     className="w-full text-left px-4 py-3 hover:bg-gray-100 transition-all flex items-center gap-3"
@@ -2163,7 +2178,7 @@ export default function StoreDetail() {
                   <button
                     type="button"
                     onClick={() => {
-                      setActiveTab('salary');
+                      updateActiveTab('salary');
                       setShowMoreMenu(false);
                     }}
                     className="w-full text-left px-4 py-3 hover:bg-gray-100 transition-all flex items-center gap-3"
@@ -2176,7 +2191,7 @@ export default function StoreDetail() {
                   <button
                     type="button"
                     onClick={() => {
-                      setActiveTab('qr');
+                      updateActiveTab('qr');
                       setShowMoreMenu(false);
                     }}
                     className="w-full text-left px-4 py-3 hover:bg-gray-100 transition-all flex items-center gap-3"
@@ -2189,7 +2204,7 @@ export default function StoreDetail() {
                   <button
                     type="button"
                     onClick={() => {
-                      setActiveTab('settings');
+                      updateActiveTab('settings');
                       setShowMoreMenu(false);
                     }}
                     className="w-full text-left px-4 py-3 hover:bg-gray-100 transition-all flex items-center gap-3"
