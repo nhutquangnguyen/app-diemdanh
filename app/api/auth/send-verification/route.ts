@@ -167,7 +167,7 @@ async function sendVerificationEmail(email: string, code: string, fullName: stri
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      from: 'Điểm danh thông minh - diemdanh.net <onboarding@resend.dev>',
+      from: 'Điểm danh thông minh - diemdanh.net <help@thongbao.diemdanh.net>',
       to: [email],
       subject: 'Xác thực email - diemdanh.net',
       html: htmlContent,
