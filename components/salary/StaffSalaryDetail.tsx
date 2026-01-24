@@ -39,6 +39,38 @@ export default function StaffSalaryDetail({
     await downloadSalaryPDF(calculation, storeName);
   };
 
+  // Helper function to parse time string to minutes
+  const parseTimeToMinutes = (timeStr: string): number => {
+    const [hours, minutes] = timeStr.split(':').map(Number);
+    return hours * 60 + minutes;
+  };
+
+  // Helper function to calculate hours difference
+  const calculateHours = (startTime: string | Date, endTime: string | Date): number => {
+    const start = new Date(startTime).getTime();
+    const end = new Date(endTime).getTime();
+    return (end - start) / (1000 * 60 * 60); // Convert to hours
+  };
+
+  // Helper function to parse shift time range (e.g., "18:30 - 22:30")
+  const parseShiftTime = (shiftTime: string): { start: string; end: string; hours: number } | null => {
+    const match = shiftTime.match(/(\d{1,2}:\d{2})\s*-\s*(\d{1,2}:\d{2})/);
+    if (!match) return null;
+
+    const [_, start, end] = match;
+    const startMinutes = parseTimeToMinutes(start);
+    const endMinutes = parseTimeToMinutes(end);
+    let totalMinutes = endMinutes - startMinutes;
+
+    // Handle shifts that cross midnight
+    if (totalMinutes < 0) {
+      totalMinutes += 24 * 60;
+    }
+
+    const hours = totalMinutes / 60;
+    return { start, end, hours };
+  };
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-end sm:items-center justify-center z-50">
       <div className="bg-white w-full sm:max-w-2xl sm:rounded-lg max-h-[90vh] overflow-y-auto">
@@ -265,99 +297,149 @@ export default function StaffSalaryDetail({
                   </div>
                 </div>
 
-                {day.status !== 'absent' && (
-                  <>
-                    {/* Time Comparison Section */}
-                    <div className="bg-white rounded-lg p-2 mb-2 border border-gray-200">
-                      {/* Shift Time (Expected) */}
-                      {day.shift_time && (
-                        <div className="mb-2 pb-2 border-b border-gray-100">
-                          <div className="text-xs text-gray-500 mb-1">Ca làm việc:</div>
-                          <div className="flex justify-between items-center">
-                            <div className="flex items-center gap-1">
-                              <svg className="w-3 h-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                              </svg>
-                              <span className="text-xs font-medium text-gray-600">{day.shift_time}</span>
-                            </div>
-                          </div>
-                        </div>
-                      )}
+                {day.status !== 'absent' && (() => {
+                  const shiftInfo = day.shift_time ? parseShiftTime(day.shift_time) : null;
+                  const actualHours = day.check_in_time && day.check_out_time
+                    ? calculateHours(day.check_in_time, day.check_out_time)
+                    : 0;
+                  const hoursShort = shiftInfo && actualHours < shiftInfo.hours;
 
-                      {/* Actual Time */}
-                      <div>
-                        <div className="text-xs text-gray-500 mb-1">Thực tế:</div>
-                        <div className="grid grid-cols-2 gap-2">
-                          <div className={`flex items-center gap-1 ${
-                            day.status === 'late' ? 'text-yellow-700 font-semibold' : 'text-gray-900'
+                  return (
+                    <>
+                      {/* Time Comparison Section */}
+                      <div className="bg-white rounded-lg p-3 mb-2 border border-gray-200">
+                        {/* Header Row */}
+                        <div className="grid grid-cols-3 gap-2 mb-2 pb-2 border-b border-gray-200">
+                          <div className="text-xs font-semibold text-gray-700"></div>
+                          <div className="text-xs font-semibold text-gray-700 text-center">Ca làm việc</div>
+                          <div className="text-xs font-semibold text-gray-700 text-center">Thực tế</div>
+                        </div>
+
+                        {/* Check-in Time Row */}
+                        <div className="grid grid-cols-3 gap-2 mb-1.5">
+                          <div className="text-xs text-gray-600 flex items-center">
+                            <svg className="w-3 h-3 mr-1 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
+                            </svg>
+                            Vào
+                          </div>
+                          <div className="text-center">
+                            <span className="text-sm font-medium text-gray-900">
+                              {shiftInfo?.start || '--:--'}
+                            </span>
+                          </div>
+                          <div className={`text-center ${
+                            day.status === 'late' ? 'bg-yellow-50 rounded px-1' : ''
                           }`}>
-                            <span className="text-xs">Vào:</span>
-                            <span className="text-sm font-bold">
+                            <span className={`text-sm font-bold ${
+                              day.status === 'late' ? 'text-yellow-700' : 'text-gray-900'
+                            }`}>
                               {day.check_in_time ? new Date(day.check_in_time).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }) : '--:--'}
                             </span>
                             {day.status === 'late' && (
-                              <svg className="w-3 h-3 text-yellow-600" fill="currentColor" viewBox="0 0 20 20">
+                              <svg className="w-3 h-3 text-yellow-600 inline-block ml-1" fill="currentColor" viewBox="0 0 20 20">
                                 <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
                               </svg>
                             )}
                           </div>
-                          <div className={`flex items-center gap-1 ${
-                            day.status === 'early_checkout' ? 'text-orange-700 font-semibold' : 'text-gray-900'
+                        </div>
+
+                        {/* Check-out Time Row */}
+                        <div className="grid grid-cols-3 gap-2 mb-2">
+                          <div className="text-xs text-gray-600 flex items-center">
+                            <svg className="w-3 h-3 mr-1 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                            </svg>
+                            Ra
+                          </div>
+                          <div className="text-center">
+                            <span className="text-sm font-medium text-gray-900">
+                              {shiftInfo?.end || '--:--'}
+                            </span>
+                          </div>
+                          <div className={`text-center ${
+                            day.status === 'early_checkout' ? 'bg-orange-50 rounded px-1' : ''
                           }`}>
-                            <span className="text-xs">Ra:</span>
-                            <span className="text-sm font-bold">
+                            <span className={`text-sm font-bold ${
+                              day.status === 'early_checkout' ? 'text-orange-700' : 'text-gray-900'
+                            }`}>
                               {day.check_out_time ? new Date(day.check_out_time).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }) : '--:--'}
                             </span>
                             {day.status === 'early_checkout' && (
-                              <svg className="w-3 h-3 text-orange-600" fill="currentColor" viewBox="0 0 20 20">
+                              <svg className="w-3 h-3 text-orange-600 inline-block ml-1" fill="currentColor" viewBox="0 0 20 20">
                                 <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
                               </svg>
                             )}
                           </div>
                         </div>
 
-                        {/* Overtime indicator */}
-                        {day.status === 'overtime' && day.overtime_pay > 0 && (
-                          <div className="mt-1 flex items-center gap-1 text-purple-700">
-                            <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v3.586L7.707 9.293a1 1 0 00-1.414 1.414l3 3a1 1 0 001.414 0l3-3a1 1 0 00-1.414-1.414L11 10.586V7z" clipRule="evenodd" />
+                        {/* Total Hours Row */}
+                        <div className="grid grid-cols-3 gap-2 pt-2 border-t border-gray-200">
+                          <div className="text-xs font-semibold text-gray-700 flex items-center">
+                            <svg className="w-3 h-3 mr-1 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                             </svg>
-                            <span className="text-xs font-medium">Làm thêm giờ</span>
+                            Tổng
+                          </div>
+                          <div className="text-center">
+                            <span className="text-sm font-semibold text-gray-900">
+                              {shiftInfo ? `${shiftInfo.hours.toFixed(1)}h` : '--'}
+                            </span>
+                          </div>
+                          <div className={`text-center ${
+                            hoursShort ? 'bg-red-50 rounded px-1' : ''
+                          }`}>
+                            <span className={`text-sm font-bold ${
+                              hoursShort ? 'text-red-700' : day.status === 'overtime' ? 'text-purple-700' : 'text-gray-900'
+                            }`}>
+                              {actualHours > 0 ? `${actualHours.toFixed(1)}h` : '--'}
+                            </span>
+                            {hoursShort && (
+                              <svg className="w-3 h-3 text-red-600 inline-block ml-1" fill="currentColor" viewBox="0 0 20 20">
+                                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                              </svg>
+                            )}
+                            {day.status === 'overtime' && !hoursShort && (
+                              <svg className="w-3 h-3 text-purple-600 inline-block ml-1" fill="currentColor" viewBox="0 0 20 20">
+                                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-8.707l-3-3a1 1 0 00-1.414 0l-3 3a1 1 0 001.414 1.414L9 9.414V13a1 1 0 102 0V9.414l1.293 1.293a1 1 0 001.414-1.414z" clipRule="evenodd" />
+                              </svg>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Salary Details */}
+                      <div className="text-xs space-y-1">
+                        <div className="flex justify-between">
+                          <span className="text-gray-500">Lương ca:</span>
+                          <span className="font-medium text-gray-900">{formatAmount(day.base_pay)}đ</span>
+                        </div>
+                        {day.late_penalty < 0 && (
+                          <div className="flex justify-between">
+                            <span className="text-gray-500">Phạt trễ:</span>
+                            <span className="font-medium text-red-600">{formatAmount(day.late_penalty)}đ</span>
                           </div>
                         )}
-                      </div>
-                    </div>
-
-                    <div className="text-xs space-y-1">
-                      <div className="flex justify-between">
-                        <span className="text-gray-500">Lương ca:</span>
-                        <span className="font-medium text-gray-900">{formatAmount(day.base_pay)}đ</span>
-                      </div>
-                      {day.late_penalty < 0 && (
-                        <div className="flex justify-between">
-                          <span className="text-gray-500">Phạt trễ:</span>
-                          <span className="font-medium text-red-600">{formatAmount(day.late_penalty)}đ</span>
+                        {day.early_penalty < 0 && (
+                          <div className="flex justify-between">
+                            <span className="text-gray-500">Phạt về sớm:</span>
+                            <span className="font-medium text-red-600">{formatAmount(day.early_penalty)}đ</span>
+                          </div>
+                        )}
+                        {day.overtime_pay > 0 && (
+                          <div className="flex justify-between">
+                            <span className="text-gray-500">Tăng ca:</span>
+                            <span className="font-medium text-green-600">+{formatAmount(day.overtime_pay)}đ</span>
+                          </div>
+                        )}
+                        <div className="flex justify-between pt-1 border-t border-gray-200">
+                          <span className="font-semibold text-gray-900">Thực nhận:</span>
+                          <span className="font-bold text-gray-900">{formatAmount(day.subtotal)}đ</span>
                         </div>
-                      )}
-                      {day.early_penalty < 0 && (
-                        <div className="flex justify-between">
-                          <span className="text-gray-500">Phạt về sớm:</span>
-                          <span className="font-medium text-red-600">{formatAmount(day.early_penalty)}đ</span>
-                        </div>
-                      )}
-                      {day.overtime_pay > 0 && (
-                        <div className="flex justify-between">
-                          <span className="text-gray-500">Tăng ca:</span>
-                          <span className="font-medium text-green-600">+{formatAmount(day.overtime_pay)}đ</span>
-                        </div>
-                      )}
-                      <div className="flex justify-between pt-1 border-t border-gray-200">
-                        <span className="font-semibold text-gray-900">Thực nhận:</span>
-                        <span className="font-bold text-gray-900">{formatAmount(day.subtotal)}đ</span>
                       </div>
-                    </div>
-                  </>
-                )}
+                    </>
+                  );
+                })()}
               </div>
             ))}
           </div>
