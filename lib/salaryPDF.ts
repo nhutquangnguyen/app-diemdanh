@@ -1,7 +1,7 @@
 import { jsPDF } from 'jspdf';
 import html2canvas from 'html2canvas';
 import { StaffSalaryCalculation } from '@/types';
-import { formatAmount } from './salaryCalculations';
+import { formatAmount, calculateShiftDurationInHours } from './salaryCalculations';
 
 function createSalaryHTML(calculation: StaffSalaryCalculation, storeName: string): string {
   const [year, month] = calculation.month.split('-');
@@ -21,11 +21,26 @@ function createSalaryHTML(calculation: StaffSalaryCalculation, storeName: string
     `;
   }).join('');
 
+  // Calculate total hours and total money
+  let totalHours = 0;
+  let totalMoney = 0;
+
   const dailyRows = calculation.daily_breakdown.map(day => {
     const date = new Date(day.date).toLocaleDateString('vi-VN', { weekday: 'short', day: '2-digit', month: '2-digit' });
     const shift = day.shift_name || '-';
     const checkIn = day.check_in_time ? new Date(day.check_in_time).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }) : '-';
     const checkOut = day.check_out_time ? new Date(day.check_out_time).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }) : '-';
+
+    // Calculate shift hours from shift_time (e.g., "08:00 - 17:00")
+    let shiftHours = 0;
+    if (day.shift_time && day.status !== 'absent') {
+      const [startTime, endTime] = day.shift_time.split(' - ');
+      if (startTime && endTime) {
+        shiftHours = calculateShiftDurationInHours(startTime, endTime);
+        totalHours += shiftHours;
+      }
+    }
+    const hoursDisplay = shiftHours > 0 ? shiftHours.toFixed(1) : '-';
 
     let statusText = '';
     if (day.status === 'absent') statusText = 'Vắng';
@@ -35,6 +50,9 @@ function createSalaryHTML(calculation: StaffSalaryCalculation, storeName: string
     else statusText = 'Đúng giờ';
 
     const total = day.status === 'absent' ? '0' : formatAmount(day.subtotal);
+    if (day.status !== 'absent') {
+      totalMoney += day.subtotal;
+    }
 
     return `
       <tr>
@@ -42,11 +60,22 @@ function createSalaryHTML(calculation: StaffSalaryCalculation, storeName: string
         <td style="padding: 6px; border: 1px solid #ddd; font-size: 11px;">${shift}</td>
         <td style="padding: 6px; border: 1px solid #ddd; font-size: 11px;">${checkIn}</td>
         <td style="padding: 6px; border: 1px solid #ddd; font-size: 11px;">${checkOut}</td>
+        <td style="padding: 6px; border: 1px solid #ddd; font-size: 11px; text-align: center;">${hoursDisplay}</td>
         <td style="padding: 6px; border: 1px solid #ddd; font-size: 11px;">${statusText}</td>
         <td style="padding: 6px; border: 1px solid #ddd; font-size: 11px; text-align: right;">${total} ₫</td>
       </tr>
     `;
   }).join('');
+
+  // Add total row
+  const totalRow = `
+    <tr style="background-color: #f5f5f5; font-weight: bold;">
+      <td colspan="4" style="padding: 8px; border: 1px solid #ddd; text-align: right;">Tổng cộng:</td>
+      <td style="padding: 8px; border: 1px solid #ddd; text-align: center;">${totalHours.toFixed(1)}</td>
+      <td style="padding: 8px; border: 1px solid #ddd;"></td>
+      <td style="padding: 8px; border: 1px solid #ddd; text-align: right;">${formatAmount(totalMoney)} ₫</td>
+    </tr>
+  `;
 
   return `
     <!DOCTYPE html>
@@ -277,12 +306,14 @@ function createSalaryHTML(calculation: StaffSalaryCalculation, storeName: string
               <th>Ca</th>
               <th>Vào</th>
               <th>Ra</th>
+              <th style="text-align: center;">Tổng giờ</th>
               <th>Trạng thái</th>
               <th style="text-align: right;">Thực nhận</th>
             </tr>
           </thead>
           <tbody>
             ${dailyRows}
+            ${totalRow}
           </tbody>
         </table>
       </div>
