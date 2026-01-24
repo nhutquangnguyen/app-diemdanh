@@ -31,9 +31,9 @@ export function AuthMonitor() {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       console.log('🔐 [AUTH MONITOR] State changed:', event, session?.user?.email);
 
-      // Handle session expiry or logout
-      if (event === 'SIGNED_OUT' || (event === 'TOKEN_REFRESHED' && !session)) {
-        console.warn('⚠️ [AUTH MONITOR] Session expired or user signed out');
+      // Only handle actual sign out, not token refresh
+      if (event === 'SIGNED_OUT') {
+        console.warn('⚠️ [AUTH MONITOR] User signed out or session expired');
         alert('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.');
         router.push('/auth/login');
       }
