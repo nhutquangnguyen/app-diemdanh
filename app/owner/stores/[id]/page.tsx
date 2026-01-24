@@ -1831,7 +1831,7 @@ export default function StoreDetail() {
     return staff
       .map(s => calculateStaffSalary(s))
       .filter(Boolean) as StaffSalaryCalculation[];
-  }, [staff, store, selectedMonth, schedules, checkIns, salaryAdjustments, shifts, activeTab]);
+  }, [staff, store, selectedMonth, schedules, salaryCheckIns, salaryAdjustments, shifts, activeTab]);
 
   // Calculate today's stats
   const today = new Date().toDateString();
