@@ -134,9 +134,10 @@ export function calculateStaffMonthlySalary(
       const shift = shifts.find(s => s.id === schedule.shift_template_id);
       if (!shift) return;
 
-      // Find check-in for this date
+      // Find check-in for this date (using local date to avoid timezone issues)
       const checkIn = checkIns.find(c => {
-        const checkInDate = new Date(c.check_in_time).toISOString().split('T')[0];
+        const checkInTime = new Date(c.check_in_time);
+        const checkInDate = `${checkInTime.getFullYear()}-${String(checkInTime.getMonth() + 1).padStart(2, '0')}-${String(checkInTime.getDate()).padStart(2, '0')}`;
         return checkInDate === schedule.scheduled_date;
       });
 
@@ -222,9 +223,10 @@ export function calculateStaffMonthlySalary(
       const shift = shifts.find(s => s.id === schedule.shift_template_id);
       if (!shift) return;
 
-      // Find check-in for this date
+      // Find check-in for this date (using local date to avoid timezone issues)
       const checkIn = checkIns.find(c => {
-        const checkInDate = new Date(c.check_in_time).toISOString().split('T')[0];
+        const checkInTime = new Date(c.check_in_time);
+        const checkInDate = `${checkInTime.getFullYear()}-${String(checkInTime.getMonth() + 1).padStart(2, '0')}-${String(checkInTime.getDate()).padStart(2, '0')}`;
         return checkInDate === schedule.scheduled_date;
       });
 
@@ -312,9 +314,10 @@ export function calculateStaffMonthlySalary(
       const shift = shifts.find(s => s.id === schedule.shift_template_id);
       if (!shift) return;
 
-      // Find check-in for this date
+      // Find check-in for this date (using local date to avoid timezone issues)
       const checkIn = checkIns.find(c => {
-        const checkInDate = new Date(c.check_in_time).toISOString().split('T')[0];
+        const checkInTime = new Date(c.check_in_time);
+        const checkInDate = `${checkInTime.getFullYear()}-${String(checkInTime.getMonth() + 1).padStart(2, '0')}-${String(checkInTime.getDate()).padStart(2, '0')}`;
         return checkInDate === schedule.scheduled_date;
       });
 

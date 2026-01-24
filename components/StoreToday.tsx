@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Staff, CheckIn, ShiftTemplate, ScheduleWithDetails, Store } from '@/types';
 
 interface StoreTodayProps {
@@ -40,9 +40,19 @@ export default function StoreToday({
 }: StoreTodayProps) {
   const [expandedShifts, setExpandedShifts] = useState<Set<string>>(new Set());
   const [selectedCheckIn, setSelectedCheckIn] = useState<CheckIn | null>(null);
+  const [currentTime, setCurrentTime] = useState(new Date());
+
+  // Update current time every second
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, []);
 
   // Get current time
-  const now = new Date();
+  const now = currentTime;
   const currentTimeMinutes = now.getHours() * 60 + now.getMinutes();
 
   // Helper function to convert HH:mm:ss to minutes
@@ -184,6 +194,25 @@ export default function StoreToday({
 
   return (
     <div className="px-4 sm:px-6 py-6 space-y-4">
+      {/* Current Date and Time Info */}
+      <div className="flex items-center justify-between text-sm text-gray-600 px-2">
+        <div>
+          📅 {currentTime.toLocaleDateString('vi-VN', {
+            weekday: 'short',
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric'
+          })}
+        </div>
+        <div className="tabular-nums">
+          🕐 {currentTime.toLocaleTimeString('vi-VN', {
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit'
+          })}
+        </div>
+      </div>
+
       {/* Current Shift Summary */}
       {activeShift && (() => {
         const staffWithStatus = getShiftStaffWithStatus(activeShift);

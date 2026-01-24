@@ -29,7 +29,7 @@ import StoreSalary from '@/components/StoreSalary';
 import StaffSalaryDetail from '@/components/salary/StaffSalaryDetail';
 import AdjustmentForm from '@/components/salary/AdjustmentForm';
 import ConfirmDialog from '@/components/ConfirmDialog';
-import { calculateStaffMonthlySalary, getCurrentMonth } from '@/lib/salaryCalculations';
+import { calculateStaffMonthlySalary, getCurrentMonth, formatAmount } from '@/lib/salaryCalculations';
 import { checkScheduleNeedsReview } from '@/lib/scheduleNotifications';
 
 export default function StoreDetail() {
@@ -113,6 +113,8 @@ export default function StoreDetail() {
     message: string;
     onConfirm: () => void;
     isLoading?: boolean;
+    confirmText?: string;
+    confirmButtonClass?: string;
   }>({
     isOpen: false,
     title: '',
@@ -1429,8 +1431,35 @@ export default function StoreDetail() {
     setSelectedStaffForSalary(staffId);
   }
 
-  async function handleTogglePaymentStatus(staffId: string, currentStatus: 'paid' | 'unpaid') {
+  function handleTogglePaymentStatus(staffId: string, currentStatus: 'paid' | 'unpaid') {
+    const staffMember = staff.find(s => s.id === staffId);
+    if (!staffMember) return;
+
+    const calculation = calculateStaffSalary(staffMember);
+    if (!calculation) return;
+
+    const staffName = staffMember.name || staffMember.full_name || staffMember.email;
+    const isPaid = currentStatus === 'paid';
+
+    // Show confirmation dialog
+    setConfirmDialog({
+      isOpen: true,
+      title: isPaid ? 'Hủy đánh dấu đã trả lương?' : 'Xác nhận đã trả lương?',
+      message: isPaid
+        ? `Bạn có chắc muốn hủy đánh dấu đã trả lương cho ${staffName} không?`
+        : `Bạn có chắc đã trả lương ${formatAmount(calculation.final_amount)}đ cho ${staffName} không?`,
+      confirmText: isPaid ? 'Hủy đánh dấu' : 'Xác nhận đã trả',
+      confirmButtonClass: isPaid ? 'bg-orange-600 hover:bg-orange-700' : 'bg-green-600 hover:bg-green-700',
+      onConfirm: async () => {
+        await executeTogglePaymentStatus(staffId, currentStatus);
+      },
+    });
+  }
+
+  async function executeTogglePaymentStatus(staffId: string, currentStatus: 'paid' | 'unpaid') {
     try {
+      setConfirmDialog(prev => ({ ...prev, isLoading: true }));
+
       const staffMember = staff.find(s => s.id === staffId);
       if (!staffMember) return;
 
@@ -1443,6 +1472,7 @@ export default function StoreDetail() {
       const { data: { user }, error: userError } = await supabase.auth.getUser();
       if (userError || !user) {
         toast.error('Không thể xác thực người dùng');
+        setConfirmDialog(prev => ({ ...prev, isLoading: false }));
         return;
       }
 
@@ -1516,9 +1546,10 @@ export default function StoreDetail() {
       }
 
       loadSalaryData();
+      setConfirmDialog({ isOpen: false, title: '', message: '', onConfirm: () => {} });
     } catch (error: any) {
       console.error('Error toggling payment status:', error);
-      toast.error('Lỗi khi cập nhật trạng thái thanh toán: ' + error.message);
+      setConfirmDialog(prev => ({ ...prev, isLoading: false }));
     }
   }
 
@@ -1773,21 +1804,21 @@ export default function StoreDetail() {
             )}
           </button>
           <button
-            onClick={() => updateActiveTab('smart-schedule')}
+            onClick={() => updateActiveTab('salary')}
             className={`flex-1 px-4 py-3 rounded-lg font-semibold transition-all ${
-              activeTab === 'smart-schedule'
+              activeTab === 'salary'
                 ? 'bg-blue-600 text-white'
                 : 'text-gray-700 hover:bg-gray-100'
             }`}
           >
-            Xếp lịch AI
+            Lương
           </button>
           <div ref={moreMenuRefDesktop} className="relative flex-1">
             <button
               type="button"
               onClick={() => setShowMoreMenu(!showMoreMenu)}
               className={`w-full px-4 py-3 rounded-lg font-semibold transition-all ${
-                activeTab === 'settings' || activeTab === 'shifts' || activeTab === 'staff' || activeTab === 'salary' || activeTab === 'qr' || showMoreMenu
+                activeTab === 'settings' || activeTab === 'shifts' || activeTab === 'staff' || activeTab === 'smart-schedule' || activeTab === 'qr' || showMoreMenu
                   ? 'bg-blue-600 text-white'
                   : 'text-gray-700 hover:bg-gray-100'
               } flex items-center justify-center gap-2`}
@@ -1799,6 +1830,19 @@ export default function StoreDetail() {
             </button>
             {showMoreMenu && (
               <div className="absolute right-0 top-full mt-2 bg-white rounded-lg shadow-xl border border-gray-200 py-2 min-w-[200px] z-50">
+                <button
+                  type="button"
+                  onClick={() => {
+                    updateActiveTab('smart-schedule');
+                    setShowMoreMenu(false);
+                  }}
+                  className="w-full text-left px-4 py-3 hover:bg-gray-100 transition-all flex items-center gap-3"
+                >
+                  <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                  </svg>
+                  <span className="font-semibold text-gray-700">Xếp lịch AI</span>
+                </button>
                 <button
                   type="button"
                   onClick={() => {
@@ -1824,19 +1868,6 @@ export default function StoreDetail() {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
                   <span className="font-semibold text-gray-700">Quản Lý Ca</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    updateActiveTab('salary');
-                    setShowMoreMenu(false);
-                  }}
-                  className="w-full text-left px-4 py-3 hover:bg-gray-100 transition-all flex items-center gap-3"
-                >
-                  <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  <span className="font-semibold text-gray-700">Lương</span>
                 </button>
                 <button
                   type="button"
@@ -2120,24 +2151,24 @@ export default function StoreDetail() {
               )}
             </button>
             <button
-              onClick={() => updateActiveTab('smart-schedule')}
+              onClick={() => updateActiveTab('salary')}
               className={`w-full flex flex-col items-center py-2 px-1 rounded-lg transition-all ${
-                activeTab === 'smart-schedule'
+                activeTab === 'salary'
                   ? 'bg-blue-600 text-white'
                   : 'text-gray-600'
               }`}
             >
               <svg className="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
-              <span className="text-xs font-semibold">Xếp lịch AI</span>
+              <span className="text-xs font-semibold">Lương</span>
             </button>
             <div ref={moreMenuRefMobile} className="relative">
               <button
                 type="button"
                 onClick={() => setShowMoreMenu(!showMoreMenu)}
                 className={`w-full flex flex-col items-center py-2 px-1 rounded-lg transition-all ${
-                  activeTab === 'settings' || activeTab === 'shifts' || activeTab === 'staff' || activeTab === 'salary' || activeTab === 'qr' || showMoreMenu
+                  activeTab === 'settings' || activeTab === 'shifts' || activeTab === 'staff' || activeTab === 'smart-schedule' || activeTab === 'qr' || showMoreMenu
                     ? 'bg-blue-600 text-white'
                     : 'text-gray-600'
                 }`}
@@ -2149,6 +2180,19 @@ export default function StoreDetail() {
               </button>
               {showMoreMenu && (
                 <div className="absolute bottom-full right-0 mb-2 bg-white rounded-lg shadow-xl border border-gray-200 py-2 min-w-[200px] z-50">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      updateActiveTab('smart-schedule');
+                      setShowMoreMenu(false);
+                    }}
+                    className="w-full text-left px-4 py-3 hover:bg-gray-100 transition-all flex items-center gap-3"
+                  >
+                    <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                    </svg>
+                    <span className="font-semibold text-gray-700">Xếp lịch AI</span>
+                  </button>
                   <button
                     type="button"
                     onClick={() => {
@@ -2174,19 +2218,6 @@ export default function StoreDetail() {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
                     <span className="font-semibold text-gray-700">Quản Lý Ca</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      updateActiveTab('salary');
-                      setShowMoreMenu(false);
-                    }}
-                    className="w-full text-left px-4 py-3 hover:bg-gray-100 transition-all flex items-center gap-3"
-                  >
-                    <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    <span className="font-semibold text-gray-700">Lương</span>
                   </button>
                   <button
                     type="button"
@@ -2361,9 +2392,9 @@ export default function StoreDetail() {
         onConfirm={confirmDialog.onConfirm}
         title={confirmDialog.title}
         message={confirmDialog.message}
-        confirmText="Xóa"
+        confirmText={confirmDialog.confirmText || 'Xóa'}
+        confirmButtonClass={confirmDialog.confirmButtonClass || 'bg-red-600 hover:bg-red-700'}
         cancelText="Hủy"
-        confirmButtonClass="bg-red-600 hover:bg-red-700"
         isLoading={confirmDialog.isLoading}
       />
 
