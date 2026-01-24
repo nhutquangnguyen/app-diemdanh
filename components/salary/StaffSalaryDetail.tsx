@@ -267,18 +267,64 @@ export default function StaffSalaryDetail({
 
                 {day.status !== 'absent' && (
                   <>
-                    <div className="grid grid-cols-2 gap-2 text-xs mb-2">
+                    {/* Time Comparison Section */}
+                    <div className="bg-white rounded-lg p-2 mb-2 border border-gray-200">
+                      {/* Shift Time (Expected) */}
+                      {day.shift_time && (
+                        <div className="mb-2 pb-2 border-b border-gray-100">
+                          <div className="text-xs text-gray-500 mb-1">Ca làm việc:</div>
+                          <div className="flex justify-between items-center">
+                            <div className="flex items-center gap-1">
+                              <svg className="w-3 h-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                              </svg>
+                              <span className="text-xs font-medium text-gray-600">{day.shift_time}</span>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Actual Time */}
                       <div>
-                        <span className="text-gray-500">Vào:</span>
-                        <span className="ml-1 font-medium text-gray-900">
-                          {day.check_in_time ? new Date(day.check_in_time).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }) : '--:--'}
-                        </span>
-                      </div>
-                      <div>
-                        <span className="text-gray-500">Ra:</span>
-                        <span className="ml-1 font-medium text-gray-900">
-                          {day.check_out_time ? new Date(day.check_out_time).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }) : '--:--'}
-                        </span>
+                        <div className="text-xs text-gray-500 mb-1">Thực tế:</div>
+                        <div className="grid grid-cols-2 gap-2">
+                          <div className={`flex items-center gap-1 ${
+                            day.status === 'late' ? 'text-yellow-700 font-semibold' : 'text-gray-900'
+                          }`}>
+                            <span className="text-xs">Vào:</span>
+                            <span className="text-sm font-bold">
+                              {day.check_in_time ? new Date(day.check_in_time).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }) : '--:--'}
+                            </span>
+                            {day.status === 'late' && (
+                              <svg className="w-3 h-3 text-yellow-600" fill="currentColor" viewBox="0 0 20 20">
+                                <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                              </svg>
+                            )}
+                          </div>
+                          <div className={`flex items-center gap-1 ${
+                            day.status === 'early_checkout' ? 'text-orange-700 font-semibold' : 'text-gray-900'
+                          }`}>
+                            <span className="text-xs">Ra:</span>
+                            <span className="text-sm font-bold">
+                              {day.check_out_time ? new Date(day.check_out_time).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }) : '--:--'}
+                            </span>
+                            {day.status === 'early_checkout' && (
+                              <svg className="w-3 h-3 text-orange-600" fill="currentColor" viewBox="0 0 20 20">
+                                <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                              </svg>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Overtime indicator */}
+                        {day.status === 'overtime' && day.overtime_pay > 0 && (
+                          <div className="mt-1 flex items-center gap-1 text-purple-700">
+                            <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v3.586L7.707 9.293a1 1 0 00-1.414 1.414l3 3a1 1 0 001.414 0l3-3a1 1 0 00-1.414-1.414L11 10.586V7z" clipRule="evenodd" />
+                            </svg>
+                            <span className="text-xs font-medium">Làm thêm giờ</span>
+                          </div>
+                        )}
                       </div>
                     </div>
 
