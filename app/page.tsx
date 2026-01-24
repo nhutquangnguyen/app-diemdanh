@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import Header from '@/components/Header';
 import { supabase } from '@/lib/supabase';
-import { getCurrentUserSync } from '@/lib/auth';
+import { getCurrentUserSync, getCurrentUser } from '@/lib/auth';
 import { calculateDistance, formatDistance, getCurrentPosition, getStoreStatus } from '@/lib/geo';
 import { Store } from '@/types';
 
@@ -43,23 +43,37 @@ export default function Home() {
   // Auth verification
   useEffect(() => {
     let mounted = true;
+    let redirectTimeout: NodeJS.Timeout | null = null;
 
     async function verifyAuth() {
       try {
-        const { getCurrentUser } = await import('@/lib/auth');
+        // Set timeout to force redirect if verification takes too long
+        redirectTimeout = setTimeout(() => {
+          const syncUser = getCurrentUserSync();
+          if (!syncUser && mounted) {
+            // Force redirect if still no user after 2 seconds
+            window.location.href = '/auth/login';
+          }
+        }, 2000);
+
         const currentUser = await getCurrentUser();
+
+        // Clear timeout if we got a response
+        if (redirectTimeout) clearTimeout(redirectTimeout);
+
         if (mounted) {
           setUser(currentUser);
-          // If no user after verification, redirect to login
+          // If no user after verification, use window.location for instant redirect
           if (!currentUser) {
-            router.push('/auth/login');
+            window.location.href = '/auth/login';
           }
         }
       } catch (error) {
         console.error('Error verifying user:', error);
+        if (redirectTimeout) clearTimeout(redirectTimeout);
         if (mounted) {
           setUser(null);
-          router.push('/auth/login');
+          window.location.href = '/auth/login';
         }
       }
     }
@@ -79,6 +93,7 @@ export default function Home() {
 
     return () => {
       mounted = false;
+      if (redirectTimeout) clearTimeout(redirectTimeout);
       data.subscription.unsubscribe();
     };
   }, [router]);
