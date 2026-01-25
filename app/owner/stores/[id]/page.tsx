@@ -654,6 +654,10 @@ export default function StoreDetail() {
       if (!shiftsError) {
         setShifts(shiftsData || []);
       }
+
+      // Load schedules to prevent race condition on Today tab
+      // This ensures schedules load together with other data
+      await loadSchedules();
     } catch (error: any) {
       console.error('Error loading store data:', error);
       console.error('Error details:', {
