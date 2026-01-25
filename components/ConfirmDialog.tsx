@@ -25,11 +25,6 @@ export default function ConfirmDialog({
   confirmButtonClass = 'bg-red-600 hover:bg-red-700',
   isLoading = false,
 }: ConfirmDialogProps) {
-  // Debug log
-  useEffect(() => {
-    console.log('🔔 [CONFIRM_DIALOG] State changed:', { isOpen, title, message });
-  }, [isOpen, title, message]);
-
   // Close on Escape key
   useEffect(() => {
     function handleEscape(e: KeyboardEvent) {
@@ -45,11 +40,8 @@ export default function ConfirmDialog({
   }, [isOpen, isLoading, onClose]);
 
   if (!isOpen) {
-    console.log('🔔 [CONFIRM_DIALOG] Not rendering - isOpen is false');
     return null;
   }
-
-  console.log('🔔 [CONFIRM_DIALOG] Rendering dialog!');
 
   return (
     <div
@@ -57,7 +49,6 @@ export default function ConfirmDialog({
       onMouseDown={(e) => {
         // Only close if clicking the backdrop itself, not the dialog
         if (e.target === e.currentTarget && !isLoading) {
-          console.log('🔔 [CONFIRM_DIALOG] Backdrop clicked - closing');
           onClose();
         }
       }}
@@ -95,11 +86,9 @@ export default function ConfirmDialog({
         <div className="flex gap-3 justify-end mt-6">
           <button
             onClick={(e) => {
-              console.log('⚪ [CONFIRM_DIALOG] Cancel button clicked!');
               e.preventDefault();
               e.stopPropagation();
               onClose();
-              console.log('⚪ [CONFIRM_DIALOG] onClose called!');
             }}
             disabled={isLoading}
             className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg font-semibold hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
@@ -108,13 +97,9 @@ export default function ConfirmDialog({
           </button>
           <button
             onClick={(e) => {
-              console.log('🔴 [CONFIRM_DIALOG] Xóa button clicked!');
-              console.log('🔴 [CONFIRM_DIALOG] onConfirm type:', typeof onConfirm);
-              console.log('🔴 [CONFIRM_DIALOG] isLoading:', isLoading);
               e.preventDefault();
               e.stopPropagation();
               onConfirm();
-              console.log('🔴 [CONFIRM_DIALOG] onConfirm called!');
             }}
             disabled={isLoading}
             className={`px-4 py-2 text-white rounded-lg font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 ${confirmButtonClass}`}
