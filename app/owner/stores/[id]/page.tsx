@@ -1769,18 +1769,6 @@ export default function StoreDetail() {
     // Get adjustments for this staff in the selected month
     const staffAdjustments = salaryAdjustments.filter(a => a.staff_id === staffMember.id);
 
-    // Debug logging
-    console.log(`💰 [SALARY] Staff: ${staffMember.name || staffMember.full_name}`, {
-      selectedMonth,
-      schedules: monthSchedules.length,
-      checkIns: monthCheckIns.length,
-      adjustments: staffAdjustments.length,
-      salaryType: staffMember.salary_type,
-      hourRate: staffMember.hour_rate,
-      monthlyRate: staffMember.monthly_rate,
-      dailyRate: staffMember.daily_rate,
-    });
-
     return calculateStaffMonthlySalary(
       staffMember,
       store,
