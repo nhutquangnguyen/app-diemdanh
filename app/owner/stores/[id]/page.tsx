@@ -657,7 +657,10 @@ export default function StoreDetail() {
 
       // Load schedules to prevent race condition on Today tab
       // This ensures schedules load together with other data
-      await loadSchedules();
+      // NOTE: Don't load schedules if on salary tab, as salary uses month-specific schedules
+      if (activeTab !== 'salary') {
+        await loadSchedules();
+      }
     } catch (error: any) {
       console.error('Error loading store data:', error);
       console.error('Error details:', {
