@@ -11,9 +11,9 @@ export async function checkScheduleNeedsReview(storeId: string): Promise<boolean
       .eq('store_id', storeId)
       .eq('needs_review', true)
       .limit(1)
-      .single();
+      .maybeSingle();
 
-    if (error && error.code !== 'PGRST116') { // PGRST116 = no rows returned
+    if (error) {
       console.error('Error checking schedule needs review:', error);
       return false;
     }

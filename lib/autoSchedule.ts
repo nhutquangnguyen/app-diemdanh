@@ -84,9 +84,9 @@ export async function autoGenerateSchedule({ storeId, weekStartDate }: AutoSched
       .select('id, triggered_at')
       .eq('store_id', storeId)
       .eq('week_start_date', weekStartDate)
-      .single();
+      .maybeSingle();
 
-    if (triggerError && triggerError.code !== 'PGRST116') { // PGRST116 = no rows
+    if (triggerError) {
       throw triggerError;
     }
 

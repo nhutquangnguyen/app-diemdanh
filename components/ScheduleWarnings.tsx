@@ -53,9 +53,19 @@ export default function ScheduleWarnings({ storeId, weekStartDate }: ScheduleWar
         .eq('week_start_date', weekStartDate)
         .order('created_at', { ascending: false })
         .limit(1)
-        .single();
+        .maybeSingle();
 
       if (error) {
+        // Error occurred
+        console.error('Error loading schedule generation:', error);
+        setWarnings([]);
+        setStats(null);
+        setNeedsReview(false);
+        setGenerationId(null);
+        return;
+      }
+
+      if (!data) {
         // No generation found - this is normal if schedule wasn't AI-generated
         setWarnings([]);
         setStats(null);
