@@ -557,7 +557,7 @@ export default function Home() {
                   {ownedStores.map((store) => (
                     <Link
                       key={store.id}
-                      href={`/owner/stores/${store.id}`}
+                      href={`/owner/workspaces/${store.id}`}
                       className="block w-full bg-white border-2 border-purple-500 rounded-xl p-4 hover:shadow-lg transition-all active:scale-[0.98]"
                     >
                       <div className="flex items-center justify-between">
