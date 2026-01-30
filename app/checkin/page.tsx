@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Html5Qrcode } from 'html5-qrcode';
 import { getCurrentUser } from '@/lib/auth';
 import Header from '@/components/Header';
+import PermissionGuidance from '@/components/common/PermissionGuidance';
 
 export default function CheckInPage() {
   const router = useRouter();
@@ -112,62 +113,14 @@ export default function CheckInPage() {
   // Show camera error state
   if (cameraError) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-100">
-        <Header />
-
-        <main className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="bg-white rounded-lg shadow-lg p-8">
-            <div className="text-center">
-              <div className="mb-6">
-                <svg
-                  className="mx-auto h-16 w-16 text-red-500"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-                  />
-                </svg>
-              </div>
-              <h2 className="text-2xl font-bold text-gray-800 mb-4">
-                Không thể truy cập Camera
-              </h2>
-              <p className="text-gray-600 mb-6">
-                Bạn đã từ chối quyền truy cập camera. Vui lòng cho phép truy cập camera trong cài đặt trình duyệt để sử dụng chức năng quét mã QR.
-              </p>
-              <div className="space-y-3">
-                <a
-                  href="https://app.diemdanh.net/help/cap-quyen"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="block w-full px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors duration-200 text-center"
-                >
-                  Hướng dẫn cấp quyền Camera
-                </a>
-                <button
-                  onClick={() => {
-                    setCameraError(false);
-                    setScanning(true);
-                  }}
-                  className="w-full px-6 py-3 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg transition-colors duration-200"
-                >
-                  Thử lại
-                </button>
-                <button
-                  onClick={() => router.push('/')}
-                  className="w-full px-6 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium rounded-lg transition-colors duration-200"
-                >
-                  Quay về Trang chủ
-                </button>
-              </div>
-            </div>
-          </div>
-        </main>
-      </div>
+      <PermissionGuidance
+        type="camera"
+        workspaceType="store"
+        onRetry={() => {
+          setCameraError(false);
+          setScanning(true);
+        }}
+      />
     );
   }
 

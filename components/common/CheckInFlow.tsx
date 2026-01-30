@@ -6,6 +6,7 @@ import Webcam from 'react-webcam';
 import { supabase } from '@/lib/supabase';
 import { getCurrentLocation, calculateDistance } from '@/utils/location';
 import { compressImage } from '@/utils/imageCompression';
+import PermissionGuidance from '@/components/common/PermissionGuidance';
 
 interface CheckInFlowProps {
   // Common props
@@ -427,17 +428,29 @@ export default function CheckInFlow({
 
           {cameraError && (
             <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-              <div className="bg-white rounded-lg max-w-md w-full p-6">
-                <h3 className="text-lg font-bold text-gray-800 mb-2">Không thể truy cập Camera</h3>
-                <p className="text-sm text-gray-600 mb-4">
-                  Vui lòng cho phép truy cập camera trong cài đặt trình duyệt.
-                </p>
-                <button
-                  onClick={() => setCameraError(false)}
-                  className="w-full bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-semibold"
-                >
-                  Đóng
-                </button>
+              <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+                <PermissionGuidance
+                  type="camera"
+                  workspaceType={type === 'staff' ? 'store' : 'class'}
+                  onRetry={() => setCameraError(false)}
+                  showHeader={false}
+                />
+              </div>
+            </div>
+          )}
+
+          {locationError && (
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+              <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+                <PermissionGuidance
+                  type="location"
+                  workspaceType={type === 'staff' ? 'store' : 'class'}
+                  onRetry={() => {
+                    setLocationError(false);
+                    setStep('info');
+                  }}
+                  showHeader={false}
+                />
               </div>
             </div>
           )}
