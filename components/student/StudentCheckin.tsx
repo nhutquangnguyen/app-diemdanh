@@ -6,6 +6,7 @@ import { supabase } from '@/lib/supabase';
 import { Store, Student, ClassSession } from '@/types';
 import { getCurrentLocation, calculateDistance } from '@/utils/location';
 import { compressImage } from '@/utils/imageCompression';
+import PermissionGuidance from '@/components/common/PermissionGuidance';
 
 interface Props {
   classId: string;
@@ -98,7 +99,6 @@ export default function StudentCheckin({ classId, student, classroom }: Props) {
       const location = await getCurrentLocation();
       if (!location) {
         setLocationError(true);
-        alert('Không thể lấy vị trí GPS. Vui lòng bật định vị và cho phép truy cập.');
         return;
       }
 
@@ -369,31 +369,30 @@ export default function StudentCheckin({ classId, student, classroom }: Props) {
           {/* Camera Error Dialog */}
           {cameraError && (
             <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-              <div className="bg-white rounded-lg max-w-md w-full p-6">
-                <h3 className="text-lg font-bold text-gray-800 mb-2">Không thể truy cập Camera</h3>
-                <p className="text-sm text-gray-600 mb-4">
-                  Vui lòng cho phép truy cập camera trong cài đặt trình duyệt.
-                </p>
-                <div className="flex gap-3">
-                  <button
-                    onClick={() => {
-                      setCameraError(false);
-                      cancelSelfie();
-                    }}
-                    className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-700 px-4 py-2 rounded-lg font-semibold"
-                  >
-                    Đóng
-                  </button>
-                  <button
-                    onClick={() => {
-                      setCameraError(false);
-                      window.location.reload();
-                    }}
-                    className="flex-1 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-semibold"
-                  >
-                    Thử lại
-                  </button>
-                </div>
+              <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+                <PermissionGuidance
+                  type="camera"
+                  workspaceType="class"
+                  onRetry={() => setCameraError(false)}
+                  showHeader={false}
+                />
+              </div>
+            </div>
+          )}
+
+          {/* Location Error Dialog */}
+          {locationError && (
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+              <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+                <PermissionGuidance
+                  type="location"
+                  workspaceType="class"
+                  onRetry={() => {
+                    setLocationError(false);
+                    setActiveSessionId(null);
+                  }}
+                  showHeader={false}
+                />
               </div>
             </div>
           )}
