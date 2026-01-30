@@ -28,6 +28,7 @@ export default function Home() {
   const [currentTime, setCurrentTime] = useState(new Date());
   const [stores, setStores] = useState<StoreWithDistance[]>([]);
   const [ownedStores, setOwnedStores] = useState<Store[]>([]);
+  const [studentClasses, setStudentClasses] = useState<Store[]>([]);
   const [initialLoading, setInitialLoading] = useState(true); // Only for first load
   const [gpsLoading, setGpsLoading] = useState(false);
   const [showActionDialog, setShowActionDialog] = useState(false);
@@ -112,6 +113,7 @@ export default function Home() {
     if (user) {
       loadStores(true); // Initial load with spinner
       loadOwnedStores();
+      loadStudentClasses();
     }
   }, [user]);
 
@@ -130,6 +132,43 @@ export default function Home() {
       setOwnedStores(data || []);
     } catch (error) {
       console.error('Error loading owned stores:', error);
+    }
+  }
+
+  async function loadStudentClasses() {
+    if (!user) return;
+
+    try {
+      // Load classes where user is a student
+      const { data: studentRecords, error: studentError } = await supabase
+        .from('students')
+        .select('class_id')
+        .eq('user_id', user.id)
+        .eq('status', 'active');
+
+      if (studentError) throw studentError;
+
+      if (!studentRecords || studentRecords.length === 0) {
+        setStudentClasses([]);
+        return;
+      }
+
+      const classIds = studentRecords.map(s => s.class_id);
+
+      // Load the class details
+      const { data: classes, error: classesError } = await supabase
+        .from('stores')
+        .select('*')
+        .in('id', classIds)
+        .eq('workspace_type', 'education')
+        .is('deleted_at', null)
+        .order('created_at', { ascending: false });
+
+      if (classesError) throw classesError;
+
+      setStudentClasses(classes || []);
+    } catch (error) {
+      console.error('Error loading student classes:', error);
     }
   }
 
@@ -293,8 +332,8 @@ export default function Home() {
         const distance = calculateDistance(
           position.coords.latitude,
           position.coords.longitude,
-          store.latitude,
-          store.longitude
+          store.latitude || 0,
+          store.longitude || 0
         );
 
         const status = getStoreStatus(distance, store.radius_meters);
@@ -370,7 +409,7 @@ export default function Home() {
             )}
 
             {/* Empty State - New User Guidance */}
-            {!initialLoading && stores.length === 0 && ownedStores.length === 0 && (
+            {!initialLoading && stores.length === 0 && ownedStores.length === 0 && studentClasses.length === 0 && (
               <div className="bg-white rounded-2xl shadow-lg p-6 sm:p-8">
                 <div className="text-center mb-6">
                   <div className="w-20 h-20 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -548,6 +587,35 @@ export default function Home() {
               </>
             )}
 
+            {/* Student Classes Section */}
+            {studentClasses.length > 0 && (
+              <div className="mt-6">
+                <h3 className="text-lg font-semibold text-gray-800 mb-3">📚 Lớp học của bạn</h3>
+                <div className="space-y-2">
+                  {studentClasses.map((classroom) => (
+                    <Link
+                      key={classroom.id}
+                      href={`/student/${classroom.id}`}
+                      className="block w-full bg-white border-2 border-green-500 rounded-xl p-4 hover:shadow-lg transition-all active:scale-[0.98]"
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex-1">
+                          <h4 className="font-bold text-gray-800 text-lg">{classroom.name}</h4>
+                          <p className="text-sm text-gray-600">
+                            {classroom.subject && `${classroom.subject} • `}
+                            {classroom.grade_level && `${classroom.grade_level} • `}
+                            {classroom.room_number && `Phòng ${classroom.room_number}`}
+                          </p>
+                        </div>
+                        <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                        </svg>
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Owned Stores Section - Bottom */}
             {ownedStores.length > 0 && (
@@ -557,7 +625,7 @@ export default function Home() {
                   {ownedStores.map((store) => (
                     <Link
                       key={store.id}
-                      href={`/owner/stores/${store.id}`}
+                      href={`/owner/workspaces/${store.id}`}
                       className="block w-full bg-white border-2 border-purple-500 rounded-xl p-4 hover:shadow-lg transition-all active:scale-[0.98]"
                     >
                       <div className="flex items-center justify-between">

@@ -24,6 +24,7 @@ function SignupContent() {
   const [returnUrl, setReturnUrl] = useState('/');
   const [inviteToken, setInviteToken] = useState<string | null>(null);
   const [invitation, setInvitation] = useState<any>(null);
+  const [invitationType, setInvitationType] = useState<'staff' | 'student' | null>(null);
   const [loadingInvite, setLoadingInvite] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -45,7 +46,8 @@ function SignupContent() {
   async function loadInvitation(token: string) {
     setLoadingInvite(true);
     try {
-      const { data, error } = await supabase
+      // Check staff invitations first
+      const { data: staffData, error: staffError } = await supabase
         .from('staff')
         .select(`
           *,
@@ -57,23 +59,56 @@ function SignupContent() {
         .eq('status', 'invited')
         .single();
 
-      if (error || !data) {
-        setError('Lời mời không hợp lệ hoặc đã hết hạn');
-        setInviteToken(null);
+      if (staffData && !staffError) {
+        // Check if expired
+        const expiresAt = new Date(staffData.invitation_expires_at);
+        if (expiresAt < new Date()) {
+          setError('Lời mời đã hết hạn. Vui lòng liên hệ quản lý để gửi lại lời mời.');
+          setInviteToken(null);
+          return;
+        }
+
+        setInvitation(staffData);
+        setInvitationType('staff');
+        // Pre-fill email from invitation
+        setFormData(prev => ({ ...prev, email: staffData.email }));
+        setLoadingInvite(false);
         return;
       }
 
-      // Check if expired
-      const expiresAt = new Date(data.invitation_expires_at);
-      if (expiresAt < new Date()) {
-        setError('Lời mời đã hết hạn. Vui lòng liên hệ quản lý để gửi lại lời mời.');
-        setInviteToken(null);
+      // Check student invitations
+      const { data: studentData, error: studentError } = await supabase
+        .from('students')
+        .select(`
+          *,
+          stores:class_id (
+            name
+          )
+        `)
+        .eq('invitation_token', token)
+        .eq('status', 'invited')
+        .single();
+
+      if (studentData && !studentError) {
+        // Check if expired
+        const expiresAt = new Date(studentData.invitation_expires_at);
+        if (expiresAt < new Date()) {
+          setError('Lời mời đã hết hạn. Vui lòng liên hệ giáo viên để gửi lại lời mời.');
+          setInviteToken(null);
+          return;
+        }
+
+        setInvitation(studentData);
+        setInvitationType('student');
+        // Pre-fill email from invitation
+        setFormData(prev => ({ ...prev, email: studentData.email }));
+        setLoadingInvite(false);
         return;
       }
 
-      setInvitation(data);
-      // Pre-fill email from invitation
-      setFormData(prev => ({ ...prev, email: data.email }));
+      // No invitation found
+      setError('Lời mời không hợp lệ hoặc đã hết hạn');
+      setInviteToken(null);
     } catch (err) {
       console.error('Error loading invitation:', err);
       setError('Không thể tải thông tin lời mời');
@@ -130,9 +165,10 @@ function SignupContent() {
             console.error('❌ [SIGNUP] Error auto-verifying invited user:', verifyError);
           }
 
-          // Auto-link staff account
+          // Auto-link account (staff or student)
           try {
-            const linkResponse = await fetch('/api/staff/link-account', {
+            const linkEndpoint = invitationType === 'student' ? '/api/students/link-account' : '/api/staff/link-account';
+            const linkResponse = await fetch(linkEndpoint, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
@@ -146,15 +182,18 @@ function SignupContent() {
             const linkResult = await linkResponse.json();
 
             if (linkResult.success && linkResult.linked) {
-              console.log('✅ [SIGNUP] Linked invited user to store(s)');
+              console.log(`✅ [SIGNUP] Linked invited user to ${invitationType === 'student' ? 'class(es)' : 'store(s)'}`);
 
               // Sign out and redirect to login
               const { signOut } = await import('@/lib/auth');
               await signOut();
 
               // Show success message
-              const storesList = linkResult.storeNames?.join(', ') || 'cửa hàng';
-              alert(`Đăng ký thành công! Bạn đã được thêm vào: ${storesList}\n\nVui lòng đăng nhập để tiếp tục.`);
+              const workspacesList = invitationType === 'student'
+                ? (linkResult.classNames?.join(', ') || 'lớp học')
+                : (linkResult.storeNames?.join(', ') || 'cửa hàng');
+              const workspaceType = invitationType === 'student' ? 'lớp học' : 'cửa hàng';
+              alert(`Đăng ký thành công! Bạn đã được thêm vào ${workspaceType}: ${workspacesList}\n\nVui lòng đăng nhập để tiếp tục.`);
               router.push(`/auth/login${returnUrl && returnUrl !== '/' ? `?returnUrl=${returnUrl}` : ''}`);
               return;
             }
@@ -261,15 +300,27 @@ function SignupContent() {
 
         {/* Invitation Banner */}
         {invitation && !loadingInvite && (
-          <div className="mb-6 bg-blue-50 border-l-4 border-blue-500 p-4 rounded">
+          <div className={`mb-6 border-l-4 p-4 rounded ${
+            invitationType === 'student'
+              ? 'bg-green-50 border-green-500'
+              : 'bg-blue-50 border-blue-500'
+          }`}>
             <div className="flex items-start gap-3">
-              <svg className="w-6 h-6 text-blue-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className={`w-6 h-6 flex-shrink-0 mt-0.5 ${
+                invitationType === 'student' ? 'text-green-600' : 'text-blue-600'
+              }`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
               </svg>
               <div>
-                <p className="font-semibold text-blue-900 mb-1">Lời mời làm nhân viên</p>
-                <p className="text-sm text-blue-800">
-                  Bạn đã được mời tham gia <span className="font-semibold">{invitation.stores?.name || 'cửa hàng'}</span>
+                <p className={`font-semibold mb-1 ${
+                  invitationType === 'student' ? 'text-green-900' : 'text-blue-900'
+                }`}>
+                  {invitationType === 'student' ? '📚 Lời mời tham gia lớp học' : 'Lời mời làm nhân viên'}
+                </p>
+                <p className={`text-sm ${
+                  invitationType === 'student' ? 'text-green-800' : 'text-blue-800'
+                }`}>
+                  Bạn đã được mời tham gia <span className="font-semibold">{invitation.stores?.name || (invitationType === 'student' ? 'lớp học' : 'cửa hàng')}</span>
                 </p>
               </div>
             </div>

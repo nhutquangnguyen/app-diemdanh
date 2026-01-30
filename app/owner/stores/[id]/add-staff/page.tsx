@@ -117,7 +117,7 @@ export default function AddStaff() {
       // If all successful, redirect after 2 seconds
       if (errorCount === 0 && data.results.length > 0) {
         setTimeout(() => {
-          router.push(`/owner/stores/${storeId}`);
+          router.push(`/owner/workspaces/${storeId}`);
         }, 2000);
       }
     } catch (error: any) {
@@ -300,7 +300,7 @@ nhanvien4@example.com"
             </div>
 
             <div className="flex gap-4">
-              <Link href={`/owner/stores/${storeId}`} className="flex-1">
+              <Link href={`/owner/workspaces/${storeId}`} className="flex-1">
                 <button
                   type="button"
                   className="w-full bg-gray-200 hover:bg-gray-300 text-gray-700 px-6 py-3 rounded-lg font-semibold transition-all"

@@ -504,16 +504,7 @@ export default function StoreDetail() {
     return `${hours}h${minutes > 0 ? ` ${minutes}p` : ''}`;
   }
 
-  async function updateStoreSettings(settings: {
-    name?: string;
-    address?: string;
-    latitude?: number;
-    longitude?: number;
-    gps_required?: boolean;
-    selfie_required?: boolean;
-    access_mode?: 'staff_only' | 'anyone';
-    radius_meters?: number;
-  }) {
+  async function updateStoreSettings(settings: Partial<Store>) {
     setSettingsLoading(true);
     try {
       // Get current user
