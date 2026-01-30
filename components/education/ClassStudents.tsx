@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
 import { Store, Student } from '@/types';
 
@@ -17,6 +18,7 @@ interface StudentWithStats extends Student {
 
 export default function ClassStudents({ classId, classroom }: Props) {
   const [students, setStudents] = useState<StudentWithStats[]>([]);
+  const [pendingStudents, setPendingStudents] = useState<Student[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingStudent, setEditingStudent] = useState<Student | null>(null);
@@ -33,7 +35,24 @@ export default function ClassStudents({ classId, classroom }: Props) {
 
   useEffect(() => {
     loadStudents();
+    loadPendingStudents();
   }, [classId]);
+
+  async function loadPendingStudents() {
+    try {
+      const { data, error } = await supabase
+        .from('students')
+        .select('*')
+        .eq('class_id', classId)
+        .eq('status', 'pending')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setPendingStudents(data || []);
+    } catch (error) {
+      console.error('Error loading pending students:', error);
+    }
+  }
 
   async function loadStudents() {
     try {
@@ -81,6 +100,19 @@ export default function ClassStudents({ classId, classroom }: Props) {
     e.preventDefault();
 
     try {
+      // Debug: Check current user and class ownership
+      const { data: { user } } = await supabase.auth.getUser();
+      console.log('Current user:', user?.id);
+
+      const { data: classData } = await supabase
+        .from('stores')
+        .select('id, owner_id, workspace_type')
+        .eq('id', classId)
+        .single();
+
+      console.log('Class data:', classData);
+      console.log('User owns class:', classData?.owner_id === user?.id);
+
       if (editingStudent) {
         // Update existing student
         const { error } = await supabase
@@ -91,14 +123,16 @@ export default function ClassStudents({ classId, classroom }: Props) {
         if (error) throw error;
       } else {
         // Create new student
-        const { error } = await supabase
+        const { data, error } = await supabase
           .from('students')
           .insert({
             ...formData,
             class_id: classId,
             status: 'active',
-          });
+          })
+          .select();
 
+        console.log('Insert result:', { data, error });
         if (error) throw error;
       }
 
@@ -106,9 +140,9 @@ export default function ClassStudents({ classId, classroom }: Props) {
       setEditingStudent(null);
       resetForm();
       loadStudents();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error saving student:', error);
-      alert('Lỗi khi lưu học sinh');
+      alert(`Lỗi khi thêm học sinh: ${error.message || 'Unknown error'}`);
     }
   }
 
@@ -126,6 +160,59 @@ export default function ClassStudents({ classId, classroom }: Props) {
     } catch (error) {
       console.error('Error deleting student:', error);
       alert('Lỗi khi xóa học sinh');
+    }
+  }
+
+  async function approveStudent(id: string) {
+    try {
+      const { error } = await supabase
+        .from('students')
+        .update({ status: 'active' })
+        .eq('id', id);
+
+      if (error) throw error;
+
+      // Check if auto-close is enabled and capacity is reached
+      if (classroom.auto_close_when_full && classroom.enrollment_capacity) {
+        const { count } = await supabase
+          .from('students')
+          .select('*', { count: 'exact', head: true })
+          .eq('class_id', classId)
+          .eq('status', 'active');
+
+        if (count !== null && count >= classroom.enrollment_capacity) {
+          // Auto-close enrollment
+          await supabase
+            .from('stores')
+            .update({ access_mode: 'roster_only' })
+            .eq('id', classId);
+
+          alert(`Đã duyệt học sinh! Lớp đã đủ sĩ số (${classroom.enrollment_capacity} học sinh). Tự động chuyển sang chế độ "Chỉ học sinh trong danh sách".`);
+        }
+      }
+
+      loadStudents();
+      loadPendingStudents();
+    } catch (error) {
+      console.error('Error approving student:', error);
+      alert('Lỗi khi duyệt học sinh');
+    }
+  }
+
+  async function rejectStudent(id: string) {
+    if (!confirm('Bạn có chắc muốn từ chối học sinh này?')) return;
+
+    try {
+      const { error } = await supabase
+        .from('students')
+        .update({ status: 'rejected' })
+        .eq('id', id);
+
+      if (error) throw error;
+      loadPendingStudents();
+    } catch (error) {
+      console.error('Error rejecting student:', error);
+      alert('Lỗi khi từ chối học sinh');
     }
   }
 
@@ -178,19 +265,95 @@ export default function ClassStudents({ classId, classroom }: Props) {
           <p className="text-xs sm:text-sm text-gray-600 mt-1">{students.length} học sinh</p>
         </div>
         <div className="flex gap-2 w-full sm:w-auto">
+          <Link href={`/workspaces/${classId}/add-students`} className="flex-1 sm:flex-none">
+            <button
+              className="w-full px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold flex items-center justify-center gap-2 text-sm sm:text-base"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+              </svg>
+              <span className="hidden sm:inline">Mời qua Email</span>
+              <span className="sm:hidden">Email</span>
+            </button>
+          </Link>
           <button
             onClick={() => {
               resetForm();
               setEditingStudent(null);
               setShowForm(true);
             }}
-            className="w-full sm:w-auto px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-semibold flex items-center justify-center gap-2 text-sm sm:text-base"
+            className="flex-1 sm:flex-none px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-semibold flex items-center justify-center gap-2 text-sm sm:text-base"
           >
             <span>+</span>
-            Thêm Học Sinh
+            <span className="hidden sm:inline">Thêm Thủ Công</span>
+            <span className="sm:hidden">Thêm</span>
           </button>
         </div>
       </div>
+
+      {/* Pending Students Section */}
+      {pendingStudents.length > 0 && (
+        <div className="bg-yellow-50 border-2 border-yellow-300 rounded-lg p-4 sm:p-6">
+          <div className="flex items-center gap-2 mb-4">
+            <svg className="w-5 h-5 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <h3 className="text-base sm:text-lg font-bold text-yellow-900">
+              Học sinh chờ duyệt ({pendingStudents.length})
+            </h3>
+          </div>
+          <div className="space-y-3">
+            {pendingStudents.map((student) => (
+              <div
+                key={student.id}
+                className="bg-white rounded-lg border border-yellow-200 p-4"
+              >
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div className="flex-1">
+                    <div className="font-semibold text-gray-900 text-sm sm:text-base">
+                      {student.full_name}
+                    </div>
+                    <div className="text-xs sm:text-sm text-gray-600 mt-1 space-y-0.5">
+                      {student.student_id && (
+                        <div>MSSV: {student.student_id}</div>
+                      )}
+                      {student.email && (
+                        <div>Email: {student.email}</div>
+                      )}
+                      {student.phone && (
+                        <div>SĐT: {student.phone}</div>
+                      )}
+                      <div className="text-xs text-gray-500 mt-1">
+                        Đăng ký: {new Date(student.created_at).toLocaleString('vi-VN')}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex flex-row sm:flex-col gap-2">
+                    <button
+                      onClick={() => approveStudent(student.id)}
+                      className="flex-1 sm:flex-none px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-semibold text-sm transition-all flex items-center justify-center gap-2"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                      Duyệt
+                    </button>
+                    <button
+                      onClick={() => rejectStudent(student.id)}
+                      className="flex-1 sm:flex-none px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-semibold text-sm transition-all flex items-center justify-center gap-2"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                      Từ chối
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Add/Edit Form */}
       {showForm && (

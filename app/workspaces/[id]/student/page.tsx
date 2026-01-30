@@ -144,7 +144,7 @@ export default function StudentDashboard() {
           <StudentCheckin classId={workspaceId} student={student} classroom={classroom} />
         )}
         {activeTab === 'attendance' && (
-          <StudentAttendance classId={workspaceId} studentId={student.id} />
+          <StudentAttendance classId={workspaceId} student={student} classroom={classroom} />
         )}
         {activeTab === 'timetable' && (
           <StudentTimetable classId={workspaceId} classroom={classroom} />

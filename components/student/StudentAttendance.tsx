@@ -2,10 +2,12 @@
 
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
+import { Student, Store } from '@/types';
 
 interface Props {
   classId: string;
-  studentId: string;
+  student: Student;
+  classroom: Store;
 }
 
 interface AttendanceWithSession {
@@ -21,7 +23,8 @@ interface AttendanceWithSession {
   };
 }
 
-export default function StudentAttendance({ classId, studentId }: Props) {
+export default function StudentAttendance({ classId, student, classroom }: Props) {
+  const studentId = student.id;
   const [attendance, setAttendance] = useState<AttendanceWithSession[]>([]);
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({
@@ -178,10 +181,7 @@ export default function StudentAttendance({ classId, studentId }: Props) {
 
                     {record.check_in_time && (
                       <div className="text-xs text-gray-500 mt-1">
-                        Điểm danh lúc: {new Date(record.check_in_time).toLocaleTimeString('vi-VN', {
-                          hour: '2-digit',
-                          minute: '2-digit'
-                        })}
+                        Điểm danh lúc: {record.check_in_time.substring(0, 5)}
                       </div>
                     )}
 

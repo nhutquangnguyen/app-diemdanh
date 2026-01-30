@@ -12,7 +12,9 @@ export interface Store {
   radius_meters: number; // Bán kính cho phép check-in (mét)
   gps_required: boolean; // Yêu cầu xác thực GPS
   selfie_required: boolean; // Yêu cầu chụp selfie (for business) / allow_self_checkin (for education)
-  access_mode: 'staff_only' | 'anyone'; // Chế độ truy cập
+  access_mode: 'staff_only' | 'anyone' | 'roster_only' | 'open_enrollment'; // Chế độ truy cập
+  enrollment_capacity?: number | null; // Max students (education only)
+  auto_close_when_full?: boolean; // Auto-close enrollment when full (education only)
   late_penalty_enabled: boolean; // Enable/disable late penalty
   late_penalty_rate: number; // Multiplier for late penalty (1.0 = same as hourly rate)
   early_checkout_penalty_enabled: boolean; // Enable/disable early checkout penalty
@@ -128,7 +130,7 @@ export interface ScheduleWithDetails extends StaffSchedule {
 // Shared component types
 export type StaffFilter = 'all' | 'working' | 'late' | 'not_checked';
 
-export type AccessMode = 'staff_only' | 'anyone';
+export type AccessMode = 'staff_only' | 'anyone' | 'roster_only' | 'open_enrollment';
 
 export type CheckInStatus = 'success' | 'late' | 'wrong_location';
 
@@ -312,7 +314,7 @@ export interface SmartScheduleResult {
 // ============================================================================
 
 // Student status types
-export type StudentStatus = 'active' | 'invited' | 'inactive' | 'withdrawn';
+export type StudentStatus = 'active' | 'invited' | 'inactive' | 'withdrawn' | 'pending' | 'rejected';
 
 // Attendance status types
 export type AttendanceStatus = 'present' | 'absent' | 'late' | 'excused';

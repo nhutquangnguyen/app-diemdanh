@@ -331,7 +331,7 @@ export default function StoreSettings({
                     name="latitude"
                     required
                     step="any"
-                    value={latitude}
+                    value={latitude ?? ''}
                     onChange={(e) => setLatitude(parseFloat(e.target.value))}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white text-gray-900"
                   />
@@ -343,7 +343,7 @@ export default function StoreSettings({
                     name="longitude"
                     required
                     step="any"
-                    value={longitude}
+                    value={longitude ?? ''}
                     onChange={(e) => setLongitude(parseFloat(e.target.value))}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white text-gray-900"
                   />

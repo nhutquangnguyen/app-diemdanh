@@ -14,6 +14,10 @@ interface StudentWithAttendance extends Student {
   check_in_time?: string;
   attendance_record_id?: string;
   note?: string;
+  selfie_url?: string;
+  latitude?: number;
+  longitude?: number;
+  distance_meters?: number;
 }
 
 export default function ClassToday({ classId, classroom }: Props) {
@@ -24,6 +28,7 @@ export default function ClassToday({ classId, classroom }: Props) {
   const [saving, setSaving] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [currentTime, setCurrentTime] = useState(new Date());
+  const [viewingSelfie, setViewingSelfie] = useState<{ url: string; studentName: string } | null>(null);
 
   const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
   const dayOfWeek = new Date().getDay(); // 0 = Sunday
@@ -90,6 +95,10 @@ export default function ClassToday({ classId, classroom }: Props) {
           check_in_time: attendance?.check_in_time,
           attendance_record_id: attendance?.id,
           note: attendance?.note,
+          selfie_url: attendance?.selfie_url,
+          latitude: attendance?.latitude,
+          longitude: attendance?.longitude,
+          distance_meters: attendance?.distance_meters,
         };
       });
 
@@ -316,6 +325,12 @@ export default function ClassToday({ classId, classroom }: Props) {
                 <th className="hidden sm:table-cell px-4 py-3 text-left text-sm font-semibold text-gray-700">MSSV</th>
                 <th className="px-3 sm:px-4 py-2 sm:py-3 text-left text-xs sm:text-sm font-semibold text-gray-700">Trạng Thái</th>
                 <th className="hidden md:table-cell px-4 py-3 text-left text-sm font-semibold text-gray-700">Thời Gian</th>
+                {classroom.selfie_required && (
+                  <th className="hidden lg:table-cell px-4 py-3 text-center text-sm font-semibold text-gray-700">Ảnh</th>
+                )}
+                {classroom.gps_required && (
+                  <th className="hidden xl:table-cell px-4 py-3 text-left text-sm font-semibold text-gray-700">Vị trí</th>
+                )}
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
@@ -353,8 +368,42 @@ export default function ClassToday({ classId, classroom }: Props) {
                     </select>
                   </td>
                   <td className="hidden md:table-cell px-4 py-3 text-sm text-gray-600">
-                    {student.check_in_time || '-'}
+                    {student.check_in_time ? new Date(student.check_in_time).toLocaleTimeString('vi-VN', {
+                      hour: '2-digit',
+                      minute: '2-digit'
+                    }) : '-'}
                   </td>
+                  {classroom.selfie_required && (
+                    <td className="hidden lg:table-cell px-4 py-3">
+                      {student.selfie_url ? (
+                        <button
+                          onClick={() => setViewingSelfie({ url: student.selfie_url!, studentName: student.full_name })}
+                          className="block w-12 h-12 rounded-lg overflow-hidden border-2 border-gray-300 hover:border-green-500 transition-all"
+                          title="Xem ảnh selfie"
+                        >
+                          <img src={student.selfie_url} alt={student.full_name} className="w-full h-full object-cover" />
+                        </button>
+                      ) : (
+                        <span className="text-xs text-gray-400">-</span>
+                      )}
+                    </td>
+                  )}
+                  {classroom.gps_required && (
+                    <td className="hidden xl:table-cell px-4 py-3">
+                      {student.distance_meters !== null && student.distance_meters !== undefined ? (
+                        <div className="text-xs">
+                          <div className={`font-semibold ${student.distance_meters <= (classroom.radius_meters || 100) ? 'text-green-600' : 'text-red-600'}`}>
+                            {student.distance_meters.toFixed(0)}m
+                          </div>
+                          <div className="text-gray-500">
+                            {student.latitude?.toFixed(6)}, {student.longitude?.toFixed(6)}
+                          </div>
+                        </div>
+                      ) : (
+                        <span className="text-xs text-gray-400">-</span>
+                      )}
+                    </td>
+                  )}
                 </tr>
               ))}
             </tbody>
@@ -367,6 +416,43 @@ export default function ClassToday({ classId, classroom }: Props) {
           )}
         </div>
       </div>
+
+      {/* Selfie Modal */}
+      {viewingSelfie && (
+        <div
+          className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4"
+          onClick={() => setViewingSelfie(null)}
+        >
+          <div className="max-w-2xl w-full bg-white rounded-lg overflow-hidden" onClick={(e) => e.stopPropagation()}>
+            <div className="p-4 bg-gray-50 border-b border-gray-200 flex items-center justify-between">
+              <h3 className="text-lg font-bold text-gray-800">{viewingSelfie.studentName}</h3>
+              <button
+                onClick={() => setViewingSelfie(null)}
+                className="p-2 hover:bg-gray-200 rounded-full transition-all"
+              >
+                <svg className="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <div className="p-4">
+              <img
+                src={viewingSelfie.url}
+                alt={viewingSelfie.studentName}
+                className="w-full h-auto rounded-lg"
+              />
+            </div>
+            <div className="p-4 bg-gray-50 border-t border-gray-200 flex justify-end">
+              <button
+                onClick={() => setViewingSelfie(null)}
+                className="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg font-semibold transition-all"
+              >
+                Đóng
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
