@@ -285,9 +285,12 @@ export default function StudentCheckin({ classId, student, classroom }: Props) {
     );
   }
 
+  // Render step content
+  let stepContent;
+
   // Selfie capture step
   if (step === 'selfie') {
-    return (
+    stepContent = (
       <div className="px-4 sm:px-6 py-6">
         <div className="bg-white rounded-lg shadow-lg p-6">
           <h2 className="text-xl font-bold text-gray-800 mb-4 text-center">
@@ -366,44 +369,11 @@ export default function StudentCheckin({ classId, student, classroom }: Props) {
             </div>
           )}
 
-          {/* Camera Error Dialog */}
-          {cameraError && (
-            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-              <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-                <PermissionGuidance
-                  type="camera"
-                  workspaceType="class"
-                  onRetry={() => setCameraError(false)}
-                  showHeader={false}
-                />
-              </div>
-            </div>
-          )}
-
-          {/* Location Error Dialog */}
-          {locationError && (
-            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-              <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-                <PermissionGuidance
-                  type="location"
-                  workspaceType="class"
-                  onRetry={() => {
-                    setLocationError(false);
-                    setActiveSessionId(null);
-                  }}
-                  showHeader={false}
-                />
-              </div>
-            </div>
-          )}
         </div>
       </div>
     );
-  }
-
-  // Processing step
-  if (step === 'processing') {
-    return (
+  } else if (step === 'processing') {
+    stepContent = (
       <div className="flex justify-center items-center h-64">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600 mx-auto mb-4"></div>
@@ -411,10 +381,9 @@ export default function StudentCheckin({ classId, student, classroom }: Props) {
         </div>
       </div>
     );
-  }
-
-  // Sessions list (default step)
-  return (
+  } else {
+    // Sessions list (default step)
+    stepContent = (
     <div className="px-4 sm:px-6 py-6 space-y-4">
       {/* Current Date and Time Info */}
       <div className="flex items-center justify-between text-sm text-gray-600 px-2">
@@ -546,5 +515,44 @@ export default function StudentCheckin({ classId, student, classroom }: Props) {
         )}
       </div>
     </div>
+    );
+  }
+
+  // Render step content with global error modals
+  return (
+    <>
+      {stepContent}
+
+      {/* Camera Error Dialog - Global */}
+      {cameraError && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <PermissionGuidance
+              type="camera"
+              workspaceType="class"
+              onRetry={() => setCameraError(false)}
+              showHeader={false}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Location Error Dialog - Global */}
+      {locationError && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <PermissionGuidance
+              type="location"
+              workspaceType="class"
+              onRetry={() => {
+                setLocationError(false);
+                setActiveSessionId(null);
+              }}
+              showHeader={false}
+            />
+          </div>
+        </div>
+      )}
+    </>
   );
 }
