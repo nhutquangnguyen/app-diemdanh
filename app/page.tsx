@@ -287,7 +287,7 @@ export default function Home() {
 
   // Navigate to staff page for this store
   function handleStoreClick(store: StoreWithDistance) {
-    router.push(`/stores/${store.id}/staff`);
+    router.push(`/owner/${store.id}`);
   }
 
   // Quick check-in action
@@ -345,7 +345,7 @@ export default function Home() {
         }
 
         // GPS verified - proceed to check-in (GPS will be re-verified on submit page for security)
-        router.push(`/checkin/submit?store=${store.id}`);
+        router.push(`/member/${store.id}/checkin`);
         setGpsLoading(false);
 
       } catch (error: any) {
@@ -356,7 +356,7 @@ export default function Home() {
       }
     } else {
       // No GPS required - proceed directly
-      router.push(`/checkin/submit?store=${store.id}`);
+      router.push(`/member/${store.id}/checkin`);
       setGpsLoading(false);
     }
   }
@@ -595,7 +595,7 @@ export default function Home() {
                   {studentClasses.map((classroom) => (
                     <Link
                       key={classroom.id}
-                      href={`/student/${classroom.id}`}
+                      href={`/member/${classroom.id}`}
                       className="block w-full bg-white border-2 border-green-500 rounded-xl p-4 hover:shadow-lg transition-all active:scale-[0.98]"
                     >
                       <div className="flex items-center justify-between">
@@ -625,7 +625,7 @@ export default function Home() {
                   {ownedStores.map((store) => (
                     <Link
                       key={store.id}
-                      href={`/owner/workspaces/${store.id}`}
+                      href={`/owner/${store.id}`}
                       className="block w-full bg-white border-2 border-purple-500 rounded-xl p-4 hover:shadow-lg transition-all active:scale-[0.98]"
                     >
                       <div className="flex items-center justify-between">
@@ -683,22 +683,8 @@ export default function Home() {
               <button
                 onClick={() => {
                   setShowActionDialog(false);
-                  // Navigate to confirmation page
-                  if (selectedStore.gps_required && selectedStore.distance !== undefined) {
-                    getCurrentPosition().then(position => {
-                      const params = new URLSearchParams({
-                        store: selectedStore.id,
-                        lat: String(position.coords.latitude),
-                        lon: String(position.coords.longitude),
-                        action: 're-checkout',
-                      });
-                      router.push(`/checkin/submit?${params.toString()}`);
-                    }).catch(() => {
-                      router.push(`/checkin/submit?store=${selectedStore.id}&action=re-checkout`);
-                    });
-                  } else {
-                    router.push(`/checkin/submit?store=${selectedStore.id}&action=re-checkout`);
-                  }
+                  // Navigate to member check-in page with re-checkout action
+                  router.push(`/member/${selectedStore.id}/checkin?action=re-checkout`);
                 }}
                 className="bg-orange-600 hover:bg-orange-700 text-white px-4 py-3 rounded-lg font-semibold transition-all flex flex-col items-center justify-center gap-2"
               >
@@ -711,22 +697,8 @@ export default function Home() {
               <button
                 onClick={() => {
                   setShowActionDialog(false);
-                  // Navigate to confirmation page
-                  if (selectedStore.gps_required && selectedStore.distance !== undefined) {
-                    getCurrentPosition().then(position => {
-                      const params = new URLSearchParams({
-                        store: selectedStore.id,
-                        lat: String(position.coords.latitude),
-                        lon: String(position.coords.longitude),
-                        action: 'check-in',
-                      });
-                      router.push(`/checkin/submit?${params.toString()}`);
-                    }).catch(() => {
-                      router.push(`/checkin/submit?store=${selectedStore.id}&action=check-in`);
-                    });
-                  } else {
-                    router.push(`/checkin/submit?store=${selectedStore.id}&action=check-in`);
-                  }
+                  // Navigate to member check-in page for new check-in
+                  router.push(`/member/${selectedStore.id}/checkin?action=check-in`);
                 }}
                 className="bg-green-600 hover:bg-green-700 text-white px-4 py-3 rounded-lg font-semibold transition-all flex flex-col items-center justify-center gap-2"
               >

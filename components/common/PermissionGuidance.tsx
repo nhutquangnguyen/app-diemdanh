@@ -3,19 +3,26 @@
 import { useRouter } from 'next/navigation';
 import Header from '@/components/Header';
 
-export type PermissionType = 'camera' | 'location' | 'both';
+export type PermissionType = 'camera' | 'location' | 'both' | 'distance';
 export type RenderMode = 'fullPage' | 'modal';
 
 interface Props {
   type: PermissionType;
   onRetry?: () => void;
   renderMode?: RenderMode;
+  // For distance errors
+  currentDistance?: number;
+  maxRadius?: number;
+  locationName?: string;
 }
 
 export default function PermissionGuidance({
   type,
   onRetry,
-  renderMode = 'fullPage'
+  renderMode = 'fullPage',
+  currentDistance,
+  maxRadius,
+  locationName,
 }: Props) {
   const router = useRouter();
 
@@ -71,6 +78,28 @@ export default function PermissionGuidance({
           />
         </svg>
       );
+    } else if (type === 'distance') {
+      return (
+        <svg
+          className="mx-auto h-16 w-16 text-orange-500"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
+          />
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
+          />
+        </svg>
+      );
     } else {
       // both
       return (
@@ -97,6 +126,8 @@ export default function PermissionGuidance({
       return 'Không thể truy cập Camera';
     } else if (type === 'location') {
       return 'Không thể truy cập Vị trí';
+    } else if (type === 'distance') {
+      return 'Ngoài bán kính cho phép';
     } else {
       return 'Không thể truy cập Camera và Vị trí';
     }
@@ -108,6 +139,11 @@ export default function PermissionGuidance({
       return 'Bạn đã từ chối quyền truy cập camera. Vui lòng cho phép truy cập camera trong cài đặt trình duyệt để tiếp tục điểm danh.';
     } else if (type === 'location') {
       return 'Bạn đã từ chối quyền truy cập vị trí. Vui lòng cho phép truy cập vị trí trong cài đặt trình duyệt để xác nhận vị trí của bạn.';
+    } else if (type === 'distance') {
+      const locName = locationName || 'địa điểm';
+      const dist = currentDistance !== undefined ? Math.round(currentDistance) : '?';
+      const radius = maxRadius || '?';
+      return `Bạn đang ở cách ${locName} ${dist}m. Vui lòng đến gần hơn (trong bán kính ${radius}m).`;
     } else {
       return 'Bạn đã từ chối quyền truy cập camera và vị trí. Vui lòng cho phép truy cập trong cài đặt trình duyệt để tiếp tục điểm danh.';
     }
@@ -119,6 +155,8 @@ export default function PermissionGuidance({
       return 'https://app.diemdanh.net/help/cap-quyen-camera';
     } else if (type === 'location') {
       return 'https://app.diemdanh.net/help/cap-quyen-vi-tri';
+    } else if (type === 'distance') {
+      return 'https://app.diemdanh.net/help/vi-tri-gps';
     } else {
       return 'https://app.diemdanh.net/help/cap-quyen';
     }
@@ -130,6 +168,8 @@ export default function PermissionGuidance({
       return 'Hướng dẫn cấp quyền Camera';
     } else if (type === 'location') {
       return 'Hướng dẫn cấp quyền Vị trí';
+    } else if (type === 'distance') {
+      return 'Hướng dẫn kiểm tra GPS';
     } else {
       return 'Hướng dẫn cấp quyền';
     }
@@ -148,11 +188,28 @@ export default function PermissionGuidance({
           {getDescription()}
         </p>
 
-        {/* Steps to grant permission */}
+        {/* Steps to grant permission or move closer */}
         <div className="bg-blue-50 rounded-lg p-4 mb-6 text-left">
-          <h3 className="text-sm font-semibold text-blue-900 mb-3">Cách cấp quyền:</h3>
+          <h3 className="text-sm font-semibold text-blue-900 mb-3">
+            {type === 'distance' ? 'Hướng dẫn:' : 'Cách cấp quyền:'}
+          </h3>
           <ol className="text-xs sm:text-sm text-blue-800 space-y-2">
-            {type === 'camera' || type === 'both' ? (
+            {type === 'distance' ? (
+              <>
+                <li className="flex items-start gap-2">
+                  <span className="bg-blue-100 text-blue-800 rounded-full w-5 h-5 flex items-center justify-center flex-shrink-0 text-xs font-semibold">1</span>
+                  <span>Di chuyển đến gần {locationName || 'địa điểm'} hơn</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="bg-blue-100 text-blue-800 rounded-full w-5 h-5 flex items-center justify-center flex-shrink-0 text-xs font-semibold">2</span>
+                  <span>Đảm bảo GPS của bạn đang bật và hoạt động tốt</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="bg-blue-100 text-blue-800 rounded-full w-5 h-5 flex items-center justify-center flex-shrink-0 text-xs font-semibold">3</span>
+                  <span>Thử lại khi đã ở trong bán kính {maxRadius}m</span>
+                </li>
+              </>
+            ) : type === 'camera' || type === 'both' ? (
               <>
                 <li className="flex items-start gap-2">
                   <span className="bg-blue-100 text-blue-800 rounded-full w-5 h-5 flex items-center justify-center flex-shrink-0 text-xs font-semibold">1</span>

@@ -7,6 +7,7 @@ import { supabase } from '@/lib/supabase';
 import { getCurrentUser } from '@/lib/auth';
 import { Store } from '@/types';
 import Header from '@/components/Header';
+import { getPlugin } from '@/core/utils/pluginRegistry';
 
 interface StoreWithStaffCount extends Store {
   staffCount?: number;
@@ -149,22 +150,26 @@ export default function OwnerDashboard() {
           </div>
         ) : (
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {stores.map((store) => (
-              <Link key={store.id} href={`/owner/workspaces/${store.id}`}>
+            {stores.map((store) => {
+              const plugin = getPlugin(store.workspace_type || 'business');
+              const isEducation = store.workspace_type === 'education';
+
+              return (
+              <Link key={store.id} href={`/owner/${store.id}`}>
                 <div className={`bg-white rounded-lg shadow-lg p-6 hover:shadow-xl transition-all cursor-pointer border-t-4 ${
-                  store.workspace_type === 'education' ? 'border-green-500' : 'border-blue-500'
+                  isEducation ? 'border-green-500' : 'border-blue-500'
                 }`}>
                   {/* Workspace Type Badge */}
                   <div className="flex items-center justify-between mb-3">
                     <span className={`text-2xl`}>
-                      {store.workspace_type === 'education' ? '🎓' : '🏪'}
+                      {plugin?.icon || '📁'}
                     </span>
                     <span className={`text-xs font-semibold px-2 py-1 rounded-full ${
-                      store.workspace_type === 'education'
+                      isEducation
                         ? 'bg-green-100 text-green-700'
                         : 'bg-blue-100 text-blue-700'
                     }`}>
-                      {store.workspace_type === 'education' ? 'Giáo Dục' : 'Kinh Doanh'}
+                      {plugin?.displayName || store.workspace_type}
                     </span>
                   </div>
 
@@ -172,7 +177,7 @@ export default function OwnerDashboard() {
                     {store.name}
                   </h3>
 
-                  {store.workspace_type === 'education' ? (
+                  {isEducation ? (
                     /* Education Workspace */
                     <>
                       <div className="text-sm text-gray-600 mb-4 space-y-1">
@@ -184,7 +189,7 @@ export default function OwnerDashboard() {
                         <svg className="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
                         </svg>
-                        <span className="font-medium text-gray-700">{store.studentCount || 0} học sinh</span>
+                        <span className="font-medium text-gray-700">{store.studentCount || 0} {plugin?.config.peopleLabel?.toLowerCase() || 'người'}</span>
                       </div>
                     </>
                   ) : (
@@ -199,7 +204,7 @@ export default function OwnerDashboard() {
                             <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
                             </svg>
-                            <span className="font-medium">{store.staffCount || 0} nhân viên</span>
+                            <span className="font-medium">{store.staffCount || 0} {plugin?.config.peopleLabel?.toLowerCase() || 'người'}</span>
                           </div>
                           {(store.activeStaffCount || 0) > 0 && (
                             <div className="flex items-center gap-1 bg-green-100 text-green-700 px-2 py-1 rounded-full">
@@ -224,14 +229,15 @@ export default function OwnerDashboard() {
                   {/* Arrow icon */}
                   <div className="flex justify-end mt-4">
                     <svg className={`w-5 h-5 ${
-                      store.workspace_type === 'education' ? 'text-green-600' : 'text-blue-600'
+                      isEducation ? 'text-green-600' : 'text-blue-600'
                     }`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                     </svg>
                   </div>
                 </div>
               </Link>
-            ))}
+              );
+            })}
           </div>
         )}
       </main>

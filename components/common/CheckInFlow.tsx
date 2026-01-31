@@ -63,6 +63,7 @@ export default function CheckInFlow({
   const [facingMode, setFacingMode] = useState<'user' | 'environment'>('user');
   const [cameraError, setCameraError] = useState(false);
   const [locationError, setLocationError] = useState(false);
+  const [distanceError, setDistanceError] = useState(false);
   const [processing, setProcessing] = useState(false);
 
   // Load GPS location on mount
@@ -128,7 +129,7 @@ export default function CheckInFlow({
       }
 
       if (!isWithinRadius) {
-        alert(`Bạn đang ở cách ${distance.toFixed(0)}m. Vui lòng đến gần hơn (trong bán kính ${location.radius_meters}m).`);
+        setDistanceError(true);
         return;
       }
     }
@@ -168,7 +169,9 @@ export default function CheckInFlow({
           );
 
           if (finalDistance > location.radius_meters) {
-            throw new Error(`Bạn đã di chuyển ra khỏi bán kính cho phép (${finalDistance.toFixed(0)}m)`);
+            setStep('info');
+            setDistanceError(true);
+            throw new Error(`Đã di chuyển ra khỏi bán kính`);
           }
         }
       }
@@ -440,6 +443,20 @@ export default function CheckInFlow({
               onRetry={() => {
                 setLocationError(false);
                 setStep('info');
+              }}
+              renderMode="modal"
+            />
+          )}
+
+          {distanceError && (
+            <PermissionGuidance
+              type="distance"
+              currentDistance={distance}
+              maxRadius={location.radius_meters}
+              locationName={location.name}
+              onRetry={() => {
+                setDistanceError(false);
+                loadLocation();
               }}
               renderMode="modal"
             />

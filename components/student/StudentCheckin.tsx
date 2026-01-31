@@ -30,6 +30,8 @@ export default function StudentCheckin({ classId, student, classroom }: Props) {
   const [facingMode, setFacingMode] = useState<'user' | 'environment'>('user');
   const [cameraError, setCameraError] = useState(false);
   const [locationError, setLocationError] = useState(false);
+  const [distanceError, setDistanceError] = useState(false);
+  const [distanceErrorData, setDistanceErrorData] = useState({ distance: 0, radius: 100 });
 
   const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
   const dayOfWeek = new Date().getDay(); // 0 = Sunday
@@ -117,7 +119,8 @@ export default function StudentCheckin({ classId, student, classroom }: Props) {
 
       const radiusMeters = classroom.radius_meters || 100;
       if (distance > radiusMeters) {
-        alert(`Bạn đang ở cách lớp học ${distance.toFixed(0)}m. Vui lòng đến gần hơn (trong bán kính ${radiusMeters}m).`);
+        setDistanceErrorData({ distance, radius: radiusMeters });
+        setDistanceError(true);
         return;
       }
     }
@@ -213,7 +216,10 @@ export default function StudentCheckin({ classId, student, classroom }: Props) {
 
           const radiusMeters = classroom.radius_meters || 100;
           if (finalDistance > radiusMeters) {
-            throw new Error(`Bạn đang ở cách lớp học ${finalDistance.toFixed(0)}m. Vui lòng đến gần hơn.`);
+            setDistanceErrorData({ distance: finalDistance, radius: radiusMeters });
+            setDistanceError(true);
+            setStep('list');
+            throw new Error(`Đã di chuyển ra khỏi bán kính.`);
           }
         }
       }
@@ -538,6 +544,21 @@ export default function StudentCheckin({ classId, student, classroom }: Props) {
           type="location"
           onRetry={() => {
             setLocationError(false);
+            setActiveSessionId(null);
+          }}
+          renderMode="modal"
+        />
+      )}
+
+      {/* Distance Error Dialog - Global */}
+      {distanceError && (
+        <PermissionGuidance
+          type="distance"
+          currentDistance={distanceErrorData.distance}
+          maxRadius={distanceErrorData.radius}
+          locationName={classroom.name}
+          onRetry={() => {
+            setDistanceError(false);
             setActiveSessionId(null);
           }}
           renderMode="modal"
