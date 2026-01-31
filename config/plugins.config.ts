@@ -11,6 +11,8 @@ import { qrcodeFeature } from '@/features/qrcode';
 import { schedulingFeature } from '@/features/scheduling';
 import { peopleFeature } from '@/features/people';
 import { aiSchedulingFeature } from '@/features/ai-scheduling';
+import { salaryFeature } from '@/features/salary';
+import { shiftsFeature } from '@/features/shifts';
 
 // Import plugins
 import { businessPlugin } from '@/plugins/business';
@@ -30,8 +32,8 @@ export function initializePlugins() {
   registerFeature(schedulingFeature);
   registerFeature(peopleFeature);
   registerFeature(aiSchedulingFeature);
-  // More features will be added here:
-  // registerFeature(paymentsFeature);
+  registerFeature(salaryFeature);
+  registerFeature(shiftsFeature);
 
   // Register plugins
   registerPlugin(businessPlugin);

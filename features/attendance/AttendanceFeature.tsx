@@ -78,18 +78,22 @@ export function AttendanceFeature({ workspaceId, config, adapter }: FeatureProps
       const todayDate = today.toISOString().split('T')[0];
       const tomorrowDate = new Date(today.getTime() + 86400000).toISOString().split('T')[0];
 
-      // Determine table names based on workspace type (could be from adapter)
+      // Determine table names based on workspace type (from adapter)
       const peopleTable = adapter?.tables?.people || 'staff';
       const checkInsTable = adapter?.tables?.checkIns || 'check_ins';
       const shiftsTable = adapter?.tables?.shifts || 'shift_templates';
       const schedulesTable = adapter?.tables?.schedules || 'staff_schedules';
+
+      // Determine field names based on workspace type (from adapter)
       const personIdField = adapter?.fields?.personId || 'staff_id';
+      const workspaceIdField = adapter?.fields?.workspaceId || 'store_id';
+      const sessionIdField = adapter?.fields?.sessionId || 'shift_id';
 
       // Load people
       const { data: peopleData, error: peopleError } = await supabase
         .from(peopleTable)
         .select('*')
-        .eq('store_id', workspaceId)
+        .eq(workspaceIdField, workspaceId)
         .is('deleted_at', null);
 
       if (peopleError) throw peopleError;
@@ -98,7 +102,7 @@ export function AttendanceFeature({ workspaceId, config, adapter }: FeatureProps
       const { data: checkInsData, error: checkInsError } = await supabase
         .from(checkInsTable)
         .select(`*, ${peopleTable}(*)`)
-        .eq('store_id', workspaceId)
+        .eq(workspaceIdField, workspaceId)
         .gte('check_in_time', `${todayDate}T00:00:00`)
         .lt('check_in_time', `${tomorrowDate}T00:00:00`)
         .order('check_in_time', { ascending: false }) as any;
@@ -109,7 +113,7 @@ export function AttendanceFeature({ workspaceId, config, adapter }: FeatureProps
       const { data: shiftsData, error: shiftsError } = await supabase
         .from(shiftsTable)
         .select('*')
-        .eq('store_id', workspaceId)
+        .eq(workspaceIdField, workspaceId)
         .is('deleted_at', null)
         .order('start_time');
 
@@ -119,7 +123,7 @@ export function AttendanceFeature({ workspaceId, config, adapter }: FeatureProps
       const { data: schedulesData, error: schedulesError } = await supabase
         .from(schedulesTable)
         .select(`*, shift_template:${shiftsTable}(*)`)
-        .eq('store_id', workspaceId)
+        .eq(workspaceIdField, workspaceId)
         .gte('scheduled_date', todayDate)
         .lt('scheduled_date', tomorrowDate) as any;
 

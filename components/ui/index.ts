@@ -1,24 +1,28 @@
 /**
- * UI Component Library - diemdanh.net Design System
+ * UI Design System - Central Export
  *
- * This is a collection of reusable UI components that maintain
- * consistent design patterns across the application.
- *
- * Design principles:
- * - Blue accent color (#3B82F6 - blue-600)
- * - Gradient backgrounds (from-blue-50 to-indigo-100)
- * - Rounded corners (rounded-lg)
- * - Soft shadows (shadow-lg)
- * - Smooth transitions
- * - Mobile-first responsive design
- *
- * Usage:
- * import { PageLayout, PageHeader, TabNavigation, Card } from '@/components/ui';
+ * Import all UI components from this file for consistency:
+ * import { Button, Card, Input, PageLayout } from '@/components/ui';
  */
 
+// Layout Components
 export { default as PageLayout } from './PageLayout';
 export { default as PageHeader } from './PageHeader';
+export { default as Card } from './Card';
+
+// Navigation Components
 export { default as TabNavigation } from './TabNavigation';
 export type { TabItem } from './TabNavigation';
-export { default as Card } from './Card';
+
+// Form Components
+export { default as Button } from './Button';
+export { default as Input } from './Input';
+export { default as Select } from './Select';
+
+// Interactive Components
 export { default as IconButton } from './IconButton';
+export { default as Badge } from './Badge';
+
+// Feedback Components
+export { default as EmptyState } from './EmptyState';
+export { default as LoadingSpinner } from './LoadingSpinner';

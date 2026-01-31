@@ -6,5 +6,10 @@ export const PeopleAdapter: FeatureAdapter = {
     workspace: 'stores',
   },
 
+  fields: {
+    personId: 'staff_id',
+    workspaceId: 'store_id',
+  },
+
   transformData: (data) => data,
 };

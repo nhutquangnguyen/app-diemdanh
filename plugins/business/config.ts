@@ -5,6 +5,8 @@ import { SettingsAdapter } from './adapters/SettingsAdapter';
 import { QRCodeAdapter } from './adapters/QRCodeAdapter';
 import { SchedulingAdapter } from './adapters/SchedulingAdapter';
 import { PeopleAdapter } from './adapters/PeopleAdapter';
+import { SalaryAdapter } from './adapters/SalaryAdapter';
+import { ShiftsAdapter } from './adapters/ShiftsAdapter';
 
 export const businessPlugin: WorkspacePlugin = {
   id: 'business',
@@ -68,6 +70,20 @@ export const businessPlugin: WorkspacePlugin = {
           peopleLabel: 'Nhân Viên',
         },
       },
+      {
+        id: 'salary',
+        enabled: true,
+        config: {
+          peopleLabel: 'Nhân Viên',
+        },
+      },
+      {
+        id: 'shifts',
+        enabled: true,
+        config: {
+          workspaceLabel: 'Cửa Hàng',
+        },
+      },
     ],
 
     tabs: [
@@ -75,45 +91,54 @@ export const businessPlugin: WorkspacePlugin = {
         id: 'today',
         label: 'Hôm Nay',
         feature: 'attendance',
-        icon: '📋',
+        icon: 'clock-circle',
       },
       {
         id: 'schedule',
         label: 'Lịch',
         feature: 'scheduling',
-        icon: '📅',
-      },
-      {
-        id: 'ai-schedule',
-        label: 'AI Xếp Lịch',
-        feature: 'ai-scheduling',
-        icon: '🤖',
+        icon: 'calendar',
       },
       {
         id: 'salary',
         label: 'Lương',
-        feature: 'attendance', // Placeholder - will be 'payments' feature later
-        icon: '💰',
+        feature: 'salary',
+        icon: 'currency-dollar',
+      },
+      // More menu items (matching production order)
+      {
+        id: 'ai-schedule',
+        label: 'Xếp lịch AI',
+        feature: 'ai-scheduling',
+        icon: 'lightbulb',
+        inMoreMenu: true,
       },
       {
         id: 'staff',
         label: 'Nhân Viên',
         feature: 'people',
-        icon: '👥',
+        icon: 'users',
+        inMoreMenu: true,
+      },
+      {
+        id: 'shifts',
+        label: 'Quản Lý Ca',
+        feature: 'shifts',
+        icon: 'clock',
         inMoreMenu: true,
       },
       {
         id: 'qr',
         label: 'Mã QR',
         feature: 'qrcode',
-        icon: '📱',
+        icon: 'qrcode',
         inMoreMenu: true,
       },
       {
         id: 'settings',
         label: 'Cài Đặt',
         feature: 'settings',
-        icon: '⚙️',
+        icon: 'cog',
         inMoreMenu: true,
       },
     ],
@@ -125,8 +150,8 @@ export const businessPlugin: WorkspacePlugin = {
     qrcode: QRCodeAdapter,
     scheduling: SchedulingAdapter,
     people: PeopleAdapter,
-    // More adapters will be added:
-    // payments: SalaryAdapter,
+    salary: SalaryAdapter,
+    shifts: ShiftsAdapter,
   },
 
   onRegister: () => {

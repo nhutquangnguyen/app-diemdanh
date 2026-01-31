@@ -66,7 +66,7 @@ export default function StoreStaff({
   return (
     <div className="px-4 sm:px-6 py-6">
       <div className="mb-6">
-        <Link href={`/owner/stores/${storeId}/add-staff`}>
+        <Link href={`/owner/${storeId}/add-staff`}>
           <button className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-semibold transition-all flex items-center justify-center gap-2 min-h-[48px]">
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />

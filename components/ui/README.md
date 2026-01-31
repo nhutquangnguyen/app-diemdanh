@@ -31,6 +31,37 @@ This directory contains the shared UI components that maintain consistent design
 - **Borders**: Soft rounded corners (`rounded-lg`)
 - **Transitions**: Smooth transitions on all interactive elements
 
+## Quick Start
+
+```tsx
+// Import components
+import {
+  PageLayout,
+  PageHeader,
+  Card,
+  Button,
+  Input,
+  Select,
+  Badge,
+  EmptyState,
+  LoadingSpinner,
+  TabNavigation
+} from '@/components/ui';
+
+// Use in your page
+export default function MyPage() {
+  return (
+    <PageLayout>
+      <PageHeader title="My Page" backHref="/owner" />
+      <Card>
+        <Input label="Name" placeholder="Enter name" />
+        <Button>Submit</Button>
+      </Card>
+    </PageLayout>
+  );
+}
+```
+
 ## Components
 
 ### PageLayout
@@ -150,10 +181,11 @@ function MyPage() {
 - `inMoreMenu?: boolean` - Show in dropdown menu (desktop) or last position (mobile)
 
 **Behavior:**
-- **Desktop**: Horizontal tabs with rounded corners, blue background when active
-- **Mobile**: Fixed bottom navigation with icons and labels
-- Automatically handles "More" menu dropdown
+- **Desktop**: Horizontal tabs with rounded corners, blue background when active, "More" menu drops down from top
+- **Mobile**: Fixed bottom navigation with icons and labels, "More" menu shows as full-screen modal overlay from bottom
+- Automatically handles "More" menu dropdown/modal
 - Supports notification badges
+- Click outside modal to close (mobile)
 
 **When to use:**
 - Use for main navigation within a workspace or page
@@ -240,6 +272,256 @@ function MyComponent() {
 - Use for icon-only actions (back, menu, delete, etc.)
 - Always provide `ariaLabel` for accessibility
 - Use `ghost` for subtle actions, `primary` for main actions
+
+---
+
+### Button
+
+Consistent button component with multiple variants and states.
+
+```tsx
+import { Button } from '@/components/ui';
+
+function MyComponent() {
+  return (
+    <>
+      <Button variant="primary">Primary Action</Button>
+      <Button variant="secondary" size="sm">Small Button</Button>
+      <Button loading>Loading...</Button>
+      <Button
+        variant="primary"
+        iconBefore={<svg>...</svg>}
+      >
+        Button with Icon
+      </Button>
+    </>
+  );
+}
+```
+
+**Props:**
+- `children: ReactNode` - Button content
+- `variant?: 'primary' | 'secondary' | 'danger' | 'ghost' | 'outline'` - Button variant (default: 'primary')
+- `size?: 'sm' | 'md' | 'lg'` - Button size (default: 'md')
+- `loading?: boolean` - Show loading spinner
+- `iconBefore?: ReactNode` - Icon before text
+- `iconAfter?: ReactNode` - Icon after text
+- `fullWidth?: boolean` - Make button full width
+- `disabled?: boolean` - Disabled state
+- `className?: string` - Additional CSS classes
+- All standard button HTML attributes
+
+**Variants:**
+- `primary`: Blue background, main actions
+- `secondary`: Gray background, secondary actions
+- `danger`: Red background, destructive actions
+- `ghost`: Transparent, subtle actions
+- `outline`: Border only, alternative style
+
+**When to use:**
+- Use for all clickable actions
+- Use `primary` for main CTAs
+- Use `danger` for delete/destructive actions
+- Use `loading` to show async operations
+
+---
+
+### Input
+
+Consistent input field with label, icons, and error states.
+
+```tsx
+import { Input } from '@/components/ui';
+
+function MyForm() {
+  return (
+    <>
+      <Input
+        label="Email"
+        type="email"
+        placeholder="Enter your email"
+        required
+      />
+
+      <Input
+        label="Search"
+        iconBefore={<svg>...</svg>}
+        placeholder="Search..."
+      />
+
+      <Input
+        label="Password"
+        type="password"
+        error="Password is required"
+      />
+    </>
+  );
+}
+```
+
+**Props:**
+- `label?: string` - Input label
+- `error?: string` - Error message (shows red border)
+- `iconBefore?: ReactNode` - Icon before input
+- `iconAfter?: ReactNode` - Icon after input
+- `helperText?: string` - Helper text below input
+- `containerClassName?: string` - Custom container class
+- `className?: string` - Additional input classes
+- All standard input HTML attributes
+
+**When to use:**
+- Use for all text inputs
+- Always provide a label for accessibility
+- Use `error` to show validation errors
+- Use icons for search, password visibility toggle, etc.
+
+---
+
+### Select
+
+Consistent select dropdown component.
+
+```tsx
+import { Select } from '@/components/ui';
+
+function MyForm() {
+  const options = [
+    { value: 'option1', label: 'Option 1' },
+    { value: 'option2', label: 'Option 2' },
+  ];
+
+  return (
+    <Select
+      label="Choose an option"
+      options={options}
+      value={selectedValue}
+      onChange={(e) => setSelectedValue(e.target.value)}
+    />
+  );
+}
+```
+
+**Props:**
+- `label?: string` - Select label
+- `error?: string` - Error message
+- `options: SelectOption[]` - Array of options
+- `helperText?: string` - Helper text below select
+- `containerClassName?: string` - Custom container class
+- `className?: string` - Additional select classes
+- All standard select HTML attributes
+
+**When to use:**
+- Use for dropdown selections
+- Always provide a label
+- Use `error` for validation feedback
+
+---
+
+### Badge
+
+Small status indicators and labels.
+
+```tsx
+import { Badge } from '@/components/ui';
+
+function MyComponent() {
+  return (
+    <>
+      <Badge variant="primary">New</Badge>
+      <Badge variant="success" dot pulse>Active</Badge>
+      <Badge variant="danger">Error</Badge>
+    </>
+  );
+}
+```
+
+**Props:**
+- `children: ReactNode` - Badge content
+- `variant?: 'primary' | 'success' | 'warning' | 'danger' | 'info' | 'gray'` - Color variant (default: 'gray')
+- `dot?: boolean` - Show dot indicator
+- `pulse?: boolean` - Pulse animation for dot
+- `className?: string` - Additional CSS classes
+
+**Variants:**
+- `primary`: Blue (active states, primary info)
+- `success`: Green (success, active status)
+- `warning`: Yellow (warnings, pending)
+- `danger`: Red (errors, alerts)
+- `info`: Indigo (information)
+- `gray`: Gray (neutral, inactive)
+
+**When to use:**
+- Use for status indicators
+- Use `dot` with `pulse` for live activity
+- Use in workspace cards, tab badges, etc.
+
+---
+
+### EmptyState
+
+Consistent empty state display with optional action.
+
+```tsx
+import { EmptyState } from '@/components/ui';
+
+function MyComponent() {
+  return (
+    <EmptyState
+      icon={<svg>...</svg>}
+      title="No workspaces found"
+      description="Create your first workspace to get started"
+      actionLabel="Create Workspace"
+      onAction={() => router.push('/owner/create-store')}
+    />
+  );
+}
+```
+
+**Props:**
+- `icon?: ReactNode` - Icon or emoji (defaults to empty box icon)
+- `title: string` - Main title
+- `description?: string` - Description text
+- `actionLabel?: string` - Action button text
+- `onAction?: () => void` - Action button click handler
+- `className?: string` - Additional CSS classes
+
+**When to use:**
+- Use when a list/collection is empty
+- Use when search returns no results
+- Always provide a clear action if possible
+
+---
+
+### LoadingSpinner
+
+Consistent loading indicator.
+
+```tsx
+import { LoadingSpinner } from '@/components/ui';
+
+function MyComponent() {
+  return (
+    <>
+      {/* Inline spinner */}
+      <LoadingSpinner size="sm" text="Loading..." />
+
+      {/* Full screen loading */}
+      <LoadingSpinner fullScreen size="lg" text="Please wait..." />
+    </>
+  );
+}
+```
+
+**Props:**
+- `size?: 'sm' | 'md' | 'lg' | 'xl'` - Spinner size (default: 'md')
+- `text?: string` - Loading text below spinner
+- `fullScreen?: boolean` - Center on full screen
+- `className?: string` - Additional CSS classes
+
+**When to use:**
+- Use for async operations
+- Use `fullScreen` for initial page loads
+- Use inline for component-level loading
 
 ---
 

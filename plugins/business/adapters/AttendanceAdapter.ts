@@ -5,9 +5,12 @@ import { FeatureAdapter } from '@/core/types/feature';
  * Adapter for Attendance Feature in Business workspaces
  *
  * Maps generic attendance concepts to business-specific terminology:
- * - People → Staff
- * - Check-ins → Staff check-ins
- * - Shifts → Work shifts
+ * - People → Staff (staff table)
+ * - Check-ins → Staff check-ins (check_ins table)
+ * - Shifts → Work shifts (shift_templates table)
+ * - Schedules → Staff schedules (staff_schedules table)
+ *
+ * Business workspaces use these dedicated tables.
  */
 export const AttendanceAdapter: FeatureAdapter = {
   // Table mappings for database queries
@@ -21,6 +24,8 @@ export const AttendanceAdapter: FeatureAdapter = {
   // Field mappings
   fields: {
     personId: 'staff_id',
+    workspaceId: 'store_id', // Business uses store_id
+    sessionId: 'shift_id', // Instead of session_id
   },
 
   // Transform data if needed (currently not transforming)

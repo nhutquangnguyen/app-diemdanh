@@ -5,8 +5,8 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
 import { getCurrentUser } from '@/lib/auth';
-import Header from '@/components/Header';
 import { WorkspaceType } from '@/types';
+import { PageLayout, PageHeader, Card, Button, Input } from '@/components/ui';
 
 export default function CreateWorkspace() {
   const router = useRouter();
@@ -109,14 +109,14 @@ export default function CreateWorkspace() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
-      <Header />
+    <PageLayout>
+      <div className="max-w-2xl mx-auto">
+        <PageHeader
+          title={step === 1 ? 'Tạo Workspace Mới' : (workspaceType === 'business' ? 'Tạo Cửa Hàng' : 'Tạo Lớp Học')}
+          backHref="/owner"
+        />
 
-      <main className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-8">
-        <div className="bg-white rounded-lg shadow-lg p-4 sm:p-8">
-          <h1 className="text-2xl font-bold text-gray-900 mb-6">
-            {step === 1 ? 'Tạo Workspace Mới' : (workspaceType === 'business' ? 'Tạo Cửa Hàng' : 'Tạo Lớp Học')}
-          </h1>
+        <Card>
 
           {/* Step 1: Choose Workspace Type */}
           {step === 1 && (
@@ -163,12 +163,9 @@ export default function CreateWorkspace() {
 
               <div className="pt-4">
                 <Link href="/owner">
-                  <button
-                    type="button"
-                    className="w-full bg-gray-200 hover:bg-gray-300 text-gray-700 px-6 py-3 rounded-lg font-semibold transition-all"
-                  >
+                  <Button variant="ghost" fullWidth>
                     Hủy
-                  </button>
+                  </Button>
                 </Link>
               </div>
             </div>
@@ -180,19 +177,14 @@ export default function CreateWorkspace() {
               {workspaceType === 'business' ? (
                 // Business Form
                 <>
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                      Tên Cửa Hàng *
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      value={businessData.name}
-                      onChange={(e) => setBusinessData({ ...businessData, name: e.target.value })}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900 placeholder-gray-400"
-                      placeholder="VD: Cửa hàng Nguyễn Văn A"
-                    />
-                  </div>
+                  <Input
+                    label="Tên Cửa Hàng *"
+                    type="text"
+                    required
+                    value={businessData.name}
+                    onChange={(e) => setBusinessData({ ...businessData, name: e.target.value })}
+                    placeholder="VD: Cửa hàng Nguyễn Văn A"
+                  />
 
                   <div>
                     <label className="block text-sm font-semibold text-gray-700 mb-2">
@@ -213,109 +205,79 @@ export default function CreateWorkspace() {
               ) : (
                 // Education Form
                 <>
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                      Tên Lớp Học *
-                    </label>
-                    <input
+                  <Input
+                    label="Tên Lớp Học *"
+                    type="text"
+                    required
+                    value={educationData.name}
+                    onChange={(e) => setEducationData({ ...educationData, name: e.target.value })}
+                    placeholder="VD: Toán 101 - Lớp 10A"
+                  />
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <Input
+                      label="Môn Học"
                       type="text"
-                      required
-                      value={educationData.name}
-                      onChange={(e) => setEducationData({ ...educationData, name: e.target.value })}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white text-gray-900 placeholder-gray-400"
-                      placeholder="VD: Toán 101 - Lớp 10A"
+                      value={educationData.subject}
+                      onChange={(e) => setEducationData({ ...educationData, subject: e.target.value })}
+                      placeholder="VD: Toán học"
+                    />
+
+                    <Input
+                      label="Khối Lớp"
+                      type="text"
+                      value={educationData.grade_level}
+                      onChange={(e) => setEducationData({ ...educationData, grade_level: e.target.value })}
+                      placeholder="VD: Lớp 10"
                     />
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-semibold text-gray-700 mb-2">
-                        Môn Học
-                      </label>
-                      <input
-                        type="text"
-                        value={educationData.subject}
-                        onChange={(e) => setEducationData({ ...educationData, subject: e.target.value })}
-                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white text-gray-900 placeholder-gray-400"
-                        placeholder="VD: Toán học"
-                      />
-                    </div>
+                    <Input
+                      label="Phòng Học"
+                      type="text"
+                      value={educationData.room_number}
+                      onChange={(e) => setEducationData({ ...educationData, room_number: e.target.value })}
+                      placeholder="VD: 204"
+                    />
 
-                    <div>
-                      <label className="block text-sm font-semibold text-gray-700 mb-2">
-                        Khối Lớp
-                      </label>
-                      <input
-                        type="text"
-                        value={educationData.grade_level}
-                        onChange={(e) => setEducationData({ ...educationData, grade_level: e.target.value })}
-                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white text-gray-900 placeholder-gray-400"
-                        placeholder="VD: Lớp 10"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-semibold text-gray-700 mb-2">
-                        Phòng Học
-                      </label>
-                      <input
-                        type="text"
-                        value={educationData.room_number}
-                        onChange={(e) => setEducationData({ ...educationData, room_number: e.target.value })}
-                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white text-gray-900 placeholder-gray-400"
-                        placeholder="VD: 204"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-semibold text-gray-700 mb-2">
-                        Năm Học
-                      </label>
-                      <input
-                        type="text"
-                        value={educationData.academic_year}
-                        onChange={(e) => setEducationData({ ...educationData, academic_year: e.target.value })}
-                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white text-gray-900 placeholder-gray-400"
-                        placeholder="VD: 2024-2025"
-                      />
-                    </div>
+                    <Input
+                      label="Năm Học"
+                      type="text"
+                      value={educationData.academic_year}
+                      onChange={(e) => setEducationData({ ...educationData, academic_year: e.target.value })}
+                      placeholder="VD: 2024-2025"
+                    />
                   </div>
                 </>
               )}
 
               <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 pt-2">
-                <button
+                <Button
                   type="button"
                   onClick={() => setStep(1)}
-                  className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-700 px-6 py-3 rounded-lg font-semibold transition-all"
+                  variant="ghost"
+                  className="flex-1"
                 >
                   Quay Lại
-                </button>
-                <button
+                </Button>
+                <Button
                   type="submit"
-                  disabled={loading}
+                  variant="primary"
+                  loading={loading}
                   className={`flex-1 ${
                     workspaceType === 'business'
                       ? 'bg-blue-600 hover:bg-blue-700'
                       : 'bg-green-600 hover:bg-green-700'
-                  } text-white px-6 py-3 rounded-lg font-semibold transition-all disabled:opacity-50 flex items-center justify-center gap-2`}
+                  }`}
                 >
-                  {loading ? (
-                    <>
-                      <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-                      Đang tạo...
-                    </>
-                  ) : (
-                    workspaceType === 'business' ? 'Tạo Cửa Hàng' : 'Tạo Lớp Học'
-                  )}
-                </button>
+                  {workspaceType === 'business' ? 'Tạo Cửa Hàng' : 'Tạo Lớp Học'}
+                </Button>
               </div>
             </form>
           )}
-        </div>
-      </main>
-    </div>
+        </Card>
+      </div>
+    </PageLayout>
   );
 }

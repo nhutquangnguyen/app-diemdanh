@@ -97,9 +97,9 @@ export function TodayView({ people, checkIns, shifts, schedules, config, onViewP
   };
 
   return (
-    <div className="space-y-4">
+    <div className="px-4 sm:px-6 py-6 space-y-4">
       {/* Current Time */}
-      <div className="flex items-center justify-between text-sm text-gray-600">
+      <div className="flex items-center justify-between text-sm text-gray-600 px-2">
         <div>
           📅 {currentTime.toLocaleDateString('vi-VN', {
             weekday: 'short',
@@ -161,7 +161,7 @@ export function TodayView({ people, checkIns, shifts, schedules, config, onViewP
 
       {/* All Shifts */}
       <div className="space-y-3">
-        <h3 className="text-lg font-bold text-gray-800">📅 Ca làm việc hôm nay</h3>
+        <h3 className="text-lg font-bold text-gray-800 px-2">📅 Ca làm việc hôm nay</h3>
 
         {sortedShifts.length === 0 ? (
           <div className="bg-white rounded-lg border border-gray-200 p-8 text-center">
