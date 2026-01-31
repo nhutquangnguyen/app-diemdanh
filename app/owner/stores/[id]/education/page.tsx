@@ -10,6 +10,7 @@ import ClassToday from '@/components/education/ClassToday';
 import ClassTimetable from '@/components/education/ClassTimetable';
 import ClassStudents from '@/components/education/ClassStudents';
 import ClassSettings from '@/components/education/ClassSettings';
+import TabNavigation, { useTabNavigation } from '@/components/common/TabNavigation';
 
 type EducationTab = 'today' | 'timetable' | 'students' | 'settings';
 
@@ -20,7 +21,17 @@ export default function EducationWorkspace() {
 
   const [classroom, setClassroom] = useState<Store | null>(null);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<EducationTab>('today');
+
+  // Define tabs
+  const tabs = [
+    { id: 'today', label: 'Hôm Nay', icon: '📋' },
+    { id: 'timetable', label: 'Thời Khóa Biểu', icon: '📅' },
+    { id: 'students', label: 'Học Sinh', icon: '👥' },
+    { id: 'settings', label: 'Cài Đặt', icon: '⚙️' },
+  ];
+
+  // Get active tab from URL with persistence
+  const activeTab = useTabNavigation(tabs, 'today') as EducationTab;
 
   useEffect(() => {
     loadClassroom();
@@ -65,13 +76,6 @@ export default function EducationWorkspace() {
 
   if (!classroom) return null;
 
-  const tabs: { id: EducationTab; label: string; icon: string }[] = [
-    { id: 'today', label: 'Hôm Nay', icon: '📋' },
-    { id: 'timetable', label: 'Thời Khóa Biểu', icon: '📅' },
-    { id: 'students', label: 'Học Sinh', icon: '👥' },
-    { id: 'settings', label: 'Cài Đặt', icon: '⚙️' },
-  ];
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-100">
       <Header />
@@ -103,25 +107,8 @@ export default function EducationWorkspace() {
           </div>
 
           {/* Tab Navigation */}
-          <div className="mt-4 border-b border-gray-200">
-            <nav className="flex gap-2 overflow-x-auto">
-              {tabs.map((tab) => (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
-                  className={`
-                    flex items-center gap-2 px-4 py-2 border-b-2 font-medium text-sm whitespace-nowrap transition-colors
-                    ${activeTab === tab.id
-                      ? 'border-green-500 text-green-600'
-                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                    }
-                  `}
-                >
-                  <span>{tab.icon}</span>
-                  {tab.label}
-                </button>
-              ))}
-            </nav>
+          <div className="mt-4">
+            <TabNavigation tabs={tabs} defaultTab="today" />
           </div>
         </div>
       </div>

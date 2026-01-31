@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { Store } from '@/types';
 import QRCode from 'react-qr-code';
+import DeleteWorkspace from '@/components/common/DeleteWorkspace';
 
 interface Props {
   classId: string;
@@ -609,36 +610,10 @@ export default function ClassSettings({ classId, classroom, onUpdate }: Props) {
       </div>
 
       {/* Danger Zone */}
-      <div className="bg-red-50 border border-red-200 rounded-lg p-4 sm:p-6">
-        <h3 className="text-base sm:text-lg font-bold text-red-900 mb-2">Vùng Nguy Hiểm</h3>
-        <p className="text-xs sm:text-sm text-red-700 mb-4">
-          Xóa lớp học sẽ xóa tất cả học sinh, điểm danh và dữ liệu liên quan. Hành động này không thể hoàn tác.
-        </p>
-        <button
-          onClick={async () => {
-            if (!confirm('Bạn có CHẮC CHẮN muốn xóa lớp học này? Tất cả dữ liệu sẽ bị mất vĩnh viễn!')) return;
-            if (!confirm('Lần xác nhận cuối cùng! Xóa lớp học?')) return;
-
-            try {
-              const { error } = await supabase
-                .from('stores')
-                .update({ deleted_at: new Date().toISOString() })
-                .eq('id', classId);
-
-              if (error) throw error;
-
-              alert('Đã xóa lớp học');
-              window.location.href = '/owner';
-            } catch (error) {
-              console.error('Error deleting class:', error);
-              alert('Lỗi khi xóa lớp học');
-            }
-          }}
-          className="w-full sm:w-auto px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-semibold text-sm sm:text-base"
-        >
-          🗑️ Xóa Lớp Học
-        </button>
-      </div>
+      <DeleteWorkspace
+        workspaceId={classId}
+        workspaceName={classroom.name}
+      />
     </div>
   );
 }

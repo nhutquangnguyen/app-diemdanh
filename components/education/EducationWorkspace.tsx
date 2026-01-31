@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Store } from '@/types';
 import Header from '@/components/Header';
@@ -18,11 +19,29 @@ interface Props {
 type EducationTab = 'today' | 'timetable' | 'students' | 'qr' | 'settings';
 
 export default function EducationWorkspace({ workspaceId, workspace }: Props) {
-  const [activeTab, setActiveTab] = useState<EducationTab>('today');
+  const router = useRouter();
+  const searchParams = useSearchParams();
+
+  // Initialize activeTab from URL query params or default to 'today'
+  const [activeTab, setActiveTab] = useState<EducationTab>(() => {
+    const tabFromUrl = searchParams.get('tab');
+    const validTabs = ['today', 'timetable', 'students', 'qr', 'settings'];
+    return (tabFromUrl && validTabs.includes(tabFromUrl)) ? tabFromUrl as EducationTab : 'today';
+  });
+
   const [classroom, setClassroom] = useState<Store>(workspace);
   const [showMoreMenu, setShowMoreMenu] = useState(false);
   const moreMenuRefDesktop = useRef<HTMLDivElement>(null);
   const moreMenuRefMobile = useRef<HTMLDivElement>(null);
+
+  // Wrapper function to update both state and URL when tab changes
+  const updateActiveTab = (tab: EducationTab) => {
+    setActiveTab(tab);
+    // Update URL with tab query param to persist across reloads
+    const currentUrl = new URL(window.location.href);
+    currentUrl.searchParams.set('tab', tab);
+    router.replace(currentUrl.pathname + currentUrl.search, { scroll: false });
+  };
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -79,7 +98,7 @@ export default function EducationWorkspace({ workspaceId, workspace }: Props) {
         {/* Desktop Tab Navigation */}
         <div className="hidden sm:flex bg-white rounded-lg shadow-lg mb-4 p-2 gap-2 relative">
           <button
-            onClick={() => setActiveTab('today')}
+            onClick={() => updateActiveTab('today')}
             className={`flex-1 px-4 py-3 rounded-lg font-semibold transition-all ${
               activeTab === 'today'
                 ? 'bg-green-600 text-white'
@@ -89,7 +108,7 @@ export default function EducationWorkspace({ workspaceId, workspace }: Props) {
             Hôm Nay
           </button>
           <button
-            onClick={() => setActiveTab('timetable')}
+            onClick={() => updateActiveTab('timetable')}
             className={`flex-1 px-4 py-3 rounded-lg font-semibold transition-all ${
               activeTab === 'timetable'
                 ? 'bg-green-600 text-white'
@@ -99,7 +118,7 @@ export default function EducationWorkspace({ workspaceId, workspace }: Props) {
             Thời Khóa Biểu
           </button>
           <button
-            onClick={() => setActiveTab('students')}
+            onClick={() => updateActiveTab('students')}
             className={`flex-1 px-4 py-3 rounded-lg font-semibold transition-all ${
               activeTab === 'students'
                 ? 'bg-green-600 text-white'
@@ -128,7 +147,7 @@ export default function EducationWorkspace({ workspaceId, workspace }: Props) {
                 <button
                   type="button"
                   onClick={() => {
-                    setActiveTab('qr');
+                    updateActiveTab('qr');
                     setShowMoreMenu(false);
                   }}
                   className="w-full text-left px-4 py-3 hover:bg-gray-100 transition-all flex items-center gap-3"
@@ -141,7 +160,7 @@ export default function EducationWorkspace({ workspaceId, workspace }: Props) {
                 <button
                   type="button"
                   onClick={() => {
-                    setActiveTab('settings');
+                    updateActiveTab('settings');
                     setShowMoreMenu(false);
                   }}
                   className="w-full text-left px-4 py-3 hover:bg-gray-100 transition-all flex items-center gap-3"
@@ -170,7 +189,7 @@ export default function EducationWorkspace({ workspaceId, workspace }: Props) {
         <div className="sm:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-lg z-40">
           <div className="grid grid-cols-4 gap-1 p-2">
             <button
-              onClick={() => setActiveTab('today')}
+              onClick={() => updateActiveTab('today')}
               className={`w-full flex flex-col items-center py-2 px-1 rounded-lg transition-all ${
                 activeTab === 'today'
                   ? 'bg-green-600 text-white'
@@ -183,7 +202,7 @@ export default function EducationWorkspace({ workspaceId, workspace }: Props) {
               <span className="text-xs font-semibold">Hôm Nay</span>
             </button>
             <button
-              onClick={() => setActiveTab('timetable')}
+              onClick={() => updateActiveTab('timetable')}
               className={`w-full flex flex-col items-center py-2 px-1 rounded-lg transition-all ${
                 activeTab === 'timetable'
                   ? 'bg-green-600 text-white'
@@ -196,7 +215,7 @@ export default function EducationWorkspace({ workspaceId, workspace }: Props) {
               <span className="text-xs font-semibold">Lịch</span>
             </button>
             <button
-              onClick={() => setActiveTab('students')}
+              onClick={() => updateActiveTab('students')}
               className={`w-full flex flex-col items-center py-2 px-1 rounded-lg transition-all ${
                 activeTab === 'students'
                   ? 'bg-green-600 text-white'
@@ -228,7 +247,7 @@ export default function EducationWorkspace({ workspaceId, workspace }: Props) {
                   <button
                     type="button"
                     onClick={() => {
-                      setActiveTab('qr');
+                      updateActiveTab('qr');
                       setShowMoreMenu(false);
                     }}
                     className="w-full text-left px-4 py-3 hover:bg-gray-100 transition-all flex items-center gap-3"
@@ -241,7 +260,7 @@ export default function EducationWorkspace({ workspaceId, workspace }: Props) {
                   <button
                     type="button"
                     onClick={() => {
-                      setActiveTab('settings');
+                      updateActiveTab('settings');
                       setShowMoreMenu(false);
                     }}
                     className="w-full text-left px-4 py-3 hover:bg-gray-100 transition-all flex items-center gap-3"

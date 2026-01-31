@@ -525,33 +525,23 @@ export default function StudentCheckin({ classId, student, classroom }: Props) {
 
       {/* Camera Error Dialog - Global */}
       {cameraError && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            <PermissionGuidance
-              type="camera"
-              workspaceType="class"
-              onRetry={() => setCameraError(false)}
-              showHeader={false}
-            />
-          </div>
-        </div>
+        <PermissionGuidance
+          type="camera"
+          onRetry={() => setCameraError(false)}
+          renderMode="modal"
+        />
       )}
 
       {/* Location Error Dialog - Global */}
       {locationError && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            <PermissionGuidance
-              type="location"
-              workspaceType="class"
-              onRetry={() => {
-                setLocationError(false);
-                setActiveSessionId(null);
-              }}
-              showHeader={false}
-            />
-          </div>
-        </div>
+        <PermissionGuidance
+          type="location"
+          onRetry={() => {
+            setLocationError(false);
+            setActiveSessionId(null);
+          }}
+          renderMode="modal"
+        />
       )}
     </>
   );

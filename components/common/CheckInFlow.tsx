@@ -427,32 +427,22 @@ export default function CheckInFlow({
           )}
 
           {cameraError && (
-            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-              <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-                <PermissionGuidance
-                  type="camera"
-                  workspaceType={type === 'staff' ? 'store' : 'class'}
-                  onRetry={() => setCameraError(false)}
-                  showHeader={false}
-                />
-              </div>
-            </div>
+            <PermissionGuidance
+              type="camera"
+              onRetry={() => setCameraError(false)}
+              renderMode="modal"
+            />
           )}
 
           {locationError && (
-            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-              <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-                <PermissionGuidance
-                  type="location"
-                  workspaceType={type === 'staff' ? 'store' : 'class'}
-                  onRetry={() => {
-                    setLocationError(false);
-                    setStep('info');
-                  }}
-                  showHeader={false}
-                />
-              </div>
-            </div>
+            <PermissionGuidance
+              type="location"
+              onRetry={() => {
+                setLocationError(false);
+                setStep('info');
+              }}
+              renderMode="modal"
+            />
           )}
         </div>
       </div>

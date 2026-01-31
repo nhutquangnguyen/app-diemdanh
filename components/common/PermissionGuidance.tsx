@@ -4,20 +4,18 @@ import { useRouter } from 'next/navigation';
 import Header from '@/components/Header';
 
 export type PermissionType = 'camera' | 'location' | 'both';
-export type WorkspaceType = 'store' | 'class';
+export type RenderMode = 'fullPage' | 'modal';
 
 interface Props {
   type: PermissionType;
-  workspaceType: WorkspaceType;
   onRetry?: () => void;
-  showHeader?: boolean;
+  renderMode?: RenderMode;
 }
 
 export default function PermissionGuidance({
   type,
-  workspaceType,
   onRetry,
-  showHeader = true
+  renderMode = 'fullPage'
 }: Props) {
   const router = useRouter();
 
@@ -104,16 +102,14 @@ export default function PermissionGuidance({
     }
   };
 
-  // Get description based on permission type and workspace type
+  // Get generic description based on permission type
   const getDescription = () => {
-    const workspaceName = workspaceType === 'store' ? 'cửa hàng' : 'lớp học';
-
     if (type === 'camera') {
-      return `Bạn đã từ chối quyền truy cập camera. Vui lòng cho phép truy cập camera trong cài đặt trình duyệt để ${workspaceType === 'store' ? 'điểm danh và chụp selfie' : 'điểm danh'}.`;
+      return 'Bạn đã từ chối quyền truy cập camera. Vui lòng cho phép truy cập camera trong cài đặt trình duyệt để tiếp tục điểm danh.';
     } else if (type === 'location') {
-      return `Bạn đã từ chối quyền truy cập vị trí. Vui lòng cho phép truy cập vị trí trong cài đặt trình duyệt để xác nhận bạn đang ở ${workspaceName}.`;
+      return 'Bạn đã từ chối quyền truy cập vị trí. Vui lòng cho phép truy cập vị trí trong cài đặt trình duyệt để xác nhận vị trí của bạn.';
     } else {
-      return `Bạn đã từ chối quyền truy cập camera và vị trí. Vui lòng cho phép truy cập trong cài đặt trình duyệt để điểm danh tại ${workspaceName}.`;
+      return 'Bạn đã từ chối quyền truy cập camera và vị trí. Vui lòng cho phép truy cập trong cài đặt trình duyệt để tiếp tục điểm danh.';
     }
   };
 
@@ -219,10 +215,18 @@ export default function PermissionGuidance({
     </div>
   );
 
-  if (!showHeader) {
-    return content;
+  // Modal rendering - consistent overlay style
+  if (renderMode === 'modal') {
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div className="max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+          {content}
+        </div>
+      </div>
+    );
   }
 
+  // Full page rendering with header
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-100">
       <Header />

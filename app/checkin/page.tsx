@@ -115,7 +115,6 @@ export default function CheckInPage() {
     return (
       <PermissionGuidance
         type="camera"
-        workspaceType="store"
         onRetry={() => {
           setCameraError(false);
           setScanning(true);
