@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { FeatureProps } from '@/core/types/feature';
 import StoreSalary from '@/components/StoreSalary';
+import StaffSalaryDetail from '@/components/salary/StaffSalaryDetail';
 import { supabase } from '@/lib/supabase';
 import { StaffSalaryCalculation, SalaryConfirmation, Store } from '@/types';
 import { calculateStaffMonthlySalary, getCurrentMonth } from '@/lib/salaryCalculations';
@@ -13,6 +14,7 @@ export default function SalaryFeature({ workspaceId, config, adapter }: FeatureP
   const [salaryConfirmations, setSalaryConfirmations] = useState<SalaryConfirmation[]>([]);
   const [selectedMonth, setSelectedMonth] = useState<string>(getCurrentMonth());
   const [loading, setLoading] = useState(true);
+  const [selectedStaffId, setSelectedStaffId] = useState<string | null>(null);
 
   // Get table names from adapter
   const staffTable = adapter?.tables?.people || 'staff';
@@ -167,9 +169,7 @@ export default function SalaryFeature({ workspaceId, config, adapter }: FeatureP
   }
 
   function handleViewStaffDetail(staffId: string) {
-    // In the production version, this opens a modal with detailed salary breakdown
-    console.log('View staff detail:', staffId);
-    // TODO: Implement staff salary detail modal
+    setSelectedStaffId(staffId);
   }
 
   if (loading) {
@@ -188,15 +188,54 @@ export default function SalaryFeature({ workspaceId, config, adapter }: FeatureP
     );
   }
 
+  // Get selected staff calculation
+  const selectedCalculation = selectedStaffId
+    ? salaryCalculations.find(c => c.staff.id === selectedStaffId)
+    : null;
+
+  const selectedConfirmation = selectedStaffId
+    ? salaryConfirmations.find(c => c.staff_id === selectedStaffId)
+    : null;
+
   return (
-    <StoreSalary
-      store={store}
-      salaryCalculations={salaryCalculations}
-      confirmations={salaryConfirmations}
-      selectedMonth={selectedMonth}
-      onMonthChange={setSelectedMonth}
-      onViewStaffDetail={handleViewStaffDetail}
-      onTogglePaymentStatus={handleTogglePaymentStatus}
-    />
+    <>
+      <StoreSalary
+        store={store}
+        salaryCalculations={salaryCalculations}
+        confirmations={salaryConfirmations}
+        selectedMonth={selectedMonth}
+        onMonthChange={setSelectedMonth}
+        onViewStaffDetail={handleViewStaffDetail}
+        onTogglePaymentStatus={handleTogglePaymentStatus}
+      />
+
+      {/* Staff Detail Modal */}
+      {selectedCalculation && (
+        <StaffSalaryDetail
+          calculation={selectedCalculation}
+          storeName={store.name}
+          onClose={() => setSelectedStaffId(null)}
+          onAddAdjustment={() => {
+            // TODO: Implement add adjustment
+            console.log('Add adjustment');
+          }}
+          onEditAdjustment={(adjustment) => {
+            // TODO: Implement edit adjustment
+            console.log('Edit adjustment', adjustment);
+          }}
+          onDeleteAdjustment={(adjustmentId) => {
+            // TODO: Implement delete adjustment
+            console.log('Delete adjustment', adjustmentId);
+          }}
+          onTogglePaymentStatus={() => {
+            if (selectedStaffId) {
+              handleTogglePaymentStatus(selectedStaffId, selectedConfirmation?.status === 'paid' ? 'paid' : 'unpaid');
+            }
+          }}
+          isPaid={selectedConfirmation?.status === 'paid'}
+          onRefresh={loadData}
+        />
+      )}
+    </>
   );
 }
