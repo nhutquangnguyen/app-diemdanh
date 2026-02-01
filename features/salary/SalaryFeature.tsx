@@ -4,8 +4,9 @@ import { useState, useEffect } from 'react';
 import { FeatureProps } from '@/core/types/feature';
 import StoreSalary from '@/components/StoreSalary';
 import StaffSalaryDetail from '@/components/salary/StaffSalaryDetail';
+import AdjustmentForm from '@/components/salary/AdjustmentForm';
 import { supabase } from '@/lib/supabase';
-import { StaffSalaryCalculation, SalaryConfirmation, Store } from '@/types';
+import { StaffSalaryCalculation, SalaryConfirmation, Store, SalaryAdjustment } from '@/types';
 import { calculateStaffMonthlySalary, getCurrentMonth } from '@/lib/salaryCalculations';
 
 export default function SalaryFeature({ workspaceId, config, adapter }: FeatureProps) {
@@ -15,6 +16,8 @@ export default function SalaryFeature({ workspaceId, config, adapter }: FeatureP
   const [selectedMonth, setSelectedMonth] = useState<string>(getCurrentMonth());
   const [loading, setLoading] = useState(true);
   const [selectedStaffId, setSelectedStaffId] = useState<string | null>(null);
+  const [editingAdjustment, setEditingAdjustment] = useState<SalaryAdjustment | null>(null);
+  const [showAdjustmentForm, setShowAdjustmentForm] = useState(false);
 
   // Get table names from adapter
   const staffTable = adapter?.tables?.people || 'staff';
@@ -172,6 +175,98 @@ export default function SalaryFeature({ workspaceId, config, adapter }: FeatureP
     setSelectedStaffId(staffId);
   }
 
+  async function handleAddAdjustment(staffId: string, data: {
+    type: string;
+    amount: number;
+    date: string;
+    note: string;
+  }) {
+    try {
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      if (userError || !user) {
+        alert('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.');
+        return;
+      }
+
+      const { error } = await supabase
+        .from('salary_adjustments')
+        .insert({
+          staff_id: staffId,
+          [workspaceIdField]: workspaceId,
+          adjustment_date: data.date,
+          type: data.type === 'increase' ? 'bonus' : 'deduction',
+          amount: data.amount,
+          calculation_base: 'fixed',
+          note: data.note,
+          created_by: user.id,
+        });
+
+      if (error) throw error;
+
+      // Reload salary data
+      await loadData();
+    } catch (error) {
+      console.error('Error adding adjustment:', error);
+      alert('Có lỗi xảy ra khi thêm điều chỉnh');
+    }
+  }
+
+  async function handleEditAdjustment(adjustmentId: string, data: {
+    type: string;
+    amount: number;
+    date: string;
+    note: string;
+  }) {
+    try {
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      if (userError || !user) {
+        alert('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.');
+        return;
+      }
+
+      const { error } = await supabase
+        .from('salary_adjustments')
+        .update({
+          adjustment_date: data.date,
+          type: data.type === 'increase' ? 'bonus' : 'deduction',
+          amount: data.amount,
+          note: data.note,
+          modified_by: user.id,
+          modified_at: new Date().toISOString(),
+        })
+        .eq('id', adjustmentId);
+
+      if (error) throw error;
+
+      // Reload salary data
+      await loadData();
+    } catch (error) {
+      console.error('Error editing adjustment:', error);
+      alert('Có lỗi xảy ra khi sửa điều chỉnh');
+    }
+  }
+
+  async function handleDeleteAdjustment(adjustmentId: string) {
+    if (!confirm('Bạn có chắc chắn muốn xóa điều chỉnh này?')) {
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('salary_adjustments')
+        .delete()
+        .eq('id', adjustmentId);
+
+      if (error) throw error;
+
+      // Reload salary data
+      await loadData();
+    } catch (error) {
+      console.error('Error deleting adjustment:', error);
+      alert('Có lỗi xảy ra khi xóa điều chỉnh');
+    }
+  }
+
   if (loading) {
     return (
       <div className="flex justify-center items-center h-64">
@@ -216,16 +311,15 @@ export default function SalaryFeature({ workspaceId, config, adapter }: FeatureP
           storeName={store.name}
           onClose={() => setSelectedStaffId(null)}
           onAddAdjustment={() => {
-            // TODO: Implement add adjustment
-            console.log('Add adjustment');
+            setEditingAdjustment(null);
+            setShowAdjustmentForm(true);
           }}
           onEditAdjustment={(adjustment) => {
-            // TODO: Implement edit adjustment
-            console.log('Edit adjustment', adjustment);
+            setEditingAdjustment(adjustment);
+            setShowAdjustmentForm(true);
           }}
           onDeleteAdjustment={(adjustmentId) => {
-            // TODO: Implement delete adjustment
-            console.log('Delete adjustment', adjustmentId);
+            handleDeleteAdjustment(adjustmentId);
           }}
           onTogglePaymentStatus={() => {
             if (selectedStaffId) {
@@ -234,6 +328,28 @@ export default function SalaryFeature({ workspaceId, config, adapter }: FeatureP
           }}
           isPaid={selectedConfirmation?.status === 'paid'}
           onRefresh={loadData}
+        />
+      )}
+
+      {/* Adjustment Form Modal */}
+      {showAdjustmentForm && selectedCalculation && (
+        <AdjustmentForm
+          staffName={selectedCalculation.staff.display_name}
+          month={selectedMonth}
+          editingAdjustment={editingAdjustment}
+          onSave={async (data) => {
+            if (editingAdjustment) {
+              await handleEditAdjustment(editingAdjustment.id, data);
+            } else if (selectedStaffId) {
+              await handleAddAdjustment(selectedStaffId, data);
+            }
+            setShowAdjustmentForm(false);
+            setEditingAdjustment(null);
+          }}
+          onCancel={() => {
+            setShowAdjustmentForm(false);
+            setEditingAdjustment(null);
+          }}
         />
       )}
     </>
