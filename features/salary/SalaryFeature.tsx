@@ -243,8 +243,6 @@ export default function SalaryFeature({ workspaceId, config, adapter }: FeatureP
           type: data.type === 'increase' ? 'bonus' : 'deduction',
           amount: data.amount,
           note: data.note,
-          modified_by: user.id,
-          modified_at: new Date().toISOString(),
         })
         .eq('id', adjustmentId);
 
