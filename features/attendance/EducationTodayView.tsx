@@ -102,6 +102,7 @@ export function EducationTodayView({
         const { error } = await supabase
           .from('attendance_records')
           .update({
+            class_id: config.workspaceId,
             status,
             check_in_time: currentTime,
             marked_at: now.toISOString(),

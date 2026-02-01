@@ -188,7 +188,7 @@ export function AttendanceFeature({ workspaceId, config, adapter }: FeatureProps
         checkIns={checkIns}
         shifts={shifts}
         schedules={schedules}
-        config={config}
+        config={{ ...config, workspaceId }}
         onViewPhoto={(checkIn: CheckIn) => setSelectedCheckIn(checkIn)}
       />
 
