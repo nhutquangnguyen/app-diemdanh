@@ -96,10 +96,22 @@ export default function SalaryFeature({ workspaceId, config, adapter }: FeatureP
 
       if (confirmationsError) throw confirmationsError;
 
+      // Load salary adjustments for the selected month
+      const { data: adjustmentsData, error: adjustmentsError } = await supabase
+        .from('salary_adjustments')
+        .select('*')
+        .eq(workspaceIdField, workspaceId)
+        .gte('adjustment_date', `${monthStart}`)
+        .lte('adjustment_date', `${monthEnd}`)
+        .order('adjustment_date', { ascending: true });
+
+      if (adjustmentsError) throw adjustmentsError;
+
       // Calculate salaries for each staff member
       const calculations: StaffSalaryCalculation[] = (staffData || []).map(staff => {
         const staffSchedules = (schedulesData || []).filter(s => s.staff_id === staff.id);
         const staffCheckIns = (checkInsData || []).filter(ci => ci.staff_id === staff.id);
+        const staffAdjustments = (adjustmentsData || []).filter(adj => adj.staff_id === staff.id);
 
         return calculateStaffMonthlySalary(
           staff,
@@ -108,7 +120,7 @@ export default function SalaryFeature({ workspaceId, config, adapter }: FeatureP
           staffSchedules,
           shiftsData || [],
           staffCheckIns,
-          [] // adjustments - can be loaded separately if needed
+          staffAdjustments
         );
       });
 
