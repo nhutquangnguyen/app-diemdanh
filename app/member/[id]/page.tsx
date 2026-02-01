@@ -15,7 +15,6 @@ import StudentTimetable from '@/components/student/StudentTimetable';
 import StudentProfile from '@/components/student/StudentProfile';
 
 // Staff/Business components
-import StaffToday from '@/components/staff/StaffToday';
 import StaffSchedule from '@/components/staff/StaffSchedule';
 import StaffAvailability from '@/components/staff/StaffAvailability';
 import StaffHistory from '@/components/staff/StaffHistory';
