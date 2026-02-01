@@ -1,5 +1,6 @@
 // Education Attendance Adapter
 import { FeatureAdapter } from '@/core/types/feature';
+import { EducationTodayView } from '@/features/attendance/EducationTodayView';
 
 /**
  * Adapter for Attendance Feature in Education workspaces
@@ -32,4 +33,9 @@ export const AttendanceAdapter: FeatureAdapter = {
 
   // Transform data if needed (currently not transforming)
   transformData: (data) => data,
+
+  // Custom components for education
+  components: {
+    TodayView: EducationTodayView,
+  },
 };

@@ -99,13 +99,27 @@ export function AttendanceFeature({ workspaceId, config, adapter }: FeatureProps
       if (peopleError) throw peopleError;
 
       // Load check-ins (today only)
-      const { data: checkInsData, error: checkInsError } = await supabase
+      // Education uses attendance_date (date) + check_in_time (time)
+      // Business uses check_in_time (timestamp)
+      let checkInsQuery = supabase
         .from(checkInsTable)
         .select(`*, ${peopleTable}(*)`)
-        .eq(workspaceIdField, workspaceId)
-        .gte('check_in_time', `${todayDate}T00:00:00`)
-        .lt('check_in_time', `${tomorrowDate}T00:00:00`)
-        .order('check_in_time', { ascending: false }) as any;
+        .eq(workspaceIdField, workspaceId);
+
+      // For education (attendance_records), filter by attendance_date
+      if (checkInsTable === 'attendance_records') {
+        checkInsQuery = checkInsQuery
+          .eq('attendance_date', todayDate)
+          .order('check_in_time', { ascending: false });
+      } else {
+        // For business (check_ins), filter by check_in_time timestamp
+        checkInsQuery = checkInsQuery
+          .gte('check_in_time', `${todayDate}T00:00:00`)
+          .lt('check_in_time', `${tomorrowDate}T00:00:00`)
+          .order('check_in_time', { ascending: false });
+      }
+
+      const { data: checkInsData, error: checkInsError } = await checkInsQuery as any;
 
       if (checkInsError) throw checkInsError;
 

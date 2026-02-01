@@ -26,9 +26,14 @@ export default function PeopleFeature({ workspaceId, config, adapter }: FeatureP
   const staffTable = adapter?.tables?.people || 'staff';
   const workspaceIdField = adapter?.fields?.workspaceId || 'store_id';
 
+  // Check if using custom view
+  const hasCustomView = !!adapter?.components?.PeopleView;
+
   useEffect(() => {
-    loadStaff();
-  }, [workspaceId]);
+    if (!hasCustomView) {
+      loadStaff();
+    }
+  }, [workspaceId, hasCustomView]);
 
   async function loadStaff() {
     try {
@@ -139,6 +144,12 @@ export default function PeopleFeature({ workspaceId, config, adapter }: FeatureP
     }
   }
 
+  // Use adapter's PeopleView component override if available
+  if (adapter?.components?.PeopleView) {
+    const PeopleViewComponent = adapter.components.PeopleView;
+    return <PeopleViewComponent workspaceId={workspaceId} config={config} />;
+  }
+
   if (loading) {
     return (
       <div className="flex justify-center items-center h-64">
@@ -147,6 +158,7 @@ export default function PeopleFeature({ workspaceId, config, adapter }: FeatureP
     );
   }
 
+  // Default business people view (StoreStaff)
   return (
     <StoreStaff
       storeId={workspaceId}

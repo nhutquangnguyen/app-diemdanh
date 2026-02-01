@@ -26,3 +26,15 @@ export { default as Badge } from './Badge';
 // Feedback Components
 export { default as EmptyState } from './EmptyState';
 export { default as LoadingSpinner } from './LoadingSpinner';
+
+// Icon Components
+export {
+  ClockIcon,
+  CalendarIcon,
+  DollarIcon,
+  LightbulbIcon,
+  UsersIcon,
+  QRCodeIcon,
+  SettingsIcon,
+  PlusIcon,
+} from './icons';
