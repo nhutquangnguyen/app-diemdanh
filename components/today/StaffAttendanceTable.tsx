@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { Staff, CheckIn, StaffFilter } from '@/types';
-import { usePagination } from '@/hooks/usePagination';
+import { usePagination } from '@/features/shared/hooks/usePagination';
 import { Pagination } from '@/components/Pagination';
 
 interface StaffAttendanceTableProps {

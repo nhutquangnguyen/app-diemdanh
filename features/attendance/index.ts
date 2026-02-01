@@ -46,3 +46,6 @@ export const attendanceFeature: Feature = {
 };
 
 export { AttendanceFeature };
+
+// Export hooks
+export { useDashboardData } from './hooks/useDashboardData';

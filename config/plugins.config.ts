@@ -5,6 +5,7 @@ import { registerFeature } from '@/core/utils/featureRegistry';
 import { registerPlugin } from '@/core/utils/pluginRegistry';
 
 // Import features
+import { sharedFeature } from '@/features/shared';
 import { attendanceFeature } from '@/features/attendance';
 import { settingsFeature } from '@/features/settings';
 import { qrcodeFeature } from '@/features/qrcode';
@@ -25,7 +26,10 @@ import { educationPlugin } from '@/plugins/education';
 export function initializePlugins() {
   console.log('[PluginSystem] Initializing features and plugins...');
 
-  // Register features first
+  // Register shared feature first (other features may depend on it)
+  registerFeature(sharedFeature);
+
+  // Register features
   registerFeature(attendanceFeature);
   registerFeature(settingsFeature);
   registerFeature(qrcodeFeature);

@@ -21,3 +21,6 @@ export const aiSchedulingFeature: Feature = {
     },
   },
 };
+
+// Export hooks
+export { useSmartSchedule } from './hooks/useSmartSchedule';

@@ -16,3 +16,6 @@ export const peopleFeature: Feature = {
     },
   },
 };
+
+// Export hooks
+export { useStaffFiltering } from './hooks/useStaffFiltering';

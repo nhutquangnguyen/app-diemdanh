@@ -16,3 +16,6 @@ export const salaryFeature: Feature = {
     },
   },
 };
+
+// Export hooks
+export { useSalaryCalculation } from './hooks/useSalaryCalculation';
