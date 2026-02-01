@@ -285,9 +285,9 @@ export default function Home() {
     }
   }
 
-  // Navigate to staff page for this store
+  // Navigate to member page for this store (staff view)
   function handleStoreClick(store: StoreWithDistance) {
-    router.push(`/owner/${store.id}`);
+    router.push(`/member/${store.id}`);
   }
 
   // Quick check-in action
@@ -303,62 +303,8 @@ export default function Home() {
       return;
     }
 
-    // Check camera permission first if selfie is required
-    if (store.selfie_required) {
-      try {
-        setGpsLoading(true);
-        // Request camera permission
-        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-        // Stop the stream immediately after checking permission
-        stream.getTracks().forEach(track => track.stop());
-      } catch (error: any) {
-        setGpsLoading(false);
-        // Camera permission denied - show error dialog
-        setShowCameraErrorDialog(true);
-        return;
-      }
-    }
-
-    // If store requires GPS, request permission NOW (when user clicks)
-    if (store.gps_required) {
-      try {
-        if (!store.selfie_required) {
-          setGpsLoading(true);
-        }
-
-        const position = await getCurrentPosition();
-
-        // Calculate distance to verify user is in range
-        const distance = calculateDistance(
-          position.coords.latitude,
-          position.coords.longitude,
-          store.latitude || 0,
-          store.longitude || 0
-        );
-
-        const status = getStoreStatus(distance, store.radius_meters);
-
-        if (status === 'far') {
-          alert(`Bạn đang ở xa cửa hàng ${formatDistance(distance)}. Vui lòng đến gần hơn (trong phạm vi ${formatDistance(store.radius_meters || 100)}) để điểm danh.`);
-          setGpsLoading(false);
-          return;
-        }
-
-        // GPS verified - proceed to check-in (GPS will be re-verified on submit page for security)
-        router.push(`/member/${store.id}/checkin`);
-        setGpsLoading(false);
-
-      } catch (error: any) {
-        setGpsLoading(false);
-        // Show GPS error dialog instead of banner
-        setShowGpsErrorDialog(true);
-        return;
-      }
-    } else {
-      // No GPS required - proceed directly
-      router.push(`/member/${store.id}/checkin`);
-      setGpsLoading(false);
-    }
+    // Navigate to check-in page - permissions will be checked there
+    router.push(`/member/${store.id}/checkin`);
   }
 
   // Get greeting info
@@ -559,13 +505,10 @@ export default function Home() {
                         {/* Quick Check-in Button */}
                         <button
                           onClick={(e) => handleQuickCheckIn(store, e)}
-                          disabled={isFar || gpsLoading}
                           className={`flex flex-col items-center justify-center px-4 py-3 border-l-2 transition-all min-w-[80px] ${
-                            isFar || gpsLoading
-                              ? 'bg-gray-200 cursor-not-allowed'
-                              : checkInStatus.type === 'active'
-                                ? 'bg-orange-50 hover:bg-orange-100 border-orange-300'
-                                : 'bg-blue-50 hover:bg-blue-100 border-blue-300'
+                            checkInStatus.type === 'active'
+                              ? 'bg-orange-50 hover:bg-orange-100 border-orange-300'
+                              : 'bg-blue-50 hover:bg-blue-100 border-blue-300'
                           }`}
                         >
                           <svg className={`w-6 h-6 mb-1 ${

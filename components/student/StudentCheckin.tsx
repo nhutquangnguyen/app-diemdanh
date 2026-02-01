@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import { useRouter } from 'next/navigation';
 import Webcam from 'react-webcam';
 import { supabase } from '@/lib/supabase';
 import { Store, Student, ClassSession } from '@/types';
@@ -15,6 +16,7 @@ interface Props {
 }
 
 export default function StudentCheckin({ classId, student, classroom }: Props) {
+  const router = useRouter();
   const webcamRef = useRef<Webcam>(null);
 
   const [sessions, setSessions] = useState<ClassSession[]>([]);
@@ -94,45 +96,8 @@ export default function StudentCheckin({ classId, student, classroom }: Props) {
       return;
     }
 
-    setActiveSessionId(sessionId);
-
-    // Check GPS first if required
-    if (classroom.gps_required) {
-      const location = await getCurrentLocation();
-      if (!location) {
-        setLocationError(true);
-        return;
-      }
-
-      // Check if classroom has GPS coordinates set
-      if (!classroom.latitude || !classroom.longitude) {
-        alert('Giáo viên chưa thiết lập tọa độ GPS cho lớp học');
-        return;
-      }
-
-      const distance = calculateDistance(
-        location.latitude,
-        location.longitude,
-        classroom.latitude,
-        classroom.longitude
-      );
-
-      const radiusMeters = classroom.radius_meters || 100;
-      if (distance > radiusMeters) {
-        setDistanceErrorData({ distance, radius: radiusMeters });
-        setDistanceError(true);
-        return;
-      }
-    }
-
-    // Show selfie capture if required
-    if (classroom.selfie_required) {
-      setStep('selfie');
-      return;
-    }
-
-    // Otherwise, proceed with direct check-in (GPS only, no photo)
-    await submitCheckin(sessionId, null, null, null, null);
+    // Navigate to the unified check-in page
+    router.push(`/member/${classId}/checkin?session=${sessionId}`);
   }
 
   function capturePhoto() {

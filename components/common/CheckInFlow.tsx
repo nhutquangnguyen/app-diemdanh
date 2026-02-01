@@ -6,7 +6,6 @@ import Webcam from 'react-webcam';
 import { supabase } from '@/lib/supabase';
 import { getCurrentLocation, calculateDistance } from '@/utils/location';
 import { compressImage } from '@/utils/imageCompression';
-import PermissionGuidance from '@/components/common/PermissionGuidance';
 
 interface CheckInFlowProps {
   // Common props
@@ -61,18 +60,26 @@ export default function CheckInFlow({
   const [distance, setDistance] = useState<number>(0);
   const [isWithinRadius, setIsWithinRadius] = useState(false);
   const [facingMode, setFacingMode] = useState<'user' | 'environment'>('user');
-  const [cameraError, setCameraError] = useState(false);
-  const [locationError, setLocationError] = useState(false);
-  const [distanceError, setDistanceError] = useState(false);
   const [processing, setProcessing] = useState(false);
 
-  // Load GPS location on mount
+  // Load GPS location on mount and decide initial step
   useEffect(() => {
-    if (location.gps_required) {
-      loadLocation();
-    } else {
-      setIsWithinRadius(true);
+    async function initialize() {
+      if (location.gps_required) {
+        await loadLocation();
+      } else {
+        setIsWithinRadius(true);
+      }
+
+      // Match production behavior: go directly to selfie if required
+      if (location.selfie_required) {
+        setStep('selfie');
+      } else {
+        setStep('info');
+      }
     }
+
+    initialize();
   }, []);
 
   // Calculate distance when location is available
@@ -94,13 +101,12 @@ export default function CheckInFlow({
       const loc = await getCurrentLocation();
       if (loc) {
         setCurrentLocation(loc);
-        setLocationError(false);
-      } else {
-        setLocationError(true);
+        return loc;
       }
+      return null;
     } catch (error) {
       console.error('GPS error:', error);
-      setLocationError(true);
+      return null;
     }
   }
 
@@ -116,24 +122,7 @@ export default function CheckInFlow({
   }
 
   async function handleProceed() {
-    // Validate GPS if required
-    if (location.gps_required) {
-      if (!currentLocation) {
-        alert('Không thể lấy vị trí GPS. Vui lòng bật định vị.');
-        return;
-      }
-
-      if (!location.latitude || !location.longitude) {
-        alert('Vị trí chưa được thiết lập. Vui lòng liên hệ quản lý.');
-        return;
-      }
-
-      if (!isWithinRadius) {
-        setDistanceError(true);
-        return;
-      }
-    }
-
+    // Permissions already checked by parent page
     // If selfie required, go to camera step
     if (location.selfie_required) {
       setStep('selfie');
@@ -148,30 +137,22 @@ export default function CheckInFlow({
     setStep('processing');
 
     try {
-      // Get fresh GPS location for security
+      // Get fresh GPS location for submission (permissions already verified)
       let finalLocation = currentLocation;
       let finalDistance = distance;
 
       if (location.gps_required) {
         const freshLoc = await getCurrentLocation();
-        if (!freshLoc) {
-          throw new Error('Không thể lấy vị trí GPS');
-        }
+        if (freshLoc) {
+          finalLocation = freshLoc;
 
-        finalLocation = freshLoc;
-
-        if (location.latitude && location.longitude) {
-          finalDistance = calculateDistance(
-            freshLoc.latitude,
-            freshLoc.longitude,
-            location.latitude,
-            location.longitude
-          );
-
-          if (finalDistance > location.radius_meters) {
-            setStep('info');
-            setDistanceError(true);
-            throw new Error(`Đã di chuyển ra khỏi bán kính`);
+          if (location.latitude && location.longitude) {
+            finalDistance = calculateDistance(
+              freshLoc.latitude,
+              freshLoc.longitude,
+              location.latitude,
+              location.longitude
+            );
           }
         }
       }
@@ -283,8 +264,8 @@ export default function CheckInFlow({
   // Info Step
   if (step === 'info') {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-100 flex items-center justify-center p-4">
-        <div className="bg-white rounded-lg shadow-lg p-6 max-w-md w-full">
+      <div className="px-4 py-6">
+        <div className="bg-white rounded-lg shadow-lg p-6 max-w-md mx-auto">
           <h2 className="text-2xl font-bold text-gray-800 mb-4">
             {isCheckOut ? '👋 Check-out' : '📍 Điểm danh'}
           </h2>
@@ -305,9 +286,7 @@ export default function CheckInFlow({
                 <span className="font-semibold text-gray-700">Vị trí GPS</span>
               </div>
 
-              {locationError ? (
-                <p className="text-red-600 text-sm">❌ Không thể lấy vị trí GPS</p>
-              ) : !currentLocation ? (
+              {!currentLocation ? (
                 <p className="text-gray-600 text-sm">⏳ Đang lấy vị trí...</p>
               ) : (
                 <>
@@ -361,8 +340,8 @@ export default function CheckInFlow({
   // Selfie Step
   if (step === 'selfie') {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-100 flex items-center justify-center p-4">
-        <div className="bg-white rounded-lg shadow-lg p-6 max-w-md w-full">
+      <div className="px-4 py-6">
+        <div className="bg-white rounded-lg shadow-lg p-6 max-w-md mx-auto">
           <h2 className="text-xl font-bold text-gray-800 mb-4 text-center">
             📸 Chụp Ảnh Selfie
           </h2>
@@ -379,7 +358,10 @@ export default function CheckInFlow({
                   screenshotFormat="image/jpeg"
                   className="w-full rounded-lg"
                   videoConstraints={{ facingMode }}
-                  onUserMediaError={() => setCameraError(true)}
+                  onUserMediaError={(error) => {
+                    console.error('Camera error:', error);
+                    // Camera permission already checked by parent page
+                  }}
                 />
                 <button
                   onClick={() => setFacingMode(prev => prev === 'user' ? 'environment' : 'user')}
@@ -428,39 +410,6 @@ export default function CheckInFlow({
               </div>
             </div>
           )}
-
-          {cameraError && (
-            <PermissionGuidance
-              type="camera"
-              onRetry={() => setCameraError(false)}
-              renderMode="modal"
-            />
-          )}
-
-          {locationError && (
-            <PermissionGuidance
-              type="location"
-              onRetry={() => {
-                setLocationError(false);
-                setStep('info');
-              }}
-              renderMode="modal"
-            />
-          )}
-
-          {distanceError && (
-            <PermissionGuidance
-              type="distance"
-              currentDistance={distance}
-              maxRadius={location.radius_meters}
-              locationName={location.name}
-              onRetry={() => {
-                setDistanceError(false);
-                loadLocation();
-              }}
-              renderMode="modal"
-            />
-          )}
         </div>
       </div>
     );
@@ -469,7 +418,7 @@ export default function CheckInFlow({
   // Processing Step
   if (step === 'processing') {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-100 flex items-center justify-center">
+      <div className="px-4 py-6">
         <div className="text-center">
           <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-green-600 mx-auto mb-4"></div>
           <p className="text-gray-700 font-semibold">Đang xử lý...</p>
@@ -481,8 +430,8 @@ export default function CheckInFlow({
   // Success Step
   if (step === 'success') {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-100 flex items-center justify-center p-4">
-        <div className="bg-white rounded-lg shadow-lg p-8 max-w-md w-full text-center">
+      <div className="px-4 py-6">
+        <div className="bg-white rounded-lg shadow-lg p-8 max-w-md mx-auto text-center">
           <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
             <svg className="w-10 h-10 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
@@ -505,8 +454,8 @@ export default function CheckInFlow({
   // Error Step
   if (step === 'error') {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-100 flex items-center justify-center p-4">
-        <div className="bg-white rounded-lg shadow-lg p-8 max-w-md w-full text-center">
+      <div className="px-4 py-6">
+        <div className="bg-white rounded-lg shadow-lg p-8 max-w-md mx-auto text-center">
           <div className="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
             <svg className="w-10 h-10 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
