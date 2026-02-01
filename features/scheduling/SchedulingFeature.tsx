@@ -194,6 +194,31 @@ export default function SchedulingFeature({ workspaceId, config, adapter }: Feat
     }
   }
 
+  async function handleAssignShift(staffId: string, shiftId: string, date: string) {
+    try {
+      const personIdField = adapter?.fields?.personId || 'staff_id';
+
+      const scheduleData: any = {
+        [personIdField]: staffId,
+        [workspaceIdField]: workspaceId,
+        shift_template_id: shiftId,
+        scheduled_date: date,
+      };
+
+      const { error } = await supabase
+        .from(schedulesTable)
+        .insert([scheduleData]);
+
+      if (error) throw error;
+
+      // Reload data
+      await loadData();
+    } catch (error) {
+      console.error('Error assigning shift:', error);
+      throw error;
+    }
+  }
+
   // Touch handlers for mobile
   function handleTouchStart(e: React.TouchEvent) {
     // Implementation for touch start
@@ -257,6 +282,7 @@ export default function SchedulingFeature({ workspaceId, config, adapter }: Feat
       getStaffForShiftAndDate={getStaffForShiftAndDate}
       openAssignModal={openAssignModal}
       handleRemoveStaffFromShift={handleRemoveStaffFromShift}
+      handleAssignShift={handleAssignShift}
       handleTouchStart={handleTouchStart}
       handleTouchMove={handleTouchMove}
       handleTouchEnd={handleTouchEnd}
