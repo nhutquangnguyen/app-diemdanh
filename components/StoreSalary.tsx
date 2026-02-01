@@ -96,7 +96,7 @@ export default function StoreSalary({
         <h3 className="text-sm font-medium mb-4 opacity-90">📊 Tổng quan</h3>
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <div className="text-2xl font-bold">{formatAmount(totalPayroll)}đ</div>
+            <div className="text-lg font-bold whitespace-nowrap overflow-hidden text-ellipsis">{formatAmount(totalPayroll)}</div>
             <div className="text-sm opacity-90">Tổng lương</div>
           </div>
           <div>
