@@ -177,7 +177,7 @@ export default function ScanPage() {
           <PermissionGuidance
             type="camera"
             onRetry={handleCameraRetry}
-            renderMode="fullPage"
+            renderMode="modal"
           />
         ) : (
           <div className="bg-white rounded-2xl shadow-xl p-6">

@@ -124,7 +124,7 @@ export default function Header() {
             {user ? (
                   <>
                     {/* QR Code Button - Always show when logged in */}
-                    <Link href="/checkin">
+                    <Link href="/scan">
                       <button
                         className="p-2 bg-gray-700 hover:bg-gray-800 rounded-lg transition-all"
                         aria-label="Quét QR"

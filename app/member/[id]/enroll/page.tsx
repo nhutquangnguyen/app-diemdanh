@@ -57,11 +57,17 @@ export default function MemberEnrollPage() {
 
       setWorkspace(workspaceData);
 
+      // Get plugin adapter for table/field names
+      const plugin = getPlugin(workspaceData.workspace_type || 'business');
+      const peopleAdapter = plugin?.adapters?.people;
+      const memberTable = peopleAdapter?.tables?.people || 'staff';
+      const workspaceIdField = peopleAdapter?.fields?.workspaceId || 'store_id';
+
       // Check if already enrolled
       const { data: existingStudent } = await supabase
-        .from('students')
+        .from(memberTable)
         .select('status')
-        .eq('class_id', workspaceId)
+        .eq(workspaceIdField, workspaceId)
         .eq('user_id', currentUser.id)
         .maybeSingle();
 
@@ -95,11 +101,17 @@ export default function MemberEnrollPage() {
     setEnrolling(true);
 
     try {
+      // Get plugin adapter for table/field names
+      const plugin = getPlugin(workspace.workspace_type || 'business');
+      const peopleAdapter = plugin?.adapters?.people;
+      const memberTable = peopleAdapter?.tables?.people || 'staff';
+      const workspaceIdField = peopleAdapter?.fields?.workspaceId || 'store_id';
+
       const { error: insertError } = await supabase
-        .from('students')
+        .from(memberTable)
         .insert([
           {
-            class_id: workspaceId,
+            [workspaceIdField]: workspaceId,
             user_id: user.id,
             full_name: user.user_metadata?.full_name || user.email,
             email: user.email,
