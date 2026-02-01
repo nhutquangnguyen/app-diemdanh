@@ -166,12 +166,12 @@ export function SettingsView({ workspace, config, onUpdate, saving }: SettingsVi
         <div className="bg-gray-50 rounded-lg p-4">
           <h3 className="text-lg font-semibold text-gray-800 mb-4">Yêu Cầu Điểm Danh</h3>
           <div className="space-y-3">
-            <label className="flex items-center space-x-3 cursor-pointer">
+            <label className="flex items-start gap-4 cursor-pointer">
               <input
                 type="checkbox"
                 name="gps_required"
                 defaultChecked={workspace.gps_required}
-                className="w-5 h-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                className="w-5 h-5 mt-0.5 text-blue-600 border-gray-300 rounded focus:ring-blue-500 flex-shrink-0"
               />
               <div>
                 <div className="font-medium text-gray-900">Yêu cầu GPS</div>
@@ -179,12 +179,12 @@ export function SettingsView({ workspace, config, onUpdate, saving }: SettingsVi
               </div>
             </label>
 
-            <label className="flex items-center space-x-3 cursor-pointer">
+            <label className="flex items-start gap-4 cursor-pointer">
               <input
                 type="checkbox"
                 name="selfie_required"
                 defaultChecked={workspace.selfie_required}
-                className="w-5 h-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                className="w-5 h-5 mt-0.5 text-blue-600 border-gray-300 rounded focus:ring-blue-500 flex-shrink-0"
               />
               <div>
                 <div className="font-medium text-gray-900">Yêu cầu Selfie</div>
@@ -197,14 +197,14 @@ export function SettingsView({ workspace, config, onUpdate, saving }: SettingsVi
         {/* Access Mode */}
         <div className="bg-gray-50 rounded-lg p-4">
           <h3 className="text-lg font-semibold text-gray-800 mb-4">Chế Độ Truy Cập</h3>
-          <div className="space-y-2">
-            <label className="flex items-center space-x-3 cursor-pointer">
+          <div className="space-y-3">
+            <label className="flex items-start gap-4 cursor-pointer">
               <input
                 type="radio"
                 name="access_mode"
                 value="staff_only"
                 defaultChecked={workspace.access_mode === 'staff_only'}
-                className="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500"
+                className="w-4 h-4 mt-1 text-blue-600 border-gray-300 focus:ring-blue-500 flex-shrink-0"
               />
               <div>
                 <div className="font-medium text-gray-900">Chỉ người được phân công</div>
@@ -212,13 +212,13 @@ export function SettingsView({ workspace, config, onUpdate, saving }: SettingsVi
               </div>
             </label>
 
-            <label className="flex items-center space-x-3 cursor-pointer">
+            <label className="flex items-start gap-4 cursor-pointer">
               <input
                 type="radio"
                 name="access_mode"
                 value="anyone"
                 defaultChecked={workspace.access_mode === 'anyone'}
-                className="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500"
+                className="w-4 h-4 mt-1 text-blue-600 border-gray-300 focus:ring-blue-500 flex-shrink-0"
               />
               <div>
                 <div className="font-medium text-gray-900">Bất kỳ ai</div>
